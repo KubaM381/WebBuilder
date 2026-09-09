@@ -3,22 +3,21 @@ document.addEventListener("DOMContentLoaded", () => {
   // GLOBAL STATE
   // ============================================================
   let elements = [];
-  let groups = []; // { id, elementIds: [] }
-  let categories = []; // { id, name }
+  let categories = []; // { id, name, color }
   let selectedElementId = null;
-  let selectedElementIds = []; // multi-select for grouping
   let isPreviewMode = false;
   let draggedType = null;
   let draggedIcon = null;
 
-  let cartItems = []; // { id, elementId, name, price, qty }
-  let toastPosition = "top-right"; // top-right | top-left | bottom-right | bottom-left
+  let cartItems = []; // { id, name, price, qty }
 
   let headerEnabled = false;
   let headerSticky = false;
   let headerText = "Meine Website";
   let footerEnabled = false;
   let footerText = "© 2026 WebBuilder Pro";
+
+  const CATEGORY_COLOR_PALETTE = ["#6366f1", "#16a34a", "#f59e0b", "#ef4444", "#0ea5e9", "#a855f7"];
 
   // ============================================================
   // DOM ELEMENTS (original)
@@ -74,11 +73,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalFooter = document.getElementById("modal-footer");
   const closeModalBtn = document.getElementById("close-modal-btn");
 
-  // Toast Container
+  // Toast Container (immer an fester Standardposition, siehe styles.css)
   let toastContainer = document.getElementById("toast-container");
 
   // ============================================================
-  // ICON DEFINITIONS (nun erweiterbar über addCustomIcon)
+  // ICON DEFINITIONS (erweiterbar über addCustomIcon)
   // ============================================================
   const SVGMAP = {
     cart: '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>',
@@ -91,8 +90,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /**
    * Fügt ein eigenes Icon (SVG-Markup oder Bild-URL) zur SVGMAP hinzu.
-   * Bei einer URL wird automatisch ein <img> gewrappt, damit das Rendering
-   * identisch zu den bestehenden SVG-Icons funktioniert.
    */
   function addCustomIcon(name, svgOrUrl) {
     if (!name || !svgOrUrl) return;
@@ -107,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ============================================================
-  // UTILITY: Container dynamisch erstellen, falls im HTML fehlend
+  // UTILITY
   // ============================================================
   function ensureEl(id, parentEl, tag = "div", className = "") {
     let el = document.getElementById(id);
@@ -120,41 +117,33 @@ document.addEventListener("DOMContentLoaded", () => {
     return el;
   }
 
+  /** Wandelt Hex-Farbe + Alpha (0-1) in ein rgba()-CSS um */
+  function hexToRgba(hex, alpha) {
+    if (!hex) return `rgba(0,0,0,${alpha})`;
+    let c = hex.replace("#", "");
+    if (c.length === 3) c = c.split("").map(ch => ch + ch).join("");
+    const num = parseInt(c, 16);
+    const r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
   if (!toastContainer) {
-    toastContainer = ensureEl("toast-container", document.body, "div", "toast-container toast-top-right");
+    toastContainer = ensureEl("toast-container", document.body, "div", "toast-container");
   }
 
   // ============================================================
-  // DYNAMISCH INJIZIERTES CSS FÜR ALLE NEUEN FEATURES
-  // (falls die zugehörigen Klassen im bestehenden Stylesheet fehlen)
+  // DYNAMISCH INJIZIERTES CSS (nur was builder.js wirklich braucht)
   // ============================================================
   function injectDynamicStyles() {
     const style = document.createElement("style");
     style.id = "builder-dynamic-styles";
     style.textContent = `
       /* --- Warenkorb Badge Hover --- */
-      #cart-count-badge, .cart-badge {
-        display: inline-block;
-        transition: transform 0.25s ease;
-        transform-origin: center;
-      }
-      #cart-count-badge:hover, .cart-badge:hover {
-        transform: scale(1.35);
-      }
+      #cart-count-badge { display: inline-block; transition: transform 0.25s ease; transform-origin: center; }
+      #cart-count-badge:hover { transform: scale(1.35); }
 
-      /* --- Toast Positionierung --- */
-      .toast-container { position: fixed; z-index: 9999; display: flex; flex-direction: column; gap: 8px; padding: 16px; pointer-events: none; }
-      .toast-container.toast-top-right { top: 0; right: 0; align-items: flex-end; }
-      .toast-container.toast-top-left { top: 0; left: 0; align-items: flex-start; }
-      .toast-container.toast-bottom-right { bottom: 0; right: 0; align-items: flex-end; }
-      .toast-container.toast-bottom-left { bottom: 0; left: 0; align-items: flex-start; }
-      .toast-container .toast { pointer-events: auto; }
-
-      /* --- Element Styling (Background/Border/Radius/Padding) --- */
-      .placed-element .styled-wrapper {
-        display: inline-block;
-        box-sizing: border-box;
-      }
+      /* --- Element Styling Wrapper (Hintergrund/Transparenz/Rahmenfarbe) --- */
+      .placed-element .styled-wrapper { display: inline-block; box-sizing: border-box; }
 
       /* --- Wort-Hervorhebung & Links --- */
       .text-word-link { color: blue; text-decoration: underline; cursor: pointer; }
@@ -176,54 +165,35 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       /* --- Vorschau-Modus: rechten Bereich nicht abschneiden, zentrieren --- */
-      body.preview-mode .builder-layout,
-      body.preview-mode #canvas-wrapper {
-        display: block !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 0 auto !important;
-        overflow-x: hidden !important;
-      }
-      body.preview-mode #canvas {
-        margin: 0 auto !important;
-        float: none !important;
-        left: 0 !important;
-        transform: none !important;
-      }
-      body.preview-mode #sidebar-left,
-      body.preview-mode #sidebar-right,
-      body.preview-mode .inspector-panel,
-      body.preview-mode .palette-panel {
-        display: none !important;
-      }
+      body.preview-mode .canvas-container { justify-content: center; width: 100%; overflow-x: hidden; }
+      body.preview-mode .canvas-area { margin-left: auto; margin-right: auto; }
 
-      /* --- Hover Tooltip / Hover-Description --- */
+      /* --- Hover Tooltip / Hover-Description (Position wird per JS gesetzt) --- */
       .hover-tooltip {
         position: absolute; z-index: 200; background: #1f2937; color: #fff;
         padding: 6px 10px; border-radius: 6px; font-size: 12px; max-width: 220px;
         pointer-events: none; opacity: 0; transition: opacity 0.2s ease;
-        transform: translate(-50%, -110%);
       }
       .hover-tooltip.visible { opacity: 1; }
 
-      /* --- Kategorie Highlight --- */
+      /* --- Kategorie Highlight auf dem Canvas --- */
       .placed-element.category-dimmed { opacity: 0.25; transition: opacity 0.25s ease; }
-      .placed-element.category-highlighted { opacity: 1; outline: 2px dashed #6366f1; transition: opacity 0.25s ease; }
+      .placed-element.category-highlighted { opacity: 1; transition: opacity 0.25s ease; }
 
-      /* --- Gruppierte / Duplizierte / Auswahl-Mehrfachmarkierung --- */
-      .placed-element.multi-selected { outline: 2px dotted #2563eb; }
-      .placed-element.grouped-element { outline: 1px solid #a855f7; }
-
-      /* --- Filter Widget --- */
-      #filter-widget-panel {
-        position: fixed; top: 60px; right: 16px; width: 260px; background: #fff;
+      /* --- Eigenständiges Kategorien-Verwaltungsmenü --- */
+      #category-manager-panel {
+        position: fixed; top: 76px; right: 16px; width: 280px; background: #fff;
         border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.15));
         padding: 14px; z-index: 500; display: none;
       }
-      #filter-widget-panel.active { display: block; }
-      #filter-widget-panel h3 { margin: 0 0 8px; font-size: 14px; }
-      #filter-widget-panel input[type="text"] { width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 6px 8px; }
-      #filter-widget-panel .filter-cat-item { display: block; font-size: 13px; margin-bottom: 4px; }
+      #category-manager-panel.active { display: block; }
+      #category-manager-panel h3 { margin: 0 0 10px; font-size: 14px; }
+      #category-add-row { display: flex; gap: 6px; margin-bottom: 12px; }
+      #category-add-row input { flex: 1; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.85rem; }
+      .category-manager-item { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+      .category-manager-item input[type="text"] { flex: 1; padding: 5px 7px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.85rem; }
+      .category-manager-item input[type="color"] { width: 28px; height: 28px; border: none; cursor: pointer; background: transparent; }
+      .category-manager-item .category-delete-btn { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 0.95rem; }
 
       /* --- Header / Footer --- */
       #builder-header {
@@ -241,6 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .inspector-subsection h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
       .inspector-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
       .inspector-row label { font-size: 12px; min-width: 90px; color: #374151; }
+      .inspector-row input[type="range"] { flex: 1; }
     `;
     document.head.appendChild(style);
   }
@@ -307,7 +278,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Summenzeile
     let totalRow = document.getElementById("cart-total-row");
     if (!totalRow) {
       totalRow = document.createElement("div");
@@ -321,27 +291,62 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cartCountBadge) cartCountBadge.innerText = getCartCount();
   }
 
+  function openCartDrawer() {
+    cartDrawerBackdrop.classList.add("active");
+    cartDrawer.classList.add("active");
+    renderCart();
+  }
+
+  function closeCartDrawer() {
+    cartDrawerBackdrop.classList.remove("active");
+    cartDrawer.classList.remove("active");
+  }
+
+  closeCartBtn.addEventListener("click", closeCartDrawer);
+  cartDrawerBackdrop.addEventListener("click", closeCartDrawer);
+
+  /** Separater Knopf in der Toolbar, um den Warenkorb jederzeit einzusehen/zu bearbeiten
+      (unabhängig von einer "In den Warenkorb"-Aktion auf einem Element). */
+  function ensureCartEditButton() {
+    let btn = document.getElementById("btn-edit-cart");
+    if (!btn) {
+      const host = document.querySelector(".toolbar") || document.body;
+      btn = document.createElement("button");
+      btn.id = "btn-edit-cart";
+      btn.type = "button";
+      btn.className = "btn btn-secondary";
+      btn.innerText = "🛒 Warenkorb bearbeiten";
+      host.appendChild(btn);
+    }
+    btn.addEventListener("click", openCartDrawer);
+    // TODO: Styling der einzelnen Warenkorb-Positionen (Formen etc.) folgt in einem späteren Schritt.
+  }
+  ensureCartEditButton();
+
   // ============================================================
-  // 2. STYLING & POSITIONIERUNG VON ELEMENTEN/ICONS
-  //    Erweiterte Default-Attribute werden in createElement gesetzt.
+  // 2. ELEMENT-STYLING: Hintergrund, Transparenz, Rahmenfarbe
+  //    (bewusst reduziert – keine Rahmendicke/Radius/Padding mehr)
   // ============================================================
   function applyElementStyleAttributes(item, wrapperEl) {
     wrapperEl.classList.add("styled-wrapper");
-    wrapperEl.style.background = item.bgColor || "transparent";
-    wrapperEl.style.border = `${item.borderWidth || 0}px ${item.borderStyle || "solid"} ${item.borderColor || "transparent"}`;
-    wrapperEl.style.borderRadius = item.shape === "circle" ? "50%" : `${item.radius || 0}px`;
-    wrapperEl.style.padding = `${item.padding || 0}px`;
+
+    if (item.bgColor && item.bgColor !== "transparent") {
+      const alpha = 1 - (item.transparency || 0) / 100;
+      wrapperEl.style.background = hexToRgba(item.bgColor, alpha);
+    } else {
+      wrapperEl.style.background = "transparent";
+    }
+
+    wrapperEl.style.border = (item.borderColor && item.borderColor !== "transparent")
+      ? `1px solid ${item.borderColor}`
+      : "none";
   }
 
   // ============================================================
-  // 3. TOAST-/MELDUNGS-POSITIONIERUNG
+  // 3. MELDUNGEN (Toast & positionierbare benutzerdefinierte Meldung)
   // ============================================================
-  function setToastPosition(position) {
-    toastPosition = position;
-    toastContainer.classList.remove("toast-top-right", "toast-top-left", "toast-bottom-right", "toast-bottom-left");
-    toastContainer.classList.add(`toast-${position}`);
-  }
 
+  /** Standard-Systemmeldungen (fest positioniert unten rechts, siehe styles.css) */
   function showToast(message, type = "info") {
     const toast = document.createElement("div");
     toast.className = `toast toast-${type}`;
@@ -355,8 +360,30 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
       toast.classList.add("toast-leaving");
       toast.addEventListener("animationend", () => toast.remove());
-      // Fallback falls keine CSS-Animation definiert ist
       setTimeout(() => toast.remove(), 600);
+    }, 2800);
+  }
+
+  /** Benutzerdefinierte Meldung: Position frei wählbar, unabhängig vom Standard-Toast. */
+  function showPositionedMessage(message, position = "bottom-right") {
+    const msgEl = document.createElement("div");
+    msgEl.className = "toast toast-info";
+    msgEl.innerHTML = `<span>💬</span> <span>${message}</span>`;
+    msgEl.style.position = "fixed";
+    msgEl.style.zIndex = "9999";
+
+    const offset = "24px";
+    if (position === "top-right") { msgEl.style.top = offset; msgEl.style.right = offset; }
+    else if (position === "top-left") { msgEl.style.top = offset; msgEl.style.left = offset; }
+    else if (position === "bottom-left") { msgEl.style.bottom = offset; msgEl.style.left = offset; }
+    else { msgEl.style.bottom = offset; msgEl.style.right = offset; } // bottom-right (Default)
+
+    document.body.appendChild(msgEl);
+
+    setTimeout(() => {
+      msgEl.classList.add("toast-leaving");
+      msgEl.addEventListener("animationend", () => msgEl.remove());
+      setTimeout(() => msgEl.remove(), 600);
     }, 2800);
   }
 
@@ -408,7 +435,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target === modalOverlay) closeModal();
   });
 
-  /** Generische Modal-Aktion: nutzt item.modalTitle / item.modalBody (frei editierbar im Inspector) */
   function openCustomModal(item) {
     openModal(
       item.modalTitle || "Information",
@@ -419,13 +445,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================
   // 5. TEXT-INTERAKTION & WORT-HERVORHEBUNG
   // ============================================================
-  /**
-   * Rendert Text-Content und berücksichtigt:
-   * - linkScope: "all" (gesamtes Element klickbar) | "word" (nur item.linkWord anklickbar)
-   * - highlightedWords: Array von { word, bold, color }
-   */
   function renderTextContent(item) {
-    const words = (item.text || "").split(/(\s+)/); // Whitespace erhalten
+    const words = (item.text || "").split(/(\s+)/);
     return words.map(w => {
       const cleanWord = w.trim();
       if (!cleanWord) return w;
@@ -500,127 +521,152 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   setupCanvasResize();
 
-  // Layout-Fix: verhindert Verschiebung/"Verfälschung" nach links und
-  // stellt sicher, dass der Canvas-Wrapper im Vorschau-Modus zentriert bleibt.
   function fixCanvasLayout() {
     canvas.style.marginLeft = "auto";
     canvas.style.marginRight = "auto";
     canvas.style.boxSizing = "border-box";
-    const wrapper = document.getElementById("canvas-wrapper");
-    if (wrapper) {
-      wrapper.style.overflowX = "hidden";
-      wrapper.style.width = "100%";
-    }
   }
   fixCanvasLayout();
 
   // ============================================================
-  // 8. KATEGORIEN, EIGENSCHAFTEN & FILTER-SYSTEM
+  // 7. KATEGORIEN: eigenständiges Verwaltungsmenü
   // ============================================================
   function addCategory(name) {
     if (!name) return null;
     const existing = categories.find(c => c.name.toLowerCase() === name.toLowerCase());
     if (existing) return existing;
-    const cat = { id: "cat_" + Date.now(), name };
+    const color = CATEGORY_COLOR_PALETTE[categories.length % CATEGORY_COLOR_PALETTE.length];
+    const cat = { id: "cat_" + Date.now(), name, color };
     categories.push(cat);
-    renderFilterWidget();
     return cat;
   }
 
-  function assignCategoryToElement(elementId, categoryName) {
-    const item = elements.find(el => el.id === elementId);
-    if (!item) return;
-    if (!item.categories) item.categories = [];
-    const cat = addCategory(categoryName);
-    if (cat && !item.categories.includes(cat.id)) {
-      item.categories.push(cat.id);
-    }
+  function renameCategory(id, newName) {
+    const cat = categories.find(c => c.id === id);
+    if (cat && newName.trim()) cat.name = newName.trim();
+  }
+
+  function updateCategoryColor(id, color) {
+    const cat = categories.find(c => c.id === id);
+    if (cat) cat.color = color;
+  }
+
+  function deleteCategory(id) {
+    categories = categories.filter(c => c.id !== id);
+    elements.forEach(el => { if (el.categoryId === id) el.categoryId = null; });
     renderCanvas();
   }
 
   function highlightCategoryOnCanvas(categoryId, active) {
+    const cat = categories.find(c => c.id === categoryId);
     canvas.querySelectorAll(".placed-element").forEach(domEl => {
       const item = elements.find(el => el.id === domEl.dataset.id);
       if (!item) return;
-      const matches = (item.categories || []).includes(categoryId);
+      const matches = item.categoryId === categoryId;
       if (active) {
         domEl.classList.toggle("category-highlighted", matches);
         domEl.classList.toggle("category-dimmed", !matches);
+        domEl.style.outline = matches && cat ? `2px dashed ${cat.color}` : "";
       } else {
         domEl.classList.remove("category-highlighted", "category-dimmed");
+        domEl.style.outline = "";
       }
     });
   }
 
-  function ensureFilterMenuEntry() {
-    // Sucht den Menüpunkt "Mehr" (falls vorhanden) und hängt den Filter-Toggle an.
-    let moreMenuItem = Array.from(document.querySelectorAll("button, a, li")).find(
-      el => el.textContent && el.textContent.trim().toLowerCase() === "mehr"
-    );
-    let toggleBtn = document.getElementById("btn-toggle-filter-widget");
-    if (!toggleBtn) {
-      toggleBtn = document.createElement("button");
-      toggleBtn.id = "btn-toggle-filter-widget";
-      toggleBtn.type = "button";
-      toggleBtn.className = "btn btn-secondary";
-      toggleBtn.innerText = "🔍 Filter";
-      (moreMenuItem ? moreMenuItem.parentElement : document.body).appendChild(toggleBtn);
+  function ensureCategoryManagerButton() {
+    let btn = document.getElementById("btn-toggle-category-manager");
+    if (!btn) {
+      const host = document.querySelector(".toolbar") || document.body;
+      btn = document.createElement("button");
+      btn.id = "btn-toggle-category-manager";
+      btn.type = "button";
+      btn.className = "btn btn-secondary";
+      btn.innerText = "🏷️ Kategorien";
+      host.appendChild(btn);
     }
-    toggleBtn.addEventListener("click", () => {
-      const panel = document.getElementById("filter-widget-panel");
+    btn.addEventListener("click", () => {
+      const panel = document.getElementById("category-manager-panel");
       if (panel) panel.classList.toggle("active");
     });
   }
 
-  function renderFilterWidget() {
-    let panel = document.getElementById("filter-widget-panel");
+  function renderCategoryManagerPanel() {
+    let panel = document.getElementById("category-manager-panel");
     if (!panel) {
       panel = document.createElement("div");
-      panel.id = "filter-widget-panel";
+      panel.id = "category-manager-panel";
       document.body.appendChild(panel);
     }
     panel.innerHTML = `
-      <h3>Kategorien filtern</h3>
-      <input type="text" id="filter-search-input" placeholder="Suche nach Name..." />
-      <div id="filter-cat-list"></div>
+      <h3>Kategorien verwalten</h3>
+      <div id="category-add-row">
+        <input type="text" id="category-new-name" placeholder="z. B. Pulver" />
+        <button type="button" class="btn btn-primary" id="category-add-btn">+</button>
+      </div>
+      <div id="category-manager-list"></div>
     `;
-    const list = panel.querySelector("#filter-cat-list");
+
+    const list = panel.querySelector("#category-manager-list");
     categories.forEach(cat => {
-      const label = document.createElement("label");
-      label.className = "filter-cat-item";
-      label.innerHTML = `<input type="checkbox" class="filter-cat-checkbox" data-cat-id="${cat.id}" /> ${cat.name}`;
-      list.appendChild(label);
+      const row = document.createElement("div");
+      row.className = "category-manager-item";
+      row.innerHTML = `
+        <input type="color" class="category-color-input" data-cat-id="${cat.id}" value="${cat.color}" />
+        <input type="text" class="category-name-input" data-cat-id="${cat.id}" value="${cat.name}" />
+        <button type="button" class="category-delete-btn" data-cat-id="${cat.id}" title="Löschen">✕</button>
+      `;
+      list.appendChild(row);
     });
 
-    panel.querySelectorAll(".filter-cat-checkbox").forEach(cb => {
-      cb.addEventListener("change", applyActiveFilters);
+    panel.querySelector("#category-add-btn").addEventListener("click", () => {
+      const input = panel.querySelector("#category-new-name");
+      if (input.value.trim()) {
+        addCategory(input.value.trim());
+        input.value = "";
+        renderCategoryManagerPanel();
+        refreshCategorySelectOptions();
+      }
     });
-    const searchInput = panel.querySelector("#filter-search-input");
-    searchInput.addEventListener("input", applyActiveFilters);
+
+    panel.querySelectorAll(".category-name-input").forEach(input => {
+      input.addEventListener("change", (e) => {
+        renameCategory(e.target.dataset.catId, e.target.value);
+        renderCanvas();
+        refreshCategorySelectOptions();
+      });
+    });
+    panel.querySelectorAll(".category-color-input").forEach(input => {
+      input.addEventListener("input", (e) => {
+        updateCategoryColor(e.target.dataset.catId, e.target.value);
+      });
+    });
+    panel.querySelectorAll(".category-delete-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        deleteCategory(e.target.dataset.catId);
+        renderCategoryManagerPanel();
+        refreshCategorySelectOptions();
+      });
+    });
   }
 
-  function applyActiveFilters() {
-    const panel = document.getElementById("filter-widget-panel");
-    if (!panel) return;
-    const searchTerm = (panel.querySelector("#filter-search-input").value || "").toLowerCase();
-    const activeCatIds = Array.from(panel.querySelectorAll(".filter-cat-checkbox:checked")).map(cb => cb.dataset.catId);
+  ensureCategoryManagerButton();
+  renderCategoryManagerPanel();
 
-    canvas.querySelectorAll(".placed-element").forEach(domEl => {
-      const item = elements.find(el => el.id === domEl.dataset.id);
-      if (!item) return;
-      const matchesSearch = !searchTerm || (item.text || "").toLowerCase().includes(searchTerm);
-      const matchesCategory = activeCatIds.length === 0 || (item.categories || []).some(cid => activeCatIds.includes(cid));
-      const visible = matchesSearch && matchesCategory;
-      domEl.classList.toggle("category-dimmed", !visible);
-      domEl.classList.toggle("category-highlighted", visible && (searchTerm || activeCatIds.length));
-    });
+  /** Aktualisiert die Kategorie-Auswahl im Inspector, falls gerade sichtbar. */
+  function refreshCategorySelectOptions() {
+    const select = document.getElementById("ext-category-select");
+    if (!select) return;
+    const item = getSelected();
+    const current = item ? item.categoryId : null;
+    select.innerHTML = `<option value="">Keine</option>` + categories.map(c =>
+      `<option value="${c.id}">${c.name}</option>`
+    ).join("");
+    select.value = current || "";
   }
-
-  ensureFilterMenuEntry();
-  renderFilterWidget();
 
   // ============================================================
-  // 9. GRUPPIERUNG, DUPLIZIEREN & PRODUKT-VORLAGEN
+  // 8. DUPLIZIEREN
   // ============================================================
   function duplicateElement(id) {
     const original = elements.find(el => el.id === id);
@@ -635,60 +681,8 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast("Element dupliziert", "success");
   }
 
-  function groupSelectedElements(ids) {
-    if (!ids || ids.length < 2) {
-      showToast("Bitte mindestens 2 Elemente für eine Gruppe auswählen", "danger");
-      return;
-    }
-    const groupId = "group_" + Date.now();
-    groups.push({ id: groupId, elementIds: [...ids] });
-    ids.forEach(id => {
-      const item = elements.find(el => el.id === id);
-      if (item) item.groupId = groupId;
-    });
-    renderCanvas();
-    showToast("Elemente gruppiert", "success");
-  }
-
-  function createProductCardTemplate(x = 60, y = 60) {
-    const baseId = "elem_" + Date.now();
-    const image = {
-      id: baseId + "_img", type: "image", x, y, text: "",
-      color: "#1f2937", size: 200, imageUrl: "https://picsum.photos/300/200",
-      actionType: "none", actionUrl: "", actionMsg: "",
-      bgColor: "transparent", borderWidth: 0, borderStyle: "solid", borderColor: "transparent",
-      shape: "rounded", radius: 8, padding: 0, categories: []
-    };
-    const headline = {
-      id: baseId + "_headline", type: "headline", x, y: y + 210, text: "Produktname",
-      color: "#1f2937", size: 22, imageUrl: "", actionType: "none", actionUrl: "", actionMsg: "",
-      bgColor: "transparent", borderWidth: 0, borderStyle: "solid", borderColor: "transparent",
-      shape: "rounded", radius: 0, padding: 0, categories: []
-    };
-    const price = {
-      id: baseId + "_price", type: "text", x, y: y + 250, text: "49,99 €",
-      color: "#16a34a", size: 18, imageUrl: "", actionType: "none", actionUrl: "", actionMsg: "",
-      bgColor: "transparent", borderWidth: 0, borderStyle: "solid", borderColor: "transparent",
-      shape: "rounded", radius: 0, padding: 0, categories: []
-    };
-    const button = {
-      id: baseId + "_btn", type: "button", x, y: y + 290, text: "In den Warenkorb",
-      color: "#2563eb", size: 16, imageUrl: "", actionType: "cart-add", actionUrl: "", actionMsg: "",
-      bgColor: "transparent", borderWidth: 0, borderStyle: "solid", borderColor: "transparent",
-      shape: "rounded", radius: 6, padding: 4, categories: []
-    };
-
-    const templateGroupId = "group_" + Date.now();
-    [image, headline, price, button].forEach(el => { el.groupId = templateGroupId; });
-    groups.push({ id: templateGroupId, elementIds: [image.id, headline.id, price.id, button.id] });
-
-    elements.push(image, headline, price, button);
-    renderCanvas();
-    showToast("Produkt-Vorlage eingefügt", "success");
-  }
-
   // ============================================================
-  // 10. KOPF- & FUSSZEILE (Header & Footer)
+  // 9. KOPF- & FUSSZEILE (Header & Footer)
   // ============================================================
   function renderHeaderFooter() {
     let header = document.getElementById("builder-header");
@@ -756,8 +750,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ensureHeaderFooterControls();
 
   // ============================================================
-  // INSPECTOR ERWEITERUNGEN (Styling, Hover, Kategorien, Text/Link,
-  // generisches Modal, Duplizieren/Gruppieren)
+  // INSPECTOR ERWEITERUNGEN
   // ============================================================
   function ensureExtendedInspector() {
     let extPanel = document.getElementById("inspector-extended");
@@ -770,42 +763,26 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="inspector-subsection">
         <h4>Styling</h4>
         <div class="inspector-row"><label>Hintergrund</label><input type="color" id="ext-bg-color" /></div>
+        <div class="inspector-row"><label>Transparenz</label><input type="range" id="ext-transparency" min="0" max="100" value="0" /></div>
         <div class="inspector-row"><label>Rahmenfarbe</label><input type="color" id="ext-border-color" /></div>
-        <div class="inspector-row"><label>Rahmendicke</label><input type="number" id="ext-border-width" min="0" max="20" /></div>
-        <div class="inspector-row"><label>Rahmenart</label>
-          <select id="ext-border-style">
-            <option value="solid">solid</option>
-            <option value="dashed">dashed</option>
-            <option value="dotted">dotted</option>
-          </select>
-        </div>
-        <div class="inspector-row"><label>Form</label>
-          <select id="ext-shape">
-            <option value="square">eckig</option>
-            <option value="rounded">abgerundet</option>
-            <option value="circle">rund</option>
-          </select>
-        </div>
-        <div class="inspector-row"><label>Radius</label><input type="number" id="ext-radius" min="0" max="200" /></div>
-        <div class="inspector-row"><label>Padding</label><input type="number" id="ext-padding" min="0" max="100" /></div>
-      </div>
-
-      <div class="inspector-subsection">
-        <h4>Toast-Position</h4>
-        <div class="inspector-row">
-          <select id="ext-toast-position">
-            <option value="top-right">Oben rechts</option>
-            <option value="top-left">Oben links</option>
-            <option value="bottom-right">Unten rechts</option>
-            <option value="bottom-left">Unten links</option>
-          </select>
-        </div>
       </div>
 
       <div class="inspector-subsection" id="ext-modal-section" style="display:none;">
         <h4>Modal-Inhalt</h4>
         <div class="inspector-row"><label>Titel</label><input type="text" id="ext-modal-title" /></div>
         <div class="inspector-row"><label>Text</label><textarea id="ext-modal-body" rows="4" style="width:100%;"></textarea></div>
+      </div>
+
+      <div class="inspector-subsection" id="ext-message-section" style="display:none;">
+        <h4>Meldung-Position</h4>
+        <div class="inspector-row"><label>Position</label>
+          <select id="ext-message-position">
+            <option value="top-right">Oben rechts</option>
+            <option value="top-left">Oben links</option>
+            <option value="bottom-right">Unten rechts</option>
+            <option value="bottom-left">Unten links</option>
+          </select>
+        </div>
       </div>
 
       <div class="inspector-subsection" id="ext-text-section" style="display:none;">
@@ -826,74 +803,33 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="inspector-subsection">
         <h4>Hover-Effekte</h4>
         <div class="inspector-row"><label>Hover-Bild-URL</label><input type="text" id="ext-hover-image" placeholder="https://..." /></div>
-        <div class="inspector-row"><label>Transition (s)</label><input type="number" id="ext-hover-duration" step="0.1" min="0" value="0.3" /></div>
-        <div class="inspector-row"><label>Easing</label>
-          <select id="ext-hover-easing">
-            <option value="ease">ease</option>
-            <option value="linear">linear</option>
-            <option value="ease-in-out">ease-in-out</option>
+        <div class="inspector-row"><label>Tooltip-Text</label><input type="text" id="ext-hover-desc" placeholder="Zusätzliche Beschreibung" /></div>
+        <div class="inspector-row"><label>Tooltip-Position</label>
+          <select id="ext-hover-position">
+            <option value="above">Über dem Text</option>
+            <option value="below">Unter dem Text</option>
           </select>
         </div>
-        <div class="inspector-row"><label>Tooltip-Text</label><input type="text" id="ext-hover-desc" placeholder="Zusätzliche Beschreibung" /></div>
+        <!-- TODO: Vorgefertigte Hover-Effekte (Presets) folgen in einem späteren Schritt -->
       </div>
 
       <div class="inspector-subsection">
-        <h4>Kategorien</h4>
-        <div class="inspector-row"><input type="text" id="ext-category-input" placeholder="Kategorie hinzufügen (z. B. Pulver)" />
-          <button type="button" class="btn btn-secondary" id="ext-category-add">+</button>
+        <h4>Kategorie</h4>
+        <div class="inspector-row"><label>Zuweisen</label>
+          <select id="ext-category-select"><option value="">Keine</option></select>
         </div>
-        <div id="ext-category-list" style="font-size:12px; color:#374151;"></div>
       </div>
 
       <div class="inspector-subsection">
-        <h4>Gruppierung & Vorlagen</h4>
+        <h4>Aktionen</h4>
         <div class="inspector-row">
           <button type="button" class="btn btn-secondary" id="ext-btn-duplicate">Duplizieren</button>
-          <button type="button" class="btn btn-secondary" id="ext-btn-select-group">Zur Gruppen-Auswahl</button>
-          <button type="button" class="btn btn-secondary" id="ext-btn-group-now">Auswahl gruppieren</button>
-        </div>
-        <div class="inspector-row">
-          <button type="button" class="btn btn-primary" id="ext-btn-insert-template">+ Produkt-Vorlage einfügen</button>
         </div>
       </div>
     `;
 
-    // Toast Position (global, nicht elementgebunden)
-    document.getElementById("ext-toast-position").addEventListener("change", (e) => {
-      setToastPosition(e.target.value);
-    });
-
-    document.getElementById("ext-btn-insert-template").addEventListener("click", () => {
-      createProductCardTemplate(80, 80);
-    });
-
-    document.getElementById("ext-btn-select-group").addEventListener("click", () => {
-      const item = getSelected();
-      if (!item) return;
-      if (!selectedElementIds.includes(item.id)) {
-        selectedElementIds.push(item.id);
-        showToast(`${item.id} zur Gruppen-Auswahl hinzugefügt (${selectedElementIds.length} ausgewählt)`, "info");
-        renderCanvas();
-      }
-    });
-
-    document.getElementById("ext-btn-group-now").addEventListener("click", () => {
-      groupSelectedElements(selectedElementIds);
-      selectedElementIds = [];
-    });
-
     document.getElementById("ext-btn-duplicate").addEventListener("click", () => {
       if (selectedElementId) duplicateElement(selectedElementId);
-    });
-
-    document.getElementById("ext-category-add").addEventListener("click", () => {
-      const input = document.getElementById("ext-category-input");
-      const item = getSelected();
-      if (item && input.value.trim()) {
-        assignCategoryToElement(item.id, input.value.trim());
-        input.value = "";
-        populateExtendedInspector(item);
-      }
     });
 
     document.getElementById("ext-highlight-add").addEventListener("click", () => {
@@ -910,7 +846,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Live-Bindings für Styling-Felder
+    document.getElementById("ext-category-select").addEventListener("change", (e) => {
+      const item = getSelected();
+      if (item) { item.categoryId = e.target.value || null; renderCanvas(); }
+    });
+
     const bindStyleField = (fieldId, prop, parser = (v) => v) => {
       document.getElementById(fieldId).addEventListener("input", (e) => {
         const item = getSelected();
@@ -918,37 +858,32 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     };
     bindStyleField("ext-bg-color", "bgColor");
+    bindStyleField("ext-transparency", "transparency", parseFloat);
     bindStyleField("ext-border-color", "borderColor");
-    bindStyleField("ext-border-width", "borderWidth", parseFloat);
-    bindStyleField("ext-border-style", "borderStyle");
-    bindStyleField("ext-shape", "shape");
-    bindStyleField("ext-radius", "radius", parseFloat);
-    bindStyleField("ext-padding", "padding", parseFloat);
     bindStyleField("ext-modal-title", "modalTitle");
     bindStyleField("ext-modal-body", "modalBody");
+    bindStyleField("ext-message-position", "messagePosition");
     bindStyleField("ext-link-scope", "linkScope");
     bindStyleField("ext-link-word", "linkWord");
     bindStyleField("ext-hover-image", "hoverImage");
-    bindStyleField("ext-hover-duration", "hoverTransitionDuration", parseFloat);
-    bindStyleField("ext-hover-easing", "hoverEasing");
     bindStyleField("ext-hover-desc", "hoverDescription");
+    bindStyleField("ext-hover-position", "hoverPosition");
   }
   ensureExtendedInspector();
 
   function populateExtendedInspector(item) {
     document.getElementById("ext-bg-color").value = item.bgColor && item.bgColor !== "transparent" ? item.bgColor : "#ffffff";
+    document.getElementById("ext-transparency").value = item.transparency || 0;
     document.getElementById("ext-border-color").value = item.borderColor && item.borderColor !== "transparent" ? item.borderColor : "#000000";
-    document.getElementById("ext-border-width").value = item.borderWidth || 0;
-    document.getElementById("ext-border-style").value = item.borderStyle || "solid";
-    document.getElementById("ext-shape").value = item.shape || "square";
-    document.getElementById("ext-radius").value = item.radius || 0;
-    document.getElementById("ext-padding").value = item.padding || 0;
-    document.getElementById("ext-toast-position").value = toastPosition;
 
     const isCustomModal = item.actionType === "open-custom-modal";
     document.getElementById("ext-modal-section").style.display = isCustomModal ? "block" : "none";
     document.getElementById("ext-modal-title").value = item.modalTitle || "";
     document.getElementById("ext-modal-body").value = item.modalBody || "";
+
+    const isAlertMsg = item.actionType === "alert-msg";
+    document.getElementById("ext-message-section").style.display = isAlertMsg ? "block" : "none";
+    document.getElementById("ext-message-position").value = item.messagePosition || "bottom-right";
 
     const isTextLike = ["text", "headline", "button"].includes(item.type);
     document.getElementById("ext-text-section").style.display = isTextLike ? "block" : "none";
@@ -956,26 +891,20 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("ext-link-word").value = item.linkWord || "";
 
     document.getElementById("ext-hover-image").value = item.hoverImage || "";
-    document.getElementById("ext-hover-duration").value = item.hoverTransitionDuration != null ? item.hoverTransitionDuration : 0.3;
-    document.getElementById("ext-hover-easing").value = item.hoverEasing || "ease";
     document.getElementById("ext-hover-desc").value = item.hoverDescription || "";
+    document.getElementById("ext-hover-position").value = item.hoverPosition || "above";
 
-    const catList = document.getElementById("ext-category-list");
-    const names = (item.categories || []).map(cid => {
-      const cat = categories.find(c => c.id === cid);
-      return cat ? cat.name : null;
-    }).filter(Boolean);
-    catList.innerText = names.length ? `Zugewiesen: ${names.join(", ")}` : "Keine Kategorien zugewiesen";
+    refreshCategorySelectOptions();
   }
 
   // ============================================================
-  // AKTIONSTYPEN: "open-cookie-modal" / "open-agb-modal" entfernt,
-  // ersetzt durch generische Aktion "open-custom-modal"
+  // AKTIONSTYPEN: Bereinigung veralteter Optionen (Cookie-/AGB-Modal),
+  // falls in einer älteren HTML-Version noch vorhanden.
   // ============================================================
   function ensureGenericModalActionOption() {
     if (!propActionType) return;
     Array.from(propActionType.options).forEach(opt => {
-      if (opt.value === "open-cookie-modal" || opt.value === "open-agb-modal") {
+      if (opt.value === "open-cookie-modal" || opt.value === "open-agb-modal" || opt.value === "open-modal") {
         opt.remove();
       }
     });
@@ -989,7 +918,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ensureGenericModalActionOption();
 
   // ============================================================
-  // CANVAS BACKGROUND CONTROL LOGIC (unverändert aus Original)
+  // CANVAS BACKGROUND CONTROL LOGIC (unverändert)
   // ============================================================
   bgType.addEventListener("change", () => {
     const mode = bgType.value;
@@ -1057,7 +986,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ============================================================
-  // ELEMENT CREATION & MANAGEMENT (erweitert um neue Attribute)
+  // ELEMENT CREATION & MANAGEMENT
   // ============================================================
   function createElement(type, iconName = null, x = 50, y = 50) {
     const id = "elem_" + Date.now();
@@ -1075,34 +1004,31 @@ document.addEventListener("DOMContentLoaded", () => {
       actionUrl: "",
       actionMsg: "",
 
-      // --- Neue Attribute: Styling ---
+      // --- Styling (reduziert) ---
       bgColor: "transparent",
-      borderWidth: 0,
-      borderStyle: "solid",
+      transparency: 0,
       borderColor: "transparent",
-      shape: "square",
-      radius: 0,
-      padding: 0,
 
-      // --- Neue Attribute: Warenkorb / generisches Modal ---
+      // --- Warenkorb / generisches Modal ---
       price: 9.99,
       modalTitle: "",
       modalBody: "",
 
-      // --- Neue Attribute: Text-Interaktion ---
+      // --- Benutzerdefinierte Meldung ---
+      messagePosition: "bottom-right",
+
+      // --- Text-Interaktion ---
       linkScope: "all",
       linkWord: "",
       highlightedWords: [],
 
-      // --- Neue Attribute: Hover ---
+      // --- Hover ---
       hoverImage: "",
-      hoverTransitionDuration: 0.3,
-      hoverEasing: "ease",
       hoverDescription: "",
+      hoverPosition: "above",
 
-      // --- Neue Attribute: Kategorien / Gruppierung ---
-      categories: [],
-      groupId: null
+      // --- Kategorie ---
+      categoryId: null
     };
 
     elements.push(newElement);
@@ -1120,22 +1046,15 @@ document.addEventListener("DOMContentLoaded", () => {
       el.className = [
         "placed-element",
         item.id === selectedElementId ? "selected" : "",
-        item.actionType !== "none" ? "has-action" : "",
-        selectedElementIds.includes(item.id) ? "multi-selected" : "",
-        item.groupId ? "grouped-element" : ""
+        item.actionType !== "none" ? "has-action" : ""
       ].filter(Boolean).join(" ");
       el.style.left = `${item.x}px`;
       el.style.top = `${item.y}px`;
       el.style.color = item.color;
       el.dataset.id = item.id;
 
-      // Styling-Wrapper (Background/Border/Radius/Padding)
       applyElementStyleAttributes(item, el);
 
-      // Hover-Transition konfigurieren
-      el.style.transition = `all ${item.hoverTransitionDuration != null ? item.hoverTransitionDuration : 0.3}s ${item.hoverEasing || "ease"}`;
-
-      // Inner HTML Render based on Type
       if (item.type === "icon" && SVGMAP[item.iconName]) {
         el.innerHTML = SVGMAP[item.iconName];
         const svg = el.querySelector("svg, img");
@@ -1151,12 +1070,11 @@ document.addEventListener("DOMContentLoaded", () => {
         el.innerHTML = `<div style="width:140px; height:90px; background:${item.color}; border-radius:8px; box-shadow: var(--shadow-md);"></div>`;
       } else if (item.type === "image") {
         const src = item.imageUrl || "https://via.placeholder.com/200";
-        el.innerHTML = `<img src="${src}" class="canvas-img" style="width:${item.size}px; height:auto;" alt="Bild Element" data-default-src="${src}" data-hover-src="${item.hoverImage || ''}" />`;
+        el.innerHTML = `<img src="${src}" class="canvas-img" style="width:${item.size}px; height:auto;" alt="Bild Element" />`;
       } else {
         el.innerHTML = `<p style="font-size:${item.size}px; color:${item.color};">${renderTextContent(item)}</p>`;
       }
 
-      // Badge indicator for linked action
       const badge = document.createElement("span");
       badge.className = "element-badge";
       badge.innerText = "⚡ Logik";
@@ -1169,14 +1087,20 @@ document.addEventListener("DOMContentLoaded", () => {
         el.addEventListener("mouseleave", () => { if (imgTag) imgTag.src = item.imageUrl; });
       }
 
-      // --- Hover: Tooltip/Description ---
+      // --- Hover: Tooltip/Description (Position: über/unter) ---
       if (item.hoverDescription) {
-        el.addEventListener("mouseenter", (e) => {
+        el.addEventListener("mouseenter", () => {
           const tip = ensureEl("hover-tooltip-active", document.body, "div", "hover-tooltip");
           tip.innerText = item.hoverDescription;
           const rect = el.getBoundingClientRect();
           tip.style.left = `${rect.left + rect.width / 2}px`;
-          tip.style.top = `${rect.top}px`;
+          if (item.hoverPosition === "below") {
+            tip.style.top = `${rect.bottom}px`;
+            tip.style.transform = "translate(-50%, 10px)";
+          } else {
+            tip.style.top = `${rect.top}px`;
+            tip.style.transform = "translate(-50%, -110%)";
+          }
           tip.classList.add("visible");
         });
         el.addEventListener("mouseleave", () => {
@@ -1185,17 +1109,13 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // --- Kategorie-Text-Element: Hover hebt zugehörige Produkte hervor ---
-      if (item.type !== "icon" && (item.categories || []).length && item.text) {
-        el.addEventListener("mouseenter", () => {
-          item.categories.forEach(catId => highlightCategoryOnCanvas(catId, true));
-        });
-        el.addEventListener("mouseleave", () => {
-          item.categories.forEach(catId => highlightCategoryOnCanvas(catId, false));
-        });
+      // --- Kategorie-Hover: hebt alle Elemente derselben Kategorie hervor ---
+      if (item.categoryId) {
+        el.addEventListener("mouseenter", () => highlightCategoryOnCanvas(item.categoryId, true));
+        el.addEventListener("mouseleave", () => highlightCategoryOnCanvas(item.categoryId, false));
       }
 
-      // --- Wort-Link Klick-Handler (nur im Vorschau-Modus relevant, aber Listener ist harmlos) ---
+      // --- Wort-Link Klick-Handler ---
       el.querySelectorAll('[data-word-link="1"]').forEach(wordEl => {
         wordEl.addEventListener("click", (evt) => {
           if (!isPreviewMode) return;
@@ -1206,11 +1126,10 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       });
 
-      // Element Event Handlers
       el.addEventListener("click", (e) => {
         e.stopPropagation();
         if (isPreviewMode) {
-          if (item.linkScope === "word") return; // Klick wird vom Wort-Handler übernommen
+          if (item.linkScope === "word") return;
           executeAction(item, el);
         } else {
           selectElement(item.id);
@@ -1269,7 +1188,6 @@ document.addEventListener("DOMContentLoaded", () => {
     noSelectionUI.classList.add("hidden");
     inspectorForm.classList.remove("hidden");
 
-    // Form inputs visibility based on item type
     const isImage = item.type === "image";
     const isBox = item.type === "box";
 
@@ -1277,7 +1195,6 @@ document.addEventListener("DOMContentLoaded", () => {
     groupColor.classList.toggle("hidden", isImage);
     groupImage.classList.toggle("hidden", !isImage);
 
-    // Populate Fields
     propId.value = item.id;
     propText.value = item.text || "";
     propSize.value = item.size || 20;
@@ -1299,7 +1216,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Bind Inspector Inputs to State
   propText.addEventListener("input", (e) => {
     const item = getSelected();
     if (item) { item.text = e.target.value; renderCanvas(); }
@@ -1357,7 +1273,6 @@ document.addEventListener("DOMContentLoaded", () => {
   btnDelete.addEventListener("click", () => {
     if (selectedElementId) {
       elements = elements.filter(el => el.id !== selectedElementId);
-      selectedElementIds = selectedElementIds.filter(id => id !== selectedElementId);
       selectedElementId = null;
       selectElement(null);
       renderCanvas();
@@ -1373,23 +1288,6 @@ document.addEventListener("DOMContentLoaded", () => {
     groupActionUrl.classList.toggle("hidden", actionType !== "open-url");
     groupActionMsg.classList.toggle("hidden", actionType !== "alert-msg");
   }
-
-  // ============================================================
-  // IN-PAGE MODALS & DRAWERS
-  // ============================================================
-  function openCartDrawer() {
-    cartDrawerBackdrop.classList.add("active");
-    cartDrawer.classList.add("active");
-    renderCart();
-  }
-
-  function closeCartDrawer() {
-    cartDrawerBackdrop.classList.remove("active");
-    cartDrawer.classList.remove("active");
-  }
-
-  closeCartBtn.addEventListener("click", closeCartDrawer);
-  cartDrawerBackdrop.addEventListener("click", closeCartDrawer);
 
   // ============================================================
   // ACTION ENGINE
@@ -1422,9 +1320,8 @@ document.addEventListener("DOMContentLoaded", () => {
         break;
 
       case "cart-add":
-        // Bounce Animation
         domEl.classList.remove("cart-pop-anim");
-        void domEl.offsetWidth; // Trigger reflow
+        void domEl.offsetWidth;
         domEl.classList.add("cart-pop-anim");
 
         addCartItem(item.text || "Produkt", item.price != null ? item.price : 9.99);
@@ -1432,7 +1329,7 @@ document.addEventListener("DOMContentLoaded", () => {
         break;
 
       case "alert-msg":
-        showToast(item.actionMsg || "Eine Benachrichtigung wurde ausgelöst!", "info");
+        showPositionedMessage(item.actionMsg || "Eine Benachrichtigung wurde ausgelöst!", item.messagePosition || "bottom-right");
         break;
 
       case "open-cart-drawer":
@@ -1471,8 +1368,6 @@ document.addEventListener("DOMContentLoaded", () => {
   btnClear.addEventListener("click", () => {
     if (confirm("Möchtest du wirklich alle Elemente von der Zeichenfläche löschen?")) {
       elements = [];
-      groups = [];
-      selectedElementIds = [];
       selectedElementId = null;
       selectElement(null);
       renderCanvas();
@@ -1488,8 +1383,10 @@ document.addEventListener("DOMContentLoaded", () => {
     exportedHTML += `<div style="position:relative; width:100%; min-height:100vh; background:${canvas.style.background};">\n`;
     elements.forEach(item => {
       exportedHTML += `  <!-- Element: ${item.id} (${item.type}) -->\n`;
-      const styleWrapper = `background:${item.bgColor || 'transparent'}; border:${item.borderWidth || 0}px ${item.borderStyle || 'solid'} ${item.borderColor || 'transparent'}; border-radius:${item.shape === 'circle' ? '50%' : (item.radius || 0) + 'px'}; padding:${item.padding || 0}px;`;
-      exportedHTML += `  <div style="position:absolute; left:${item.x}px; top:${item.y}px; color:${item.color}; ${styleWrapper}">\n`;
+      const alpha = 1 - (item.transparency || 0) / 100;
+      const bg = item.bgColor && item.bgColor !== "transparent" ? hexToRgba(item.bgColor, alpha) : "transparent";
+      const border = item.borderColor && item.borderColor !== "transparent" ? `1px solid ${item.borderColor}` : "none";
+      exportedHTML += `  <div style="position:absolute; left:${item.x}px; top:${item.y}px; color:${item.color}; background:${bg}; border:${border};">\n`;
       if (item.type === "icon" && SVGMAP[item.iconName]) {
         exportedHTML += `    ${SVGMAP[item.iconName]}\n`;
       } else if (item.type === "button") {
@@ -1515,7 +1412,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Initiales Rendering
-  setToastPosition(toastPosition);
   renderCart();
   renderCanvas();
 });
