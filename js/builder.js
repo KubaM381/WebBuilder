@@ -1,7 +1,9 @@
-document.addEventListener("DOMContentLoaded", () => {
-  // WebBuilder core builder logic.
-  // This file currently contains the existing builder implementation.
-  // It will be split into the modules in this folder step by step without changing behavior.
-
-  // PLACEHOLDER: existing builder.js is moved here in the next refactor commit.
-});
+// WebBuilder — Builder entry point
+// Temporary compatibility loader while the existing core is split into modules.
+(() => {
+  if (window.__WEBBUILDER_CORE_LOADED__) return;
+  window.__WEBBUILDER_CORE_LOADED__ = true;
+  const script = document.createElement("script");
+  script.src = "../builder.js";
+  document.head.appendChild(script);
+})();
