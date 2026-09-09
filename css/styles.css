@@ -155,3 +155,174 @@ body.preview-mode .element-badge { display: none !important; }
   .toolbar-center { order: 3; width: 100%; justify-content: center; overflow-x: auto; }
   .toolbar-actions { margin-left: auto; }
 }
+
+/* ============================================================
+   ERWEITERUNGEN FÜR builder.js
+   Ab hier: Styles für alle Elemente/Klassen, die builder.js zur
+   Laufzeit dynamisch ins DOM einfügt (Warenkorb-Badge-Hover,
+   Toast-Positionierung, Element-Styling-Wrapper, Text-Links &
+   Wort-Hervorhebung, Canvas-Resize, Vorschau-Layout-Fix,
+   Hover-Tooltips, Kategorie-Highlighting, Mehrfachauswahl/
+   Gruppierung, Filter-Widget, Header/Footer, Inspector-Erweiterung).
+   Nichts oben Stehendes wurde verändert oder entfernt.
+   ============================================================ */
+
+/* --- 1. Warenkorb-Badge: Hover-Vergrößerung --- */
+#cart-count-badge {
+  display: inline-block;
+  transition: transform 0.25s ease;
+  transform-origin: center;
+}
+#cart-count-badge:hover {
+  transform: scale(1.35);
+}
+.cart-total-row {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.cart-item-price-input {
+  padding: 4px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.cart-item-remove {
+  background: transparent;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 2px 6px;
+}
+.cart-item-remove:hover {
+  background: var(--danger-light);
+  border-radius: 4px;
+}
+
+/* --- 2. Element-Styling (Background/Border/Radius/Padding) --- */
+.placed-element .styled-wrapper {
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+/* --- 3. Toast-Positionierung (überschreibt die feste bottom-right Basis) --- */
+#toast-container.toast-top-right {
+  top: 24px; right: 24px; bottom: auto; left: auto;
+  flex-direction: column;
+}
+#toast-container.toast-top-left {
+  top: 24px; left: 24px; bottom: auto; right: auto;
+  flex-direction: column;
+}
+#toast-container.toast-bottom-right {
+  bottom: 24px; right: 24px; top: auto; left: auto;
+  flex-direction: column;
+}
+#toast-container.toast-bottom-left {
+  bottom: 24px; left: 24px; top: auto; right: auto;
+  flex-direction: column;
+}
+
+/* --- 4. Eigene Icons: Bild-basierte Icons im gleichen Format wie SVG-Icons --- */
+.icon-custom-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: inline-block;
+}
+.icon-palette-custom {
+  margin-top: 18px;
+}
+
+/* --- 5. Text-Interaktion & Wort-Hervorhebung --- */
+.text-word-link {
+  color: blue;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.text-word-highlight {
+  font-weight: bold;
+}
+
+/* --- 6. Dynamic Canvas: Resize-Handle & Höhen-Button (von builder.js erzeugt) --- */
+#canvas { position: relative; }
+#canvas-resize-handle {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 14px;
+  cursor: ns-resize; display: flex; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(45deg, rgba(0,0,0,0.05), rgba(0,0,0,0.05) 4px, transparent 4px, transparent 8px);
+  z-index: 50; user-select: none;
+}
+#canvas-resize-handle:after { content: "⋯"; font-size: 14px; color: var(--text-muted); }
+#btn-grow-canvas {
+  position: absolute; right: 8px; bottom: 18px; z-index: 51;
+  padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;
+  background: var(--bg-panel); border: 1px solid var(--border-color);
+}
+#btn-grow-canvas:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Layout-Fix Vorschau-Modus: rechter Bereich wird nicht abgeschnitten,
+   Inhalt bleibt horizontal zentriert (nutzt die tatsächlichen Klassen
+   aus index.html: .canvas-container / .canvas-area) */
+body.preview-mode .canvas-container {
+  justify-content: center;
+  width: 100%;
+  overflow-x: hidden;
+}
+body.preview-mode .canvas-area {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* --- 7. Hover-Effekte & Hover-Tooltips --- */
+.hover-tooltip {
+  position: absolute; z-index: 200; background: #1f2937; color: #fff;
+  padding: 6px 10px; border-radius: 6px; font-size: 12px; max-width: 220px;
+  pointer-events: none; opacity: 0; transition: opacity 0.2s ease;
+  transform: translate(-50%, -110%);
+}
+.hover-tooltip.visible { opacity: 1; }
+
+/* --- 8. Kategorien & Filter-System --- */
+.placed-element.category-dimmed { opacity: 0.25; transition: opacity 0.25s ease; }
+.placed-element.category-highlighted { opacity: 1; outline: 2px dashed var(--selection-color); transition: opacity 0.25s ease; }
+
+#filter-widget-panel {
+  position: fixed; top: 76px; right: 16px; width: 260px; background: var(--bg-panel);
+  border: 1px solid var(--border-color); border-radius: 10px; box-shadow: var(--shadow-md);
+  padding: 14px; z-index: 500; display: none;
+}
+#filter-widget-panel.active { display: block; }
+#filter-widget-panel h3 { margin: 0 0 8px; font-size: 14px; }
+#filter-widget-panel input[type="text"] {
+  width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 6px 8px;
+  border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem;
+}
+#filter-widget-panel .filter-cat-item { display: block; font-size: 13px; margin-bottom: 4px; color: var(--text-main); }
+
+/* --- 9. Gruppierung, Duplizieren & Mehrfachauswahl --- */
+.placed-element.multi-selected { outline: 2px dotted #2563eb; }
+.placed-element.grouped-element { outline: 1px solid #a855f7; }
+
+/* --- 10. Kopf- & Fußzeile (Header & Footer) --- */
+#builder-header {
+  width: 100%; padding: 14px 20px; background: #111827; color: #fff;
+  display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;
+}
+#builder-header.sticky-header { position: sticky; top: 0; z-index: 300; }
+#builder-header [contenteditable="true"] { outline: none; }
+#builder-footer {
+  width: 100%; padding: 18px 20px; background: #111827; color: #cbd5e1;
+  text-align: center; box-sizing: border-box; font-size: 13px;
+}
+#builder-footer [contenteditable="true"] { outline: none; }
+#header-footer-controls { display: flex; gap: 8px; align-items: center; }
+
+/* --- Erweiterter Inspector-Bereich (Styling/Hover/Kategorien/Gruppierung) --- */
+.inspector-subsection { margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
+.inspector-subsection h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.inspector-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+.inspector-row label { font-size: 12px; min-width: 90px; color: #374151; }
