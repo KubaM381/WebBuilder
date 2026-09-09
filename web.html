@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visual Web Page Builder</title>
+  <link rel="stylesheet" href="sytlesweb.css">
+</head>
+<body>
+
+  <!-- Top Toolbar -->
+  <header class="app-header">
+    <div class="brand">🚀 WebBuilder <span>Pro</span></div>
+    <div class="toolbar-actions">
+      <button id="btn-mode-toggle" class="btn btn-secondary">👁️ Vorschau-Modus</button>
+      <button id="btn-clear" class="btn btn-danger">🗑️ Canvas leeren</button>
+      <button id="btn-export" class="btn btn-primary">💾 HTML Code exportieren</button>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="app-body">
+
+    <!-- 1. Left Sidebar: Elements & Icons -->
+    <aside class="sidebar">
+      <h3>Bausteine</h3>
+      <p class="help-text">Ziehe Bausteine auf die Zeichenfläche.</p>
+
+      <div class="section-title">Standard Elemente</div>
+      <div class="palette-grid">
+        <div class="draggable-item" draggable="true" data-type="headline">
+          <span class="item-icon">🔤</span>
+          <span>Überschrift</span>
+        </div>
+        <div class="draggable-item" draggable="true" data-type="text">
+          <span class="item-icon">📝</span>
+          <span>Textfeld</span>
+        </div>
+        <div class="draggable-item" draggable="true" data-type="button">
+          <span class="item-icon">🔘</span>
+          <span>Button</span>
+        </div>
+        <div class="draggable-item" draggable="true" data-type="box">
+          <span class="item-icon">📦</span>
+          <span>Container Box</span>
+        </div>
+      </div>
+
+      <div class="section-title">Icons & Symbole</div>
+      <div class="palette-grid">
+        <div class="draggable-item" draggable="true" data-type="icon" data-icon="cart">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+          <span>Warenkorb</span>
+        </div>
+        <div class="draggable-item" draggable="true" data-type="icon" data-icon="settings">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+          <span>Einstellungen</span>
+        </div>
+        <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-up">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+          <span>Pfeil Oben</span>
+        </div>
+        <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-down">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+          <span>Pfeil Unten</span>
+        </div>
+        <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-left">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+          <span>Pfeil Links</span>
+        </div>
+        <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-right">
+          <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+          <span>Pfeil Rechts</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 2. Canvas Work Area -->
+    <main class="canvas-container">
+      <div id="canvas" class="canvas-area">
+        <div id="canvas-hint" class="canvas-hint">Ziehe Elemente hierher...</div>
+      </div>
+    </main>
+
+    <!-- 3. Right Inspector: Properties & Connection Logic -->
+    <aside class="inspector">
+      <h3>Eigenschaften & Logik</h3>
+      
+      <div id="no-selection" class="empty-inspector">
+        <p>Wähle ein Element auf der Zeichenfläche aus, um Text, Aussehen und Klick-Aktionen zu konfigurieren.</p>
+      </div>
+
+      <div id="inspector-form" class="inspector-form hidden">
+        <div class="form-group">
+          <label for="prop-id">Element ID</label>
+          <input type="text" id="prop-id" readonly>
+        </div>
+
+        <div class="form-group" id="group-text">
+          <label for="prop-text">Text / Inhalt</label>
+          <input type="text" id="prop-text" placeholder="Beschriftung eingeben...">
+        </div>
+
+        <div class="form-group">
+          <label for="prop-size">Größe (px)</label>
+          <input type="number" id="prop-size" min="12" max="150" value="24">
+        </div>
+
+        <div class="form-group">
+          <label for="prop-color">Farbe</label>
+          <input type="color" id="prop-color" value="#000000">
+        </div>
+
+        <hr class="divider">
+
+        <h4>⚡ Verbindungsfunktion & Logik</h4>
+        <p class="help-text">Wähle eine Aktion aus, die beim Anklicken des Elements ausgeführt werden soll:</p>
+
+        <div class="form-group">
+          <label for="prop-action-type">Aktion beim Klick</label>
+          <select id="prop-action-type">
+            <option value="none">Keine Aktion</option>
+            <option value="scroll-top">Nach ganz oben scrollen ⬆️</option>
+            <option value="scroll-bottom">Nach ganz unten scrollen ⬇️</option>
+            <option value="history-back">Zurück-Funktion (Browser) ↩️</option>
+            <option value="open-url">Neue Seite / URL öffnen 🌐</option>
+            <option value="cart-add">In den Warenkorb legen 🛒</option>
+            <option value="alert-msg">Benutzerdefinierte Meldung anzeigen 💬</option>
+          </select>
+        </div>
+
+        <div class="form-group hidden" id="group-action-url">
+          <label for="prop-action-url">Ziel-URL / Link</label>
+          <input type="url" id="prop-action-url" placeholder="https://beispiel.de">
+        </div>
+
+        <div class="form-group hidden" id="group-action-msg">
+          <label for="prop-action-msg">Meldungstext</label>
+          <input type="text" id="prop-action-msg" placeholder="Aktion erfolgreich!">
+        </div>
+
+        <div class="form-actions">
+          <button id="btn-delete-element" class="btn btn-danger-outline">Element löschen</button>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="builderweb.js"></script>
+</body>
+</html>
