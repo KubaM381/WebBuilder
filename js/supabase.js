@@ -1,190 +1,145 @@
 // WebBuilder — Supabase integration
-// Uses the existing frontend-safe publishable key from ../supabase-config.js.
-// NEVER put a Supabase secret/service_role key in frontend code.
+// Adapted to the CURRENT Supabase schema: projects + pages.
+// The builder state is stored in pages.content (JSONB), not projects.data.
+// Only the publishable key is used in the browser.
 
-(() => {
-  const SDK_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0";
-  let supabaseClient = null;
-  let sdkPromise = null;
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm";
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "../supabase-config.js";
+import { state, renderCanvas } from "./builder.js";
 
-  function toast(message, type = "info") {
-    if (typeof window.showToast === "function") {
-      window.showToast(message, type);
-      return;
-    }
-    window.dispatchEvent(new CustomEvent("webbuilder:toast", { detail: { message, type } }));
-    console[type === "danger" ? "error" : "log"](message);
+export const supabaseClient = createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+function showToast(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  if (!container) return console[type === "danger" ? "error" : "log"](message);
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<span>${type === "success" ? "✅" : type === "danger" ? "⚠️" : "ℹ️"}</span> <span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+export async function getCurrentUser() {
+  const { data, error } = await supabaseClient.auth.getUser();
+  if (error) return null;
+  return data.user || null;
+}
+
+// Creates the project metadata row. Builder content is saved separately in pages.
+export async function createProject(name = "Mein Projekt", slug = "mein-projekt") {
+  const user = await getCurrentUser();
+  if (!user) {
+    showToast("Bitte zuerst anmelden.", "danger");
+    return { data: null, error: new Error("AUTH_REQUIRED") };
   }
 
-  function loadSdk() {
-    if (window.supabase?.createClient) return Promise.resolve(window.supabase);
-    if (sdkPromise) return sdkPromise;
+  const { data, error } = await supabaseClient
+    .from("projects")
+    .insert({ user_id: user.id, name, slug })
+    .select()
+    .single();
 
-    sdkPromise = new Promise((resolve, reject) => {
-      const existing = document.querySelector('script[data-webbuilder-supabase-sdk="true"]');
-      if (existing) {
-        existing.addEventListener("load", () => resolve(window.supabase));
-        existing.addEventListener("error", () => reject(new Error("Supabase SDK konnte nicht geladen werden.")));
-        return;
-      }
+  if (error) showToast(`Supabase Fehler: ${error.message}`, "danger");
+  return { data, error };
+}
 
-      const script = document.createElement("script");
-      script.src = SDK_URL;
-      script.async = true;
-      script.dataset.webbuilderSupabaseSdk = "true";
-      script.onload = () => window.supabase?.createClient
-        ? resolve(window.supabase)
-        : reject(new Error("Supabase SDK geladen, aber createClient fehlt."));
-      script.onerror = () => reject(new Error("Supabase SDK konnte nicht geladen werden."));
-      document.head.appendChild(script);
-    });
-
-    return sdkPromise;
+export async function saveProjectToSupabase(projectId, pageId = null) {
+  const user = await getCurrentUser();
+  if (!user) {
+    showToast("Bitte zuerst anmelden, bevor du speicherst.", "danger");
+    return { data: null, error: new Error("AUTH_REQUIRED") };
   }
 
-  async function initSupabase() {
-    if (supabaseClient) return supabaseClient;
-
-    if (!window.SUPABASE_URL || !window.SUPABASE_PUBLISHABLE_KEY) {
-      throw new Error("Supabase URL/Publishable Key fehlt.");
-    }
-
-    const sdk = await loadSdk();
-    supabaseClient = sdk.createClient(window.SUPABASE_URL, window.SUPABASE_PUBLISHABLE_KEY);
-    window.WebBuilderSupabase = window.WebBuilderSupabase || {};
-    window.WebBuilderSupabase.client = supabaseClient;
-    return supabaseClient;
+  if (!projectId) {
+    const error = new Error("projectId fehlt.");
+    showToast(error.message, "danger");
+    return { data: null, error };
   }
 
-  async function getClient() {
-    return initSupabase();
+  const content = {
+    elements: state.elements,
+    headerConfig: state.headerConfig,
+    footerConfig: state.footerConfig,
+    canvasMinHeight: state.canvasMinHeight
+  };
+
+  const payload = {
+    ...(pageId ? { id: pageId } : {}),
+    project_id: projectId,
+    name: "Startseite",
+    slug: "startseite",
+    content,
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabaseClient
+    .from("pages")
+    .upsert(payload, { onConflict: "project_id,slug" })
+    .select()
+    .single();
+
+  if (error) {
+    showToast(`Supabase Fehler: ${error.message}`, "danger");
+  } else {
+    showToast("Projekt erfolgreich in Supabase gespeichert! ⚡", "success");
   }
 
-  async function getCurrentUser() {
-    const client = await getClient();
-    const { data, error } = await client.auth.getUser();
-    if (error) return null;
-    return data.user || null;
+  return { data, error };
+}
+
+export async function loadProjectFromSupabase(projectId, pageId = null) {
+  const user = await getCurrentUser();
+  if (!user) {
+    showToast("Bitte zuerst anmelden, bevor du lädst.", "danger");
+    return { data: null, error: new Error("AUTH_REQUIRED") };
   }
 
-  // Saves builder state into pages.content because public.projects has no `data` column.
-  // The project itself stores metadata; the page stores the actual builder JSON.
-  async function saveProjectToSupabase(projectId, state, pageId = null) {
-    try {
-      const client = await getClient();
-      const user = await getCurrentUser();
+  let query = supabaseClient
+    .from("pages")
+    .select("id, project_id, name, slug, content, updated_at")
+    .eq("project_id", projectId);
 
-      if (!user) {
-        toast("Bitte zuerst anmelden, bevor du ein Projekt speicherst.", "danger");
-        return { data: null, error: new Error("AUTH_REQUIRED") };
-      }
+  query = pageId ? query.eq("id", pageId) : query.eq("slug", "startseite");
 
-      if (!projectId) {
-        throw new Error("projectId fehlt.");
-      }
+  const { data, error } = await query.single();
 
-      const payload = {
-        elements: state?.elements || [],
-        headerConfig: state?.headerConfig || {},
-        footerConfig: state?.footerConfig || {},
-        canvasMinHeight: state?.canvasMinHeight ?? 800
-      };
-
-      let query = client
-        .from("pages")
-        .upsert({
-          ...(pageId ? { id: pageId } : {}),
-          project_id: projectId,
-          name: state?.pageName || "Startseite",
-          slug: state?.pageSlug || "startseite",
-          content: payload,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "project_id,slug" })
-        .select()
-        .single();
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      toast("Projekt erfolgreich in Supabase gespeichert! ⚡", "success");
-      return { data, error: null };
-    } catch (error) {
-      toast(`Supabase Fehler: ${error.message}`, "danger");
-      return { data: null, error };
-    }
+  if (error) {
+    showToast(`Fehler beim Laden: ${error.message}`, "danger");
+    return { data: null, error };
   }
 
-  async function loadProjectFromSupabase(projectId, pageId = null, pageSlug = "startseite") {
-    try {
-      const client = await getClient();
-      const user = await getCurrentUser();
+  const content = data.content || {};
+  state.elements = content.elements || [];
+  state.headerConfig = content.headerConfig || state.headerConfig;
+  state.footerConfig = content.footerConfig || state.footerConfig;
+  state.canvasMinHeight = content.canvasMinHeight ?? 800;
+  state.selectedElementId = null;
 
-      if (!user) {
-        toast("Bitte zuerst anmelden, bevor du ein Projekt lädst.", "danger");
-        return { data: null, error: new Error("AUTH_REQUIRED") };
-      }
+  renderCanvas();
+  showToast("Projekt aus Supabase geladen! ⚡", "success");
+  return { data, error: null };
+}
 
-      let request = client
-        .from("pages")
-        .select("id, project_id, name, slug, content, updated_at")
-        .eq("project_id", projectId);
+// Useful for the future autosave/storage module.
+export async function getProjectPages(projectId) {
+  return supabaseClient
+    .from("pages")
+    .select("id, project_id, name, slug, updated_at")
+    .eq("project_id", projectId)
+    .order("updated_at", { ascending: false });
+}
 
-      request = pageId ? request.eq("id", pageId) : request.eq("slug", pageSlug);
+window.WebBuilderSupabase = {
+  client: supabaseClient,
+  getCurrentUser,
+  createProject,
+  saveProjectToSupabase,
+  loadProjectFromSupabase,
+  getProjectPages
+};
 
-      const { data, error } = await request.single();
-      if (error) throw error;
-
-      const content = data?.content || {};
-      const state = {
-        elements: content.elements || [],
-        headerConfig: content.headerConfig || {},
-        footerConfig: content.footerConfig || {},
-        canvasMinHeight: content.canvasMinHeight ?? 800,
-        pageName: data.name,
-        pageSlug: data.slug,
-        pageId: data.id
-      };
-
-      // Future modular builder can consume this directly.
-      window.WebBuilderSupabase.lastLoadedState = state;
-      window.dispatchEvent(new CustomEvent("webbuilder:project-loaded", { detail: state }));
-
-      if (typeof window.renderCanvas === "function") window.renderCanvas();
-      toast("Projekt aus Supabase geladen! ⚡", "success");
-      return { data: state, error: null };
-    } catch (error) {
-      toast(`Fehler beim Laden: ${error.message}`, "danger");
-      return { data: null, error };
-    }
-  }
-
-  async function createProject(name, slug) {
-    const client = await getClient();
-    const user = await getCurrentUser();
-    if (!user) throw new Error("AUTH_REQUIRED");
-
-    const { data, error } = await client
-      .from("projects")
-      .insert({ user_id: user.id, name, slug })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  window.WebBuilderSupabase = window.WebBuilderSupabase || {};
-  Object.assign(window.WebBuilderSupabase, {
-    initSupabase,
-    getClient,
-    getCurrentUser,
-    createProject,
-    saveProjectToSupabase,
-    loadProjectFromSupabase
-  });
-
-  // Load the SDK/client automatically without changing the existing builder UI.
-  initSupabase()
-    .then(() => console.log("WebBuilder: Supabase verbunden ⚡"))
-    .catch(error => console.warn("WebBuilder: Supabase noch nicht verbunden.", error.message));
-})();
+console.log("WebBuilder: Supabase Client verbunden ⚡");
