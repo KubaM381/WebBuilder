@@ -4,7 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Visual Web Page Builder</title>
+  
+  <!-- Modulare CSS-Struktur -->
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="toolbar.css">
+  <link rel="stylesheet" href="sidebar.css">
+  <link rel="stylesheet" href="inspector.css">
+  <link rel="stylesheet" href="canvas.css">
+  <link rel="stylesheet" href="responsive.css">
 </head>
 <body>
 
@@ -94,7 +101,7 @@
         <hr class="divider">
         <h4>⚡ Verbindungsfunktion & Logik</h4>
         <p class="help-text">Wähle eine Aktion aus, die beim Anklicken des Elements ausgeführt werden soll:</p>
-        <div class="form-group"><label for="prop-action-type">Aktion beim Klick</label><select id="prop-action-type"><option value="none">Keine Aktion</option><option value="scroll-top">Nach ganz oben scrollen ⬆️</option><option value="scroll-bottom">Nach ganz unten scrollen ⬇️</option><option value="history-back">Zurück-Funktion (Browser) ↩️</option><option value="open-url">Neue Seite / URL öffnen 🌐</option><option value="cart-add">In den Warenkorb legen 🛒</option><option value="open-cart-drawer">Warenkorb Drawer öffnen 🛍️</option><option value="open-cookie-modal">Cookie Banner anzeigen 🍪</option><option value="open-agb-modal">AGB / Rechtliches anzeigen 📄</option><option value="alert-msg">Benutzerdefinierte Meldung anzeigen 💬</option></select></div>
+        <div class="form-group"><label for="prop-action-type">Aktion beim Klick</label><select id="prop-action-type"><option value="none">Keine Aktion</option><option value="scroll-top">Nach ganz oben scrollen ⬆️</option><option value="scroll-bottom">Nach ganz unten scrollen ⬇️</option><option value="history-back">Zurück-Funktion (Browser) ↩️</option><option value="open-url">Neue Seite / URL öffnen 🌐</option><option value="cart-add">In den Warenkorb legen 🛒</option><option value="open-cart-drawer">Warenkorb Drawer öffnen 🛍️</option><option value="open-modal">Generisches Modal öffnen 🍪</option><option value="alert-msg">Benutzerdefinierte Meldung anzeigen 💬</option></select></div>
         <div class="form-group hidden" id="group-action-url"><label for="prop-action-url">Ziel-URL / Link</label><input type="url" id="prop-action-url" placeholder="https://beispiel.de"></div>
         <div class="form-group hidden" id="group-action-msg"><label for="prop-action-msg">Meldungstext</label><input type="text" id="prop-action-msg" placeholder="Aktion erfolgreich!"></div>
         <div class="form-actions" style="margin-top:20px;"><button id="btn-delete-element" class="btn btn-danger-outline">Element löschen</button></div>
