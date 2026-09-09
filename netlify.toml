@@ -1,7 +1,0 @@
-[build]
-  publish = "."
-
-[[redirects]]
-  from = "/builder"
-  to = "/web.html"
-  status = 301
