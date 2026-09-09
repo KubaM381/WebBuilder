@@ -11,6 +11,45 @@
   <!-- Top Toolbar -->
   <header class="app-header">
     <div class="brand">🚀 WebBuilder <span>Pro</span></div>
+
+    <!-- Canvas Background Controls -->
+    <div class="toolbar-center">
+      <span class="toolbar-group-label">Hintergrund:</span>
+      <div class="bg-controls">
+        <select id="bg-type">
+          <option value="solid">Einfarbig</option>
+          <option value="gradient">Farbverlauf</option>
+          <option value="image">Hintergrundbild</option>
+        </select>
+
+        <!-- Solid Color Picker -->
+        <div id="bg-solid-group">
+          <input type="color" id="bg-color-input" value="#ffffff" title="Hintergrundfarbe wählen">
+        </div>
+
+        <!-- Gradient Inputs -->
+        <div id="bg-gradient-group" class="hidden" style="display: flex; gap: 6px; align-items: center;">
+          <input type="color" id="bg-grad-1" value="#4f46e5" title="Farbe 1">
+          <input type="color" id="bg-grad-2" value="#06b6d4" title="Farbe 2">
+          <select id="bg-grad-dir" style="padding: 4px;">
+            <option value="to right">➔ Rechts</option>
+            <option value="to bottom">⬇️ Unten</option>
+            <option value="135deg">↘️ Diagonal</option>
+          </select>
+        </div>
+
+        <!-- Image Background Inputs -->
+        <div id="bg-image-group" class="hidden" style="display: flex; gap: 6px; align-items: center;">
+          <input type="text" id="bg-image-url" placeholder="Bild URL eingeben..." style="width: 150px;">
+          <div class="file-input-wrapper">
+            <button class="file-input-btn">📁 Datei</button>
+            <input type="file" id="bg-image-file" accept="image/*">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
     <div class="toolbar-actions">
       <button id="btn-mode-toggle" class="btn btn-secondary">👁️ Vorschau-Modus</button>
       <button id="btn-clear" class="btn btn-danger">🗑️ Canvas leeren</button>
@@ -43,6 +82,10 @@
         <div class="draggable-item" draggable="true" data-type="box">
           <span class="item-icon">📦</span>
           <span>Container Box</span>
+        </div>
+        <div class="draggable-item" draggable="true" data-type="image">
+          <span class="item-icon">🖼️</span>
+          <span>Bild</span>
         </div>
       </div>
 
@@ -85,7 +128,7 @@
     <!-- 3. Right Inspector: Properties & Connection Logic -->
     <aside class="inspector">
       <h3>Eigenschaften & Logik</h3>
-      
+
       <div id="no-selection" class="empty-inspector">
         <p>Wähle ein Element auf der Zeichenfläche aus, um Text, Aussehen und Klick-Aktionen zu konfigurieren.</p>
       </div>
@@ -101,12 +144,24 @@
           <input type="text" id="prop-text" placeholder="Beschriftung eingeben...">
         </div>
 
-        <div class="form-group">
-          <label for="prop-size">Größe (px)</label>
-          <input type="number" id="prop-size" min="12" max="150" value="24">
+        <!-- Custom Image Inspector Section -->
+        <div id="group-image" class="hidden">
+          <div class="form-group">
+            <label for="prop-image-url">Bild URL</label>
+            <input type="text" id="prop-image-url" placeholder="https://beispiel.de/bild.jpg">
+          </div>
+          <div class="form-group">
+            <label>Bild lokal hochladen</label>
+            <input type="file" id="prop-image-file" accept="image/*">
+          </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="group-size">
+          <label for="prop-size">Größe / Breite (px)</label>
+          <input type="number" id="prop-size" min="12" max="800" value="24">
+        </div>
+
+        <div class="form-group" id="group-color">
           <label for="prop-color">Farbe</label>
           <input type="color" id="prop-color" value="#000000">
         </div>
@@ -125,6 +180,9 @@
             <option value="history-back">Zurück-Funktion (Browser) ↩️</option>
             <option value="open-url">Neue Seite / URL öffnen 🌐</option>
             <option value="cart-add">In den Warenkorb legen 🛒</option>
+            <option value="open-cart-drawer">Warenkorb Drawer öffnen 🛍️</option>
+            <option value="open-cookie-modal">Cookie Banner anzeigen 🍪</option>
+            <option value="open-agb-modal">AGB / Rechtliches anzeigen 📄</option>
             <option value="alert-msg">Benutzerdefinierte Meldung anzeigen 💬</option>
           </select>
         </div>
@@ -139,12 +197,46 @@
           <input type="text" id="prop-action-msg" placeholder="Aktion erfolgreich!">
         </div>
 
-        <div class="form-actions">
+        <div class="form-actions" style="margin-top: 20px;">
           <button id="btn-delete-element" class="btn btn-danger-outline">Element löschen</button>
         </div>
       </div>
     </aside>
 
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Right Slide-over Cart Drawer -->
+  <div id="cart-drawer-backdrop" class="drawer-backdrop"></div>
+  <aside id="cart-drawer" class="drawer">
+    <div class="drawer-header">
+      <h3>Dein Warenkorb (<span id="cart-count-badge">0</span>)</h3>
+      <button id="close-cart-btn" class="close-btn">&times;</button>
+    </div>
+    <div class="drawer-body" id="cart-items-list">
+      <!-- Dynamic Cart Items -->
+    </div>
+    <div class="drawer-footer">
+      <button class="btn btn-primary" style="width: 100%;">Zur Kasse gehen</button>
+    </div>
+  </aside>
+
+  <!-- Centered Modal System -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="modal-title">Titel</h3>
+        <button id="close-modal-btn" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Modal Content -->
+      </div>
+      <div class="modal-footer" id="modal-footer">
+        <!-- Modal Actions -->
+      </div>
+    </div>
   </div>
 
   <script src="builder.js"></script>
