@@ -8,25 +8,16 @@
     return;
   }
 
-  function isPreview() {
-    return !!state.isPreviewMode;
-  }
+  function isPreview() { return !!state.isPreviewMode; }
 
   function apply(mode = state.isPreviewMode) {
     state.isPreviewMode = !!mode;
     document.body.classList.toggle("preview-mode", state.isPreviewMode);
-
     const button = document.getElementById("btn-mode-toggle");
     if (button) button.innerHTML = state.isPreviewMode ? "✏️ Editor-Modus" : "👁️ Vorschau";
-
     if (window.WebBuilderCanvas) window.WebBuilderCanvas.applyZoom(state.isPreviewMode);
     if (window.WebBuilderCanvasRuntime?.render) window.WebBuilderCanvasRuntime.render();
-
-    state.notify?.({
-      domain: "preview",
-      type: state.isPreviewMode ? "enter" : "exit"
-    });
-
+    state.notify?.({ domain: "preview", type: state.isPreviewMode ? "enter" : "exit" });
     return state.isPreviewMode;
   }
 
@@ -38,17 +29,16 @@
     const button = document.getElementById("btn-mode-toggle");
     if (!button || button.dataset.webBuilderPreviewBound === "true") return;
     button.dataset.webBuilderPreviewBound = "true";
+    // Capture phase makes preview ownership explicit and prevents the legacy
+    // editor from toggling the mode a second time.
     button.addEventListener("click", event => {
       event.preventDefault();
+      event.stopImmediatePropagation();
       toggle();
-    });
+    }, true);
   }
 
   window.WebBuilderPreview = { isPreview, apply, enter, exit, toggle, bindToggle };
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bindToggle, { once: true });
-  } else {
-    bindToggle();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindToggle, { once: true });
+  else bindToggle();
 })();
