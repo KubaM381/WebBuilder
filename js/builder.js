@@ -12,6 +12,7 @@ document.write('<script src="js/action-runtime.js"><\/script>');
 document.write('<script src="js/canvas-runtime.js"><\/script>');
 document.write('<script src="js/elements.js"><\/script>');
 document.write('<script src="js/inspector.js"><\/script>');
+document.write('<script src="js/inspector-actions-runtime.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 document.write('<script src="js/header-footer.js"><\/script>');
 document.write('<script src="js/products.js"><\/script>');
