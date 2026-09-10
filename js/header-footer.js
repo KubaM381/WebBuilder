@@ -1,163 +1,24 @@
-// WebBuilder header/footer service
-// Owns header/footer data operations during the staged migration.
-// DOM rendering stays in builder-legacy.js until the renderer is switched.
-
+// WebBuilder header/footer domain
+// Owns header/footer data and editor UI.
 (() => {
-  const state = window.WebBuilderState;
-  if (!state) {
-    console.error("WebBuilderHeaderFooter: shared state missing.");
-    return;
-  }
+  const state=window.WebBuilderState;if(!state){console.error("WebBuilderHeaderFooter: shared state missing.");return;}
+  const clone=v=>JSON.parse(JSON.stringify(v));
+  function emitChange(target,detail){try{window.dispatchEvent(new CustomEvent("webbuilder:header-footer-change",{detail:{target,...clone(detail||{})}}));}catch(e){console.warn("WebBuilderHeaderFooter: change event failed",e);}}
+  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:Number(item.x)||20,y:Number(item.y)||18,color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||"none",actionUrl:item.actionUrl||"",actionMsg:item.actionMsg||"",productId:item.productId||null};}
+  function normalizeState(){state.headerEnabled=!!state.headerEnabled;state.headerSticky=!!state.headerSticky;state.headerHeight=Math.max(40,Number(state.headerHeight)||64);state.headerBgColor=String(state.headerBgColor||"#111827");state.headerItems=Array.isArray(state.headerItems)?state.headerItems.map(normalizeItem):[];state.footerEnabled=!!state.footerEnabled;state.footerHeight=Math.max(40,Number(state.footerHeight)||70);state.footerBgColor=String(state.footerBgColor||"#111827");state.footerItems=Array.isArray(state.footerItems)?state.footerItems.map(normalizeItem):[];return state;}
+  const getHeader=()=>({enabled:state.headerEnabled,sticky:state.headerSticky,height:state.headerHeight,bgColor:state.headerBgColor,items:state.headerItems}); const getFooter=()=>({enabled:state.footerEnabled,height:state.footerHeight,bgColor:state.footerBgColor,items:state.footerItems});
+  function updateHeader(p={},h=true){if(h)window.WebBuilderHistory?.arm();if(p.enabled!=null)state.headerEnabled=!!p.enabled;if(p.sticky!=null)state.headerSticky=!!p.sticky;if(p.height!=null)state.headerHeight=Math.max(40,Number(p.height)||64);if(p.bgColor!=null)state.headerBgColor=String(p.bgColor);if(Array.isArray(p.items))state.headerItems=p.items.map(normalizeItem);if(h)window.WebBuilderHistory?.commit();const r=getHeader();emitChange("header",r);return r;}
+  function updateFooter(p={},h=true){if(h)window.WebBuilderHistory?.arm();if(p.enabled!=null)state.footerEnabled=!!p.enabled;if(p.height!=null)state.footerHeight=Math.max(40,Number(p.height)||70);if(p.bgColor!=null)state.footerBgColor=String(p.bgColor);if(Array.isArray(p.items))state.footerItems=p.items.map(normalizeItem);if(h)window.WebBuilderHistory?.commit();const r=getFooter();emitChange("footer",r);return r;}
+  function addItem(type,target="header",patch={},h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=normalizeItem({...patch,type,text:patch.text||(type==="icon"?"":"Neuer Text")});if(h)window.WebBuilderHistory?.arm();items.push(item);if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
+  function removeItem(id,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,i=items.findIndex(x=>x?.id===id);if(i<0)return false;if(h)window.WebBuilderHistory?.arm();items.splice(i,1);if(state.selectedBarItemRef?.id===id)state.selectedBarItemRef=null;if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return true;}
+  function updateItem(id,patch,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=items.find(x=>x?.id===id);if(!item)return null;if(h)window.WebBuilderHistory?.arm();Object.assign(item,clone(patch||{}),normalizeItem(item));if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
+  normalizeState();window.WebBuilderHeaderFooter={normalizeState,normalizeItem,getHeader,getFooter,updateHeader,updateFooter,addItem,removeItem,updateItem,onChange(cb){if(typeof cb!=="function")return()=>{};const h=e=>cb(e.detail);window.addEventListener("webbuilder:header-footer-change",h);return()=>window.removeEventListener("webbuilder:header-footer-change",h);}};
 
-  function clone(value) {
-    return JSON.parse(JSON.stringify(value));
-  }
-
-  function emitChange(target, detail) {
-    try {
-      window.dispatchEvent(new CustomEvent("webbuilder:header-footer-change", {
-        detail: { target, ...clone(detail || {}) }
-      }));
-    } catch (error) {
-      console.warn("WebBuilderHeaderFooter: change event could not be emitted.", error);
-    }
-  }
-
-  function normalizeItem(item = {}) {
-    return {
-      id: item.id || `bar_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      type: item.type === "icon" ? "icon" : "text",
-      text: item.text || "",
-      iconName: item.iconName || null,
-      x: Number(item.x) || 20,
-      y: Number(item.y) || 18,
-      color: item.color || "#ffffff",
-      size: Number(item.size) || 16,
-      bold: !!item.bold,
-      italic: !!item.italic,
-      underline: !!item.underline,
-      align: item.align || "left",
-      fontFamily: item.fontFamily || "inherit",
-      actionType: item.actionType || "none",
-      actionUrl: item.actionUrl || "",
-      actionMsg: item.actionMsg || "",
-      productId: item.productId || null
-    };
-  }
-
-  function normalizeState() {
-    state.headerEnabled = !!state.headerEnabled;
-    state.headerSticky = !!state.headerSticky;
-    state.headerHeight = Math.max(40, Number(state.headerHeight) || 64);
-    state.headerBgColor = String(state.headerBgColor || "#111827");
-    state.headerItems = Array.isArray(state.headerItems) ? state.headerItems.map(normalizeItem) : [];
-
-    state.footerEnabled = !!state.footerEnabled;
-    state.footerHeight = Math.max(40, Number(state.footerHeight) || 70);
-    state.footerBgColor = String(state.footerBgColor || "#111827");
-    state.footerItems = Array.isArray(state.footerItems) ? state.footerItems.map(normalizeItem) : [];
-    return state;
-  }
-
-  function getHeader() {
-    return {
-      enabled: state.headerEnabled,
-      sticky: state.headerSticky,
-      height: state.headerHeight,
-      bgColor: state.headerBgColor,
-      items: state.headerItems
-    };
-  }
-
-  function getFooter() {
-    return {
-      enabled: state.footerEnabled,
-      height: state.footerHeight,
-      bgColor: state.footerBgColor,
-      items: state.footerItems
-    };
-  }
-
-  function updateHeader(patch = {}, recordHistory = true) {
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    if (patch.enabled != null) state.headerEnabled = !!patch.enabled;
-    if (patch.sticky != null) state.headerSticky = !!patch.sticky;
-    if (patch.height != null) state.headerHeight = Math.max(40, Number(patch.height) || 64);
-    if (patch.bgColor != null) state.headerBgColor = String(patch.bgColor);
-    if (Array.isArray(patch.items)) state.headerItems = patch.items.map(normalizeItem);
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    const result = getHeader();
-    emitChange("header", result);
-    return result;
-  }
-
-  function updateFooter(patch = {}, recordHistory = true) {
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    if (patch.enabled != null) state.footerEnabled = !!patch.enabled;
-    if (patch.height != null) state.footerHeight = Math.max(40, Number(patch.height) || 70);
-    if (patch.bgColor != null) state.footerBgColor = String(patch.bgColor);
-    if (Array.isArray(patch.items)) state.footerItems = patch.items.map(normalizeItem);
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    const result = getFooter();
-    emitChange("footer", result);
-    return result;
-  }
-
-  function addItem(type, target = "header", patch = {}, recordHistory = true) {
-    const items = target === "footer" ? state.footerItems : state.headerItems;
-    const item = normalizeItem({
-      ...patch,
-      type,
-      text: patch.text || (type === "icon" ? "" : "Neuer Text")
-    });
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    items.push(item);
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    emitChange(target, target === "footer" ? getFooter() : getHeader());
-    return item;
-  }
-
-  function removeItem(id, target = "header", recordHistory = true) {
-    const items = target === "footer" ? state.footerItems : state.headerItems;
-    const index = items.findIndex(item => item && item.id === id);
-    if (index < 0) return false;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    items.splice(index, 1);
-    if (state.selectedBarItemRef && state.selectedBarItemRef.id === id) state.selectedBarItemRef = null;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    emitChange(target, target === "footer" ? getFooter() : getHeader());
-    return true;
-  }
-
-  function updateItem(id, patch, target = "header", recordHistory = true) {
-    const items = target === "footer" ? state.footerItems : state.headerItems;
-    const item = items.find(entry => entry && entry.id === id);
-    if (!item) return null;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    Object.assign(item, clone(patch || {}));
-    Object.assign(item, normalizeItem(item));
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    emitChange(target, target === "footer" ? getFooter() : getHeader());
-    return item;
-  }
-
-  normalizeState();
-
-  window.WebBuilderHeaderFooter = {
-    normalizeState,
-    normalizeItem,
-    getHeader,
-    getFooter,
-    updateHeader,
-    updateFooter,
-    addItem,
-    removeItem,
-    updateItem,
-    onChange(callback) {
-      if (typeof callback !== "function") return () => {};
-      const handler = event => callback(event.detail);
-      window.addEventListener("webbuilder:header-footer-change", handler);
-      return () => window.removeEventListener("webbuilder:header-footer-change", handler);
-    }
-  };
+  const byId=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#39;"}[c]));let selected=null;
+  function renderList(target){const list=byId(target==="footer"?"footer-items-list":"header-items-list");if(!list)return;const items=target==="footer"?state.footerItems:state.headerItems;list.innerHTML=items.length?"":'<p class="help-text">Noch keine Elemente.</p>';items.forEach(item=>{const row=document.createElement("div");row.className="item-row";row.innerHTML=`<button type="button" class="bar-item-select" data-id="${esc(item.id)}" style="flex:1;text-align:left;">${item.type==="icon"?esc(item.iconName||"Icon"):esc(item.text||"Text")}</button><button type="button" class="item-delete bar-item-delete" data-id="${esc(item.id)}">✕</button>`;list.appendChild(row);});}
+  function renderEditor(){const empty=byId("bar-item-editor-empty"),form=byId("bar-item-editor-form"),items=selected?(selected.target==="footer"?state.footerItems:state.headerItems):[],item=selected?items.find(x=>x.id===selected.id):null;if(empty)empty.classList.toggle("hidden",!!item);if(form)form.classList.toggle("hidden",!item);if(!item)return;byId("bar-item-text-group")?.classList.toggle("hidden",item.type==="icon");if(byId("bar-prop-text"))byId("bar-prop-text").value=item.text||"";if(byId("bar-prop-action-type"))byId("bar-prop-action-type").value=item.actionType||"none";if(byId("bar-prop-action-url"))byId("bar-prop-action-url").value=item.actionUrl||"";if(byId("bar-prop-action-msg"))byId("bar-prop-action-msg").value=item.actionMsg||"";byId("bar-group-action-url")?.classList.toggle("hidden",item.actionType!=="open-url");byId("bar-group-action-msg")?.classList.toggle("hidden",!["alert-msg","open-custom-modal"].includes(item.actionType));byId("bar-group-product")?.classList.toggle("hidden",item.actionType!=="cart-add");const p=byId("bar-prop-product");if(p){const ps=window.WebBuilderProducts?.getAll?.()||[];p.innerHTML=ps.length?ps.map(x=>`<option value="${esc(x.id)}">${esc(x.icon||"📦")} ${esc(x.name)} — ${Number(x.discountPrice!=null?x.discountPrice:x.price).toFixed(2)} €</option>`).join(""):'<option value="">— Kein Produkt —</option>';p.value=item.productId||"";}}
+  function render(){const h=getHeader(),f=getFooter();if(byId("header-toggle"))byId("header-toggle").checked=h.enabled;if(byId("header-sticky-toggle"))byId("header-sticky-toggle").checked=h.sticky;if(byId("header-height-input"))byId("header-height-input").value=h.height;if(byId("header-bg-input"))byId("header-bg-input").value=h.bgColor;if(byId("footer-toggle"))byId("footer-toggle").checked=f.enabled;if(byId("footer-height-input"))byId("footer-height-input").value=f.height;if(byId("footer-bg-input"))byId("footer-bg-input").value=f.bgColor;renderList("header");renderList("footer");renderEditor();}
+  function transact(fn){window.WebBuilderHistory?.arm();fn();window.WebBuilderHistory?.commit();render();}function bindControl(id,fn,event="change"){byId(id)?.addEventListener(event,e=>{e.preventDefault();e.stopImmediatePropagation();transact(()=>fn(e));},true);}
+  function bind(){bindControl("header-toggle",e=>updateHeader({enabled:e.target.checked},false));bindControl("header-sticky-toggle",e=>updateHeader({sticky:e.target.checked},false));bindControl("header-height-input",e=>updateHeader({height:e.target.value},false));bindControl("header-bg-input",e=>updateHeader({bgColor:e.target.value},false),"input");bindControl("footer-toggle",e=>updateFooter({enabled:e.target.checked},false));bindControl("footer-height-input",e=>updateFooter({height:e.target.value},false));bindControl("footer-bg-input",e=>updateFooter({bgColor:e.target.value},false),"input");[["btn-add-header-text","header","text"],["btn-add-header-icon","header","icon"],["btn-add-footer-text","footer","text"],["btn-add-footer-icon","footer","icon"]].forEach(([id,t,type])=>byId(id)?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();transact(()=>{const i=addItem(type,t,type==="icon"?{iconName:"arrow-right"}:{text:"Neuer Text"},false);selected={target:t,id:i.id};});},true));document.addEventListener("click",e=>{const s=e.target.closest?.(".bar-item-select"),d=e.target.closest?.(".bar-item-delete");if(s){e.preventDefault();e.stopImmediatePropagation();const l=s.closest("[id$='items-list']");selected={target:l?.id==="footer-items-list"?"footer":"header",id:s.dataset.id};render();}if(d){e.preventDefault();e.stopImmediatePropagation();const l=d.closest("[id$='items-list']"),t=l?.id==="footer-items-list"?"footer":"header";transact(()=>removeItem(d.dataset.id,t,false));if(selected?.id===d.dataset.id)selected=null;}},true);[["bar-prop-text","text"],["bar-prop-action-url","actionUrl"],["bar-prop-action-msg","actionMsg"],["bar-prop-product","productId"]].forEach(([id,p])=>{byId(id)?.addEventListener("change",e=>{if(selected)transact(()=>updateItem(selected.id,{[p]:e.target.value},selected.target,false));},true);});bindControl("bar-prop-action-type",e=>{if(selected)updateItem(selected.id,{actionType:e.target.value},selected.target,false);});onChange(render);state.subscribe?.(e=>{if(["header","footer","products"].includes(e?.domain))render();});render();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind,{once:true});else bind();window.WebBuilderHeaderFooterRuntime={render};
 })();
