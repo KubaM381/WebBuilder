@@ -284,5 +284,5 @@
   function onChangeInternal(){window.WebBuilderHeaderFooter.onChange(render);}
 
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind,{once:true});else bind();
-  window.WebBuilderHeaderFooterRuntime={render,renderBars,selectItem,clearSelection,currentSelection};
+  window.WebBuilderHeaderFooterRuntime={render,renderBars,selectItem,clearSelection,currentSelection,itemInnerHtml};
 })();
