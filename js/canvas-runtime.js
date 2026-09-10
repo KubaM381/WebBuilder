@@ -9,7 +9,6 @@
   const state = window.WebBuilderState;
   const canvas = window.WebBuilderCanvas;
   const renderer = window.WebBuilderCanvasRenderer;
-  const history = window.WebBuilderHistory;
 
   if (!state || !canvas || !renderer) {
     console.error("WebBuilderCanvasRuntime: required canvas services missing.");
@@ -18,13 +17,6 @@
 
   function isEditorEventTarget(target, id) {
     return target && (target.id === id || target.closest?.(`#${id}`));
-  }
-
-  function resizeCanvas(delta) {
-    if (history?.arm) history.arm();
-    const height = canvas.extendCanvas(delta);
-    if (history?.commit) history.commit();
-    return height;
   }
 
   function handleCanvasControls(event) {
@@ -55,14 +47,14 @@
         isEditorEventTarget(event.target, "btn-extend-canvas-side")) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      resizeCanvas(300);
+      canvas.extendCanvas(300);
       return;
     }
 
     if (isEditorEventTarget(event.target, "btn-shrink-canvas-side")) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      resizeCanvas(-300);
+      canvas.extendCanvas(-300);
     }
   }
 
@@ -87,6 +79,6 @@
 
   window.WebBuilderCanvasRuntime = {
     render: renderModularCanvas,
-    resize: resizeCanvas
+    resize: delta => canvas.extendCanvas(delta)
   };
 })();
