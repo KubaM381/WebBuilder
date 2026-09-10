@@ -1,6 +1,6 @@
 // WebBuilder cart service
 // Owns cart data operations during the staged migration.
-// Product CRUD lives in products.js; DOM rendering remains in builder-legacy.js.
+// Product CRUD lives in products.js; DOM rendering is migrated separately.
 
 (() => {
   const state = window.WebBuilderState;
@@ -10,38 +10,35 @@
     return;
   }
 
-  function clone(value) {
-    return JSON.parse(JSON.stringify(value));
+  function clone(value) { return JSON.parse(JSON.stringify(value)); }
+  function notify(action, payload) {
+    if (typeof state.notify === "function") state.notify("cart", action, payload);
   }
 
   function normalizeCartItem(item = {}) {
     const price = Number(item.price) || 0;
     const discountPrice = item.discountPrice != null && item.discountPrice !== ""
-      ? Number(item.discountPrice) || 0
-      : null;
+      ? Number(item.discountPrice) || 0 : null;
     return {
       id: item.id || `cart_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      name: item.name || "Produkt",
-      price,
+      name: item.name || "Produkt", price,
       discountPrice: discountPrice != null && discountPrice > 0 && discountPrice < price ? discountPrice : null,
-      qty: Math.max(1, Number(item.qty) || 1),
-      icon: item.icon || "📦",
+      qty: Math.max(1, Number(item.qty) || 1), icon: item.icon || "📦",
       description: item.description || "",
-      compareAtPrice: item.compareAtPrice != null && item.compareAtPrice !== ""
-        ? Number(item.compareAtPrice) || 0
-        : null
+      compareAtPrice: item.compareAtPrice != null && item.compareAtPrice !== "" ? Number(item.compareAtPrice) || 0 : null
     };
   }
 
   function getEffectivePrice(item) {
     const discount = Number(item && item.discountPrice);
-    if (Number.isFinite(discount) && discount > 0 && discount < (Number(item.price) || 0)) return discount;
-    return Number(item && item.price) || 0;
+    return Number.isFinite(discount) && discount > 0 && discount < (Number(item.price) || 0)
+      ? discount : Number(item && item.price) || 0;
   }
 
-  function normalizeState() {
+  function normalizeState(emit = false) {
     products.normalizeState();
     state.cartItems = Array.isArray(state.cartItems) ? state.cartItems.map(normalizeCartItem) : [];
+    if (emit) notify("normalize", { count: state.cartItems.length });
     return state;
   }
 
@@ -52,22 +49,14 @@
   function getSubtotal() { return state.cartItems.reduce((sum, item) => sum + getEffectivePrice(item) * (Number(item.qty) || 0), 0); }
 
   function addItem(productOrItem, price, icon, description, compareAtPrice, recordHistory = true) {
-    const source = typeof productOrItem === "object" ? productOrItem : {
-      name: productOrItem,
-      price,
-      icon,
-      description,
-      compareAtPrice
-    };
+    const source = typeof productOrItem === "object" ? productOrItem : { name: productOrItem, price, icon, description, compareAtPrice };
     const normalized = normalizeCartItem(source);
     const existing = state.cartItems.find(item => item.name === normalized.name);
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    if (existing) {
-      existing.qty = (Number(existing.qty) || 0) + 1;
-    } else {
-      state.cartItems.push(normalized);
-    }
+    if (existing) existing.qty = (Number(existing.qty) || 0) + 1;
+    else state.cartItems.push(normalized);
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
+    notify(existing ? "increment" : "add", existing || normalized);
     return existing || normalized;
   }
 
@@ -77,7 +66,7 @@
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
     item.qty = Math.max(1, Number(qty) || 1);
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return item;
+    notify("updateQty", item); return item;
   }
 
   function changeQty(id, delta, recordHistory = true) {
@@ -95,7 +84,7 @@
     item.price = Number(price) || 0;
     if (item.discountPrice != null && item.discountPrice >= item.price) item.discountPrice = null;
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return item;
+    notify("updatePrice", item); return item;
   }
 
   function updateDiscountPrice(id, discountPrice, recordHistory = true) {
@@ -105,16 +94,16 @@
     const value = Number(discountPrice);
     item.discountPrice = Number.isFinite(value) && value > 0 && value < (Number(item.price) || 0) ? value : null;
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return item;
+    notify("updateDiscountPrice", item); return item;
   }
 
   function removeItem(id, recordHistory = true) {
     const index = state.cartItems.findIndex(item => item && item.id === id);
     if (index < 0) return false;
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    state.cartItems.splice(index, 1);
+    const removed = state.cartItems.splice(index, 1)[0];
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return true;
+    notify("remove", removed); return true;
   }
 
   function clear(recordHistory = true) {
@@ -122,37 +111,21 @@
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
     state.cartItems.length = 0;
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
+    notify("clear");
   }
 
   function setConfig(patch = {}, recordHistory = true) {
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
     Object.assign(state.cartConfig, clone(patch));
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return state.cartConfig;
+    notify("config", state.cartConfig); return state.cartConfig;
   }
 
   normalizeState();
-
   window.WebBuilderCart = {
-    getItems,
-    getProducts,
-    getConfig,
-    getCount,
-    getSubtotal,
-    getEffectivePrice,
-    addItem,
-    updateQty,
-    changeQty,
-    updatePrice,
-    updateDiscountPrice,
-    removeItem,
-    clear,
-    addProduct: products.add,
-    updateProduct: products.update,
-    removeProduct: products.remove,
-    setConfig,
-    normalizeProduct: products.normalize,
-    normalizeCartItem,
-    normalizeState
+    getItems, getProducts, getConfig, getCount, getSubtotal, getEffectivePrice,
+    addItem, updateQty, changeQty, updatePrice, updateDiscountPrice, removeItem, clear,
+    addProduct: products.add, updateProduct: products.update, removeProduct: products.remove,
+    setConfig, normalizeProduct: products.normalize, normalizeCartItem, normalizeState
   };
 })();
