@@ -11,6 +11,7 @@
     "WebBuilderElements",
     "WebBuilderInspector",
     "WebBuilderInspectorActionsRuntime",
+    "WebBuilderInspectorPropertiesRuntime",
     "WebBuilderHeaderFooter",
     "WebBuilderProducts",
     "WebBuilderProductsRuntime",
@@ -28,6 +29,7 @@
     const canvasRuntime = window.WebBuilderCanvasRuntime;
     const actionRuntime = window.WebBuilderActionRuntime;
     const inspectorActions = window.WebBuilderInspectorActionsRuntime;
+    const inspectorProperties = window.WebBuilderInspectorPropertiesRuntime;
     const products = window.WebBuilderProducts;
     const productsRuntime = window.WebBuilderProductsRuntime;
     const cart = window.WebBuilderCart;
@@ -40,6 +42,7 @@
       canvasRuntime: !!canvasRuntime,
       actionRuntime: !!actionRuntime,
       inspectorActionsRuntime: !!inspectorActions,
+      inspectorPropertiesRuntime: !!inspectorProperties,
       productsService: !!products,
       productsRuntime: !!productsRuntime,
       cartService: !!cart,
