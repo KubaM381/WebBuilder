@@ -1,4 +1,4 @@
 // WebBuilder bootstrap
-// The implementation is loaded as an ES module so the project has a clean entry point.
-// Functional extraction remains staged to avoid breaking the tightly coupled editor logic.
-import "./builder-core.js";
+// Loads the editor implementation before DOMContentLoaded so the existing
+// initialization lifecycle remains unchanged while the codebase is migrated.
+document.write('<script src="js/builder-core.js"><\/script>');
