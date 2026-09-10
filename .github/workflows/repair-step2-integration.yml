@@ -36,6 +36,7 @@ jobs:
               'prev.footerState.items': 'prev.footerItems',
               'headerState.enabled, headerState.sticky, headerState.height, headerState.bgColor, headerState.items,': 'headerEnabled: headerState.enabled, headerSticky: headerState.sticky, headerHeight: headerState.height, headerBgColor: headerState.bgColor, headerItems: headerState.items,',
               'footerState.enabled, footerState.height, footerState.bgColor, footerState.items,': 'footerEnabled: footerState.enabled, footerHeight: footerState.height, footerBgColor: footerState.bgColor, footerItems: footerState.items,',
+              'footerState.enabled, footerState.height, footerState.bgColor, footerState.items': 'footerEnabled: footerState.enabled, footerHeight: footerState.height, footerBgColor: footerState.bgColor, footerItems: footerState.items',
           }
           for old, new in fixes.items():
               text = text.replace(old, new)
