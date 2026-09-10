@@ -1,16 +1,11 @@
 // WebBuilder bootstrap
-// Loads the modular application services in dependency order.
+// Loads the main builder domains in dependency order.
 document.write('<script src="js/state.js"><\/script>');
 document.write('<script src="js/storage.js"><\/script>');
 document.write('<script src="js/history.js"><\/script>');
 document.write('<script src="js/icon-registry.js"><\/script>');
-document.write('<script src="js/canvas-viewport.js"><\/script>');
-document.write('<script src="js/canvas-interaction.js"><\/script>');
-document.write('<script src="js/canvas-renderer.js"><\/script>');
-document.write('<script src="js/canvas.js"><\/script>');
-document.write('<script src="js/action-runtime.js"><\/script>');
-document.write('<script src="js/canvas-runtime.js"><\/script>');
 document.write('<script src="js/elements.js"><\/script>');
+document.write('<script src="js/canvas.js"><\/script>');
 document.write('<script src="js/inspector.js"><\/script>');
 document.write('<script src="js/products.js"><\/script>');
 document.write('<script src="js/inspector-actions-runtime.js"><\/script>');
@@ -25,6 +20,8 @@ document.write('<script src="js/cart-runtime.js"><\/script>');
 document.write('<script src="js/cart-config-runtime.js"><\/script>');
 document.write('<script src="js/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
+document.write('<script src="js/action-runtime.js"><\/script>');
+document.write('<script src="js/canvas-runtime.js"><\/script>');
 document.write('<script src="js/migration-coordinator.js"><\/script>');
 document.write('<script src="js/runtime-check.js"><\/script>');
 document.write('<script src="js/builder-core.js"><\/script>');
