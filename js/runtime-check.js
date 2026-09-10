@@ -18,11 +18,15 @@
   function check() {
     const missing = required.filter(name => !window[name]);
     const bridge = window.WebBuilderLegacyBridge;
+    const migration = window.WebBuilderMigration;
     const result = {
       ok: missing.length === 0,
       missing,
       legacyAdapterRegistered: !!(bridge && bridge.hasLegacyAdapter && bridge.hasLegacyAdapter()),
-      sharedState: !!window.WebBuilderState
+      sharedState: !!window.WebBuilderState,
+      migrationCoordinator: !!migration,
+      migrationStatus: migration && typeof migration.status === "function" ? migration.status() : null,
+      hydration: migration ? migration.hydration || null : null
     };
 
     window.WebBuilderRuntime = result;
@@ -32,6 +36,15 @@
         "WebBuilder runtime ready. Legacy adapter:",
         result.legacyAdapterRegistered ? "connected" : "not connected (migration pending)"
       );
+      if (result.hydration && result.hydration.ok) {
+        console.info(
+          "WebBuilder migration hydration ready:",
+          result.hydration.cartItems,
+          "cart items /",
+          result.hydration.products,
+          "products"
+        );
+      }
     } else {
       console.error("WebBuilder runtime incomplete. Missing services:", missing);
     }
