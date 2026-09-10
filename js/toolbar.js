@@ -33,6 +33,11 @@
   // which no module ever exports (canvas.js exports `WebBuilderCanvas`).
   // Undo/redo silently restored state but never refreshed the canvas,
   // header/footer bars, cart drawer or product list on screen.
+  //
+  // Additiv jetzt auch über window.WebBuilderToolbar exponiert (siehe unten),
+  // damit js/supabase.js nach einem Cloud-Laden exakt dieselbe Refresh-Logik
+  // wiederverwenden kann statt sie ein zweites Mal zu implementieren
+  // (Projektregel 12).
   function refreshAllDomains() {
     window.WebBuilderCanvas?.render?.();
     window.WebBuilderHeaderFooter?.normalizeState?.();
@@ -70,19 +75,6 @@
     if (redoBtn) redoBtn.disabled = state.redoStack.length === 0;
   }
 
-  // Minimal local toast helper — mirrors the pattern already used in
-  // supabase.js. There is no shared toast module yet (see project backlog:
-  // "Es gibt keinen zentralen Toast-Helper").
-  function showToast(message, type = "info") {
-    const container = document.getElementById("toast-container");
-    if (!container) return;
-    const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span>${type === "success" ? "✅" : type === "danger" ? "⚠️" : "ℹ️"}</span> <span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-  }
-
   // FIX: btn-save / btn-undo / btn-redo existed in web.html and toolbar.js
   // exported working functions, but nothing ever connected the two.
   function bindButtons() {
@@ -95,7 +87,7 @@
       saveBtn.addEventListener("click", e => {
         e.preventDefault();
         const ok = storage.save();
-        showToast(ok ? "Projekt gespeichert 💾" : "Speichern fehlgeschlagen", ok ? "success" : "danger");
+        window.WebBuilderToast?.show?.(ok ? "Projekt gespeichert 💾" : "Speichern fehlgeschlagen", ok ? "success" : "danger");
       });
     }
     if (undoBtn && undoBtn.dataset.webBuilderToolbarBound !== "true") {
@@ -103,7 +95,7 @@
       undoBtn.addEventListener("click", e => {
         e.preventDefault();
         const ok = undo();
-        showToast(ok ? "Rückgängig gemacht" : "Nichts zum Rückgängigmachen", "info");
+        window.WebBuilderToast?.show?.(ok ? "Rückgängig gemacht" : "Nichts zum Rückgängigmachen", "info");
         updateUndoRedoButtons();
       });
     }
@@ -112,7 +104,7 @@
       redoBtn.addEventListener("click", e => {
         e.preventDefault();
         const ok = redo();
-        showToast(ok ? "Wiederholt" : "Nichts zum Wiederholen", "info");
+        window.WebBuilderToast?.show?.(ok ? "Wiederholt" : "Nichts zum Wiederholen", "info");
         updateUndoRedoButtons();
       });
     }
@@ -135,6 +127,9 @@
     undo,
     redo,
     clearHistory,
-    updateUndoRedoButtons
+    updateUndoRedoButtons,
+    // NEU: additiv exponiert für js/supabase.js (Cloud-Laden soll denselben
+    // Refresh wie Undo/Redo auslösen, ohne die Logik zu duplizieren).
+    refreshAllDomains
   };
 })();
