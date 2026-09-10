@@ -13,5 +13,6 @@ document.write('<script src="js/cart.js"><\/script>');
 document.write('<script src="js/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
 document.write('<script src="js/legacy-bridge.js"><\/script>');
+document.write('<script src="js/migration-coordinator.js"><\/script>');
 document.write('<script src="js/runtime-check.js"><\/script>');
 document.write('<script src="js/builder-core.js"><\/script>');
