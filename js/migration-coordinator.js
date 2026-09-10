@@ -169,8 +169,10 @@
     }
   });
 
+  // Step 2 is now fully connected: builder-legacy.js reads/writes header/footer
+  // exclusively through WebBuilderHeaderFooter's shared state service.
   register("headerFooter", {
-    connected: false,
+    connected: true,
     hydrated: false,
     read: () => window.WebBuilderHeaderFooter ? {
       header: window.WebBuilderHeaderFooter.getHeader(),
