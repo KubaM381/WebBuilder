@@ -25,6 +25,9 @@
       cartConfig: source.cartConfig || {},
       products: source.products || [],
       canvasHeight: source.canvasHeight || 1100,
+      zoomLevel: source.zoomLevel || 0.85,
+      appliedDiscountPercent: source.appliedDiscountPercent || 0,
+      appliedDiscountLabel: source.appliedDiscountLabel || "",
       headerEnabled: !!source.headerEnabled,
       headerSticky: !!source.headerSticky,
       headerHeight: source.headerHeight || 64,
@@ -36,6 +39,14 @@
       footerItems: source.footerItems || [],
       background: source.background || null
     });
+  }
+
+  function applySnapshot(snapshot, target = state) {
+    if (!snapshot || typeof snapshot !== "object") return false;
+
+    const restored = createSnapshot(Object.assign({}, target, snapshot));
+    Object.assign(target, restored);
+    return true;
   }
 
   function pushHistory(snapshot = createSnapshot()) {
@@ -92,6 +103,12 @@
     }
   }
 
+  function loadIntoState() {
+    const snapshot = load();
+    if (!snapshot) return false;
+    return applySnapshot(snapshot);
+  }
+
   function remove() {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -107,12 +124,14 @@
     HISTORY_LIMIT,
     clone,
     createSnapshot,
+    applySnapshot,
     pushHistory,
     armHistory,
     commitHistory,
     clearHistory,
     save,
     load,
+    loadIntoState,
     remove
   };
 })();
