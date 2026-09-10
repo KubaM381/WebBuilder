@@ -5,6 +5,7 @@
   const state = window.WebBuilderState;
   const bridge = window.WebBuilderLegacyBridge;
   const cartService = window.WebBuilderCart;
+  const headerFooterService = window.WebBuilderHeaderFooter;
 
   if (!state || !bridge) {
     console.error("WebBuilderMigration: state/bridge missing.");
@@ -84,27 +85,58 @@
     }
 
     if (persisted.cartButtonLabel != null) state.cartButtonLabel = persisted.cartButtonLabel;
-    if (persisted.cartConfig && typeof persisted.cartConfig === "object") {
-      state.cartConfig = persisted.cartConfig;
-    }
+    if (persisted.cartConfig && typeof persisted.cartConfig === "object") state.cartConfig = persisted.cartConfig;
     if (persisted.appliedDiscountPercent != null) state.appliedDiscountPercent = persisted.appliedDiscountPercent;
     if (persisted.appliedDiscountLabel != null) state.appliedDiscountLabel = persisted.appliedDiscountLabel;
 
-    // Step 1 migration: normalize old cart/product records before the legacy
-    // editor reads localStorage. This makes discountPrice backward-compatible
-    // without changing the legacy renderer yet.
+    if (persisted.headerEnabled != null) state.headerEnabled = !!persisted.headerEnabled;
+    if (persisted.headerSticky != null) state.headerSticky = !!persisted.headerSticky;
+    if (persisted.headerHeight != null) state.headerHeight = persisted.headerHeight;
+    if (persisted.headerBgColor != null) state.headerBgColor = persisted.headerBgColor;
+    if (Array.isArray(persisted.headerItems)) {
+      state.headerItems = persisted.headerItems;
+      domains.headerFooter.hydrated = true;
+    }
+
+    if (persisted.footerEnabled != null) state.footerEnabled = !!persisted.footerEnabled;
+    if (persisted.footerHeight != null) state.footerHeight = persisted.footerHeight;
+    if (persisted.footerBgColor != null) state.footerBgColor = persisted.footerBgColor;
+    if (Array.isArray(persisted.footerItems)) {
+      state.footerItems = persisted.footerItems;
+      domains.headerFooter.hydrated = true;
+    }
+
+    // Step 1: normalize old cart/product records before the legacy editor reads them.
     if (cartService && typeof cartService.normalizeState === "function") {
       cartService.normalizeState();
-      persisted.cartItems = state.cartItems;
-      persisted.products = state.products;
-      persistNormalizedProject(persisted);
     }
+
+    // Step 2: normalize persisted header/footer records before the legacy editor reads them.
+    if (headerFooterService && typeof headerFooterService.normalizeState === "function") {
+      headerFooterService.normalizeState();
+    }
+
+    persisted.cartItems = state.cartItems;
+    persisted.products = state.products;
+    persisted.headerEnabled = state.headerEnabled;
+    persisted.headerSticky = state.headerSticky;
+    persisted.headerHeight = state.headerHeight;
+    persisted.headerBgColor = state.headerBgColor;
+    persisted.headerItems = state.headerItems;
+    persisted.footerEnabled = state.footerEnabled;
+    persisted.footerHeight = state.footerHeight;
+    persisted.footerBgColor = state.footerBgColor;
+    persisted.footerItems = state.footerItems;
+    persistNormalizedProject(persisted);
 
     return {
       ok: true,
       cartItems: state.cartItems.length,
       products: state.products.length,
-      normalized: !!(cartService && typeof cartService.normalizeState === "function")
+      headerItems: state.headerItems.length,
+      footerItems: state.footerItems.length,
+      normalizedCartProducts: !!(cartService && typeof cartService.normalizeState === "function"),
+      normalizedHeaderFooter: !!(headerFooterService && typeof headerFooterService.normalizeState === "function")
     };
   }
 
@@ -112,14 +144,9 @@
     const adapter = get(name);
     if (!adapter) return { ok: false, reason: "domain-not-registered" };
     const value = adapter.read();
-    return {
-      ok: Array.isArray(value),
-      count: Array.isArray(value) ? value.length : 0
-    };
+    return { ok: Array.isArray(value), count: Array.isArray(value) ? value.length : 0 };
   }
 
-  // Domain contracts. These remain separate from legacy lexical variables
-  // until the corresponding legacy domain is patched safely.
   register("cart", {
     connected: false,
     hydrated: false,
@@ -157,9 +184,6 @@
     }
   });
 
-  // Import existing localStorage data into the shared state before the legacy
-  // editor starts. Legacy remains the live renderer/source for DOM behaviour,
-  // while the shared cart/product schema is now normalized first.
   const hydration = hydrateSharedStateFromStorage();
 
   window.WebBuilderMigration = {
