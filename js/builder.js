@@ -9,6 +9,10 @@ document.write('<script src="js/canvas.js"><\/script>');
 document.write('<script src="js/inspector.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 document.write('<script src="js/header-footer.js"><\/script>');
+// NEU: export.js hängt von state.js, elements.js, canvas.js (renderShapeInner/
+// computeBackgroundCss) und header-footer.js (itemInnerHtml) ab — deshalb
+// erst nach diesen geladen.
+document.write('<script src="js/export.js"><\/script>');
 document.write('<script src="js/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
 // FIX: supabase-config.js / supabase.js use import/export syntax, which is
