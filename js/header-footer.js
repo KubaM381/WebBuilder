@@ -13,6 +13,16 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function emitChange(target, detail) {
+    try {
+      window.dispatchEvent(new CustomEvent("webbuilder:header-footer-change", {
+        detail: { target, ...clone(detail || {}) }
+      }));
+    } catch (error) {
+      console.warn("WebBuilderHeaderFooter: change event could not be emitted.", error);
+    }
+  }
+
   function normalizeItem(item = {}) {
     return {
       id: item.id || `bar_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -76,7 +86,9 @@
     if (patch.bgColor != null) state.headerBgColor = String(patch.bgColor);
     if (Array.isArray(patch.items)) state.headerItems = patch.items.map(normalizeItem);
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return getHeader();
+    const result = getHeader();
+    emitChange("header", result);
+    return result;
   }
 
   function updateFooter(patch = {}, recordHistory = true) {
@@ -86,7 +98,9 @@
     if (patch.bgColor != null) state.footerBgColor = String(patch.bgColor);
     if (Array.isArray(patch.items)) state.footerItems = patch.items.map(normalizeItem);
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return getFooter();
+    const result = getFooter();
+    emitChange("footer", result);
+    return result;
   }
 
   function addItem(type, target = "header", patch = {}, recordHistory = true) {
@@ -99,6 +113,7 @@
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
     items.push(item);
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
+    emitChange(target, target === "footer" ? getFooter() : getHeader());
     return item;
   }
 
@@ -110,6 +125,7 @@
     items.splice(index, 1);
     if (state.selectedBarItemRef && state.selectedBarItemRef.id === id) state.selectedBarItemRef = null;
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
+    emitChange(target, target === "footer" ? getFooter() : getHeader());
     return true;
   }
 
@@ -121,6 +137,7 @@
     Object.assign(item, clone(patch || {}));
     Object.assign(item, normalizeItem(item));
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
+    emitChange(target, target === "footer" ? getFooter() : getHeader());
     return item;
   }
 
@@ -135,6 +152,12 @@
     updateFooter,
     addItem,
     removeItem,
-    updateItem
+    updateItem,
+    onChange(callback) {
+      if (typeof callback !== "function") return () => {};
+      const handler = event => callback(event.detail);
+      window.addEventListener("webbuilder:header-footer-change", handler);
+      return () => window.removeEventListener("webbuilder:header-footer-change", handler);
+    }
   };
 })();
