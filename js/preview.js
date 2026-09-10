@@ -22,6 +22,11 @@
     if (window.WebBuilderCanvas) window.WebBuilderCanvas.applyZoom(state.isPreviewMode);
     if (window.WebBuilderCanvasRuntime?.render) window.WebBuilderCanvasRuntime.render();
 
+    state.notify?.({
+      domain: "preview",
+      type: state.isPreviewMode ? "enter" : "exit"
+    });
+
     return state.isPreviewMode;
   }
 
