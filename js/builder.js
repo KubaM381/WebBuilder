@@ -1,5 +1,5 @@
 // WebBuilder bootstrap
-// Loads shared services first, then the live migration runtimes, then the legacy editor.
+// Loads the modular application services in dependency order.
 document.write('<script src="js/state.js"><\/script>');
 document.write('<script src="js/storage.js"><\/script>');
 document.write('<script src="js/history.js"><\/script>');
@@ -25,7 +25,6 @@ document.write('<script src="js/cart-runtime.js"><\/script>');
 document.write('<script src="js/cart-config-runtime.js"><\/script>');
 document.write('<script src="js/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
-document.write('<script src="js/legacy-bridge.js"><\/script>');
 document.write('<script src="js/migration-coordinator.js"><\/script>');
 document.write('<script src="js/runtime-check.js"><\/script>');
 document.write('<script src="js/builder-core.js"><\/script>');
