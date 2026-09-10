@@ -4,6 +4,7 @@
 (() => {
   const state = window.WebBuilderState;
   const bridge = window.WebBuilderLegacyBridge;
+  const cartService = window.WebBuilderCart;
 
   if (!state || !bridge) {
     console.error("WebBuilderMigration: state/bridge missing.");
@@ -57,6 +58,16 @@
     }
   }
 
+  function persistNormalizedProject(persisted) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+      return true;
+    } catch (error) {
+      console.warn("WebBuilderMigration: normalized project could not be saved.", error);
+      return false;
+    }
+  }
+
   function hydrateSharedStateFromStorage() {
     const persisted = readPersistedProject();
     if (!persisted || typeof persisted !== "object") {
@@ -79,10 +90,21 @@
     if (persisted.appliedDiscountPercent != null) state.appliedDiscountPercent = persisted.appliedDiscountPercent;
     if (persisted.appliedDiscountLabel != null) state.appliedDiscountLabel = persisted.appliedDiscountLabel;
 
+    // Step 1 migration: normalize old cart/product records before the legacy
+    // editor reads localStorage. This makes discountPrice backward-compatible
+    // without changing the legacy renderer yet.
+    if (cartService && typeof cartService.normalizeState === "function") {
+      cartService.normalizeState();
+      persisted.cartItems = state.cartItems;
+      persisted.products = state.products;
+      persistNormalizedProject(persisted);
+    }
+
     return {
       ok: true,
       cartItems: state.cartItems.length,
-      products: state.products.length
+      products: state.products.length,
+      normalized: !!(cartService && typeof cartService.normalizeState === "function")
     };
   }
 
@@ -136,8 +158,8 @@
   });
 
   // Import existing localStorage data into the shared state before the legacy
-  // editor starts. This is deliberately one-way for now: legacy remains the
-  // live source of truth, but the modular state no longer starts empty.
+  // editor starts. Legacy remains the live renderer/source for DOM behaviour,
+  // while the shared cart/product schema is now normalized first.
   const hydration = hydrateSharedStateFromStorage();
 
   window.WebBuilderMigration = {
