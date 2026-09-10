@@ -7,12 +7,14 @@
     "WebBuilderHistory",
     "WebBuilderCanvas",
     "WebBuilderCanvasRuntime",
+    "WebBuilderActionRuntime",
     "WebBuilderElements",
     "WebBuilderInspector",
     "WebBuilderHeaderFooter",
     "WebBuilderProducts",
     "WebBuilderProductsRuntime",
     "WebBuilderCart",
+    "WebBuilderCartRuntime",
     "WebBuilderModals",
     "WebBuilderPreview",
     "WebBuilderLegacyBridge"
@@ -23,18 +25,22 @@
     const bridge = window.WebBuilderLegacyBridge;
     const migration = window.WebBuilderMigration;
     const canvasRuntime = window.WebBuilderCanvasRuntime;
+    const actionRuntime = window.WebBuilderActionRuntime;
     const products = window.WebBuilderProducts;
     const productsRuntime = window.WebBuilderProductsRuntime;
     const cart = window.WebBuilderCart;
+    const cartRuntime = window.WebBuilderCartRuntime;
     const result = {
       ok: missing.length === 0,
       missing,
       legacyAdapterRegistered: !!(bridge && bridge.hasLegacyAdapter && bridge.hasLegacyAdapter()),
       sharedState: !!window.WebBuilderState,
       canvasRuntime: !!canvasRuntime,
+      actionRuntime: !!actionRuntime,
       productsService: !!products,
       productsRuntime: !!productsRuntime,
       cartService: !!cart,
+      cartRuntime: !!cartRuntime,
       migrationCoordinator: !!migration,
       migrationStatus: migration && typeof migration.status === "function" ? migration.status() : null,
       hydration: migration ? migration.hydration || null : null
