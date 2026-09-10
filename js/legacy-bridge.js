@@ -5,14 +5,16 @@
 // The bridge provides one safe integration point for the next extraction steps.
 //
 // Future modules should use window.WebBuilderState / window.WebBuilderStorage
-// through this bridge instead of introducing another global state container.
+// / window.WebBuilderHistory through this bridge instead of introducing
+// another global state container.
 
 (() => {
   const state = window.WebBuilderState;
   const storage = window.WebBuilderStorage;
+  const history = window.WebBuilderHistory;
 
-  if (!state || !storage) {
-    console.error("WebBuilderLegacyBridge: state/storage service missing.");
+  if (!state || !storage || !history) {
+    console.error("WebBuilderLegacyBridge: shared service missing.");
     return;
   }
 
@@ -36,6 +38,7 @@
     getState,
     snapshot,
     save,
-    load
+    load,
+    history
   };
 })();
