@@ -18,6 +18,7 @@ document.write('<script src="js/inspector-properties-runtime.js"><\/script>');
 document.write('<script src="js/inspector-special-runtime.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 document.write('<script src="js/header-footer.js"><\/script>');
+document.write('<script src="js/header-footer-runtime.js"><\/script>');
 document.write('<script src="js/cart.js"><\/script>');
 document.write('<script src="js/products-runtime.js"><\/script>');
 document.write('<script src="js/cart-runtime.js"><\/script>');
