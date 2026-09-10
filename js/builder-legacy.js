@@ -37,16 +37,29 @@ document.addEventListener("DOMContentLoaded", () => {
   let appliedDiscountPercent = 0;
   let appliedDiscountLabel = "";
 
-  let headerEnabled = false;
-  let headerSticky = false;
-  let headerHeight = 64;
-  let headerBgColor = "#111827";
-  let headerItems = []; // { id, type:'text'|'icon', text, iconName, x, y, color, size, bold, italic, underline, align, fontFamily, actionType, actionUrl, actionMsg, productId }
+  const headerState = {
+    get enabled() { return window.WebBuilderHeaderFooter.getHeader().enabled; },
+    set enabled(value) { window.WebBuilderHeaderFooter.updateHeader({ enabled: value }, false); },
+    get sticky() { return window.WebBuilderHeaderFooter.getHeader().sticky; },
+    set sticky(value) { window.WebBuilderHeaderFooter.updateHeader({ sticky: value }, false); },
+    get height() { return window.WebBuilderHeaderFooter.getHeader().height; },
+    set height(value) { window.WebBuilderHeaderFooter.updateHeader({ height: value }, false); },
+    get bgColor() { return window.WebBuilderHeaderFooter.getHeader().bgColor; },
+    set bgColor(value) { window.WebBuilderHeaderFooter.updateHeader({ bgColor: value }, false); },
+    get items() { return window.WebBuilderHeaderFooter.getHeader().items; },
+    set items(value) { window.WebBuilderHeaderFooter.updateHeader({ items: value }, false); }
+  };
 
-  let footerEnabled = false;
-  let footerHeight = 70;
-  let footerBgColor = "#111827";
-  let footerItems = [];
+  const footerState = {
+    get enabled() { return window.WebBuilderHeaderFooter.getFooter().enabled; },
+    set enabled(value) { window.WebBuilderHeaderFooter.updateFooter({ enabled: value }, false); },
+    get height() { return window.WebBuilderHeaderFooter.getFooter().height; },
+    set height(value) { window.WebBuilderHeaderFooter.updateFooter({ height: value }, false); },
+    get bgColor() { return window.WebBuilderHeaderFooter.getFooter().bgColor; },
+    set bgColor(value) { window.WebBuilderHeaderFooter.updateFooter({ bgColor: value }, false); },
+    get items() { return window.WebBuilderHeaderFooter.getFooter().items; },
+    set items(value) { window.WebBuilderHeaderFooter.updateFooter({ items: value }, false); }
+  };
 
   let selectedBarItemRef = null; // { items, id, listType: 'header'|'footer' }
 
