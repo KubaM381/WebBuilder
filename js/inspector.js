@@ -11,12 +11,19 @@
     return;
   }
 
+  function refreshCanvas() {
+    const canvas = window.WebBuilderCanvasRuntime || window.WebBuilderCanvas;
+    if (canvas && typeof canvas.render === "function") canvas.render();
+  }
+
   function getSelected() {
     return elements.getSelected();
   }
 
   function select(id) {
-    return elements.setSelected(id);
+    const selected = elements.setSelected(id);
+    refreshCanvas();
+    return selected;
   }
 
   function update(id, patch, recordHistory = true) {
@@ -33,6 +40,7 @@
       window.WebBuilderHistory.commit();
     }
 
+    if (updated) refreshCanvas();
     return updated;
   }
 
@@ -55,6 +63,7 @@
       window.WebBuilderHistory.commit();
     }
 
+    if (removed) refreshCanvas();
     return removed;
   }
 
@@ -73,6 +82,7 @@
       window.WebBuilderHistory.commit();
     }
 
+    if (copy) refreshCanvas();
     return copy;
   }
 
