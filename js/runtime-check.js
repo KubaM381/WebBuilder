@@ -11,6 +11,7 @@
     "WebBuilderInspector",
     "WebBuilderHeaderFooter",
     "WebBuilderProducts",
+    "WebBuilderProductsRuntime",
     "WebBuilderCart",
     "WebBuilderModals",
     "WebBuilderPreview",
@@ -23,6 +24,7 @@
     const migration = window.WebBuilderMigration;
     const canvasRuntime = window.WebBuilderCanvasRuntime;
     const products = window.WebBuilderProducts;
+    const productsRuntime = window.WebBuilderProductsRuntime;
     const cart = window.WebBuilderCart;
     const result = {
       ok: missing.length === 0,
@@ -31,6 +33,7 @@
       sharedState: !!window.WebBuilderState,
       canvasRuntime: !!canvasRuntime,
       productsService: !!products,
+      productsRuntime: !!productsRuntime,
       cartService: !!cart,
       migrationCoordinator: !!migration,
       migrationStatus: migration && typeof migration.status === "function" ? migration.status() : null,
