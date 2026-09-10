@@ -2,14 +2,20 @@
 
 Modulare JavaScript-Struktur des Website-Builders.
 
-- `builder.js` — Einstiegspunkt / bestehende Builder-Kernlogik
-- `elements.js` — Elementtypen und Elementdaten
-- `dragdrop.js` — Drag & Drop
-- `inspector.js` — Eigenschaften und Auswahl
-- `toolbar.js` — Toolbar und Editor-Steuerung
-- `preview.js` — Vorschau und Laufzeitverhalten
-- `export.js` — HTML/CSS-Export und späteres Publishing
-- `storage.js` — Autosave, lokale Speicherung und Projektzustand
-- `supabase.js` — Supabase-Anbindung
+## Aktueller Stand
 
-Die Module werden schrittweise aus der bisherigen großen `builder.js` herausgelöst, damit bestehende Funktionen nicht versehentlich verloren gehen.
+- `builder.js` — **aktiver zentraler Builder-Kern**; wird in dieser Phase bewusst noch nicht aufgeteilt.
+- `state.js` — zukünftiger zentraler Builder-State.
+- `canvas.js` — zukünftige Canvas-/Drag-&-Drop-Logik.
+- `elements.js` — zukünftige Elementtypen und Elementdaten.
+- `inspector.js` — zukünftige Eigenschaften- und Auswahl-Logik.
+- `toolbar.js` — zukünftige Toolbar- und Editor-Steuerung.
+- `header-footer.js` — zukünftige Kopf-/Fußzeilen-Logik.
+- `cart.js` — zukünftige Warenkorb-Logik.
+- `modals.js` — zukünftige Modal-/Dialog-Logik.
+- `storage.js` — zukünftige Speicherung und Projektzustand.
+- `preview.js` — zukünftige Vorschau-/Runtime-Logik.
+- `supabase.js` — bestehende Supabase-Anbindung.
+- `supabase-config.js` — bestehende Supabase-Konfiguration.
+
+Die neuen Module sind zunächst nur strukturelle Platzhalter. Es werden bewusst keine Imports/Exports oder Runtime-Abhängigkeiten eingeführt, damit `builder.js` unverändert weiterlaufen kann. Die eigentliche JS-Aufteilung erfolgt später kontrolliert.
