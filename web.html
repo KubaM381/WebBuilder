@@ -396,7 +396,12 @@
           <select id="prop-product"></select>
           <p class="help-text" id="prop-product-hint" style="margin-top:4px;">Noch keine Produkte vorhanden — lege im Tab „📦 Produkte“ zuerst ein Produkt an.</p>
         </div>
-        <div class="form-actions" style="margin-top:20px;"><button id="btn-delete-element" class="btn btn-danger-outline">Element löschen</button></div>
+        <!-- GEÄNDERT: Duplizieren-Button neben Löschen ergänzt (fehlte trotz
+             Changelog-Eintrag komplett in HTML + Verkabelung). -->
+        <div class="form-actions" style="margin-top:20px; display:flex; gap:8px;">
+          <button id="btn-duplicate-element" class="btn btn-secondary" style="flex:1;">📄 Duplizieren</button>
+          <button id="btn-delete-element" class="btn btn-danger-outline" style="flex:1;">Element löschen</button>
+        </div>
         <!-- builder.js hängt hier #inspector-extended an -->
       </div>
 
