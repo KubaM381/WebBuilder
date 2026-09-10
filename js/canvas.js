@@ -1,7 +1,6 @@
 // WebBuilder canvas module
-// Canvas remains a single domain module. Viewport, drag/drop interaction and
-// rendering are kept together here so the editor does not need extra canvas
-// runtime files.
+// Canvas remains a single domain module. Viewport, drag/drop interaction,
+// rendering and canvas controls are kept together here.
 (() => {
   const state = window.WebBuilderState;
   const elementsService = window.WebBuilderElements;
@@ -16,8 +15,10 @@
   const CANVAS_MIN_HEIGHT = 400;
   const DEFAULT_ZOOM = 0.85;
   const DEFAULT_CANVAS_HEIGHT = 1100;
-
   let callbacks = { onSelect: null, onAction: null };
+  let renderQueued = false;
+  let rendering = false;
+  let canvasObserver = null;
 
   const getCanvas = () => document.getElementById("canvas");
   const getCanvasColumn = () => document.getElementById("canvas-column");
@@ -88,11 +89,9 @@
 
   function makeDraggable(domEl, item, containerEl, opts = {}) {
     if (!domEl || !item || !containerEl) return;
-
     domEl.addEventListener("mousedown", event => {
       if (state.isPreviewMode) return;
       event.stopPropagation();
-
       const start = toLocalCoords(containerEl, event.clientX, event.clientY);
       const offsetX = start.x - (Number(item.x) || 0);
       const offsetY = start.y - (Number(item.y) || 0);
@@ -100,9 +99,7 @@
       const minY = opts.minY != null ? opts.minY : 0;
       const maxX = opts.maxX != null ? opts.maxX : Infinity;
       const maxY = opts.maxY != null ? opts.maxY : Infinity;
-
       if (window.WebBuilderHistory) window.WebBuilderHistory.arm();
-
       const onMove = moveEvent => {
         const point = toLocalCoords(containerEl, moveEvent.clientX, moveEvent.clientY);
         item.x = Math.min(maxX, Math.max(minX, point.x - offsetX));
@@ -110,13 +107,11 @@
         domEl.style.left = item.x + "px";
         domEl.style.top = item.y + "px";
       };
-
       const onUp = () => {
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
         if (window.WebBuilderHistory) window.WebBuilderHistory.commit();
       };
-
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
     });
@@ -138,8 +133,7 @@
 
   function getIconMap() {
     const registry = window.WebBuilderIconRegistry && typeof window.WebBuilderIconRegistry.getAll === "function"
-      ? window.WebBuilderIconRegistry.getAll()
-      : {};
+      ? window.WebBuilderIconRegistry.getAll() : {};
     return Object.assign({}, FALLBACK_ICONS, registry, window.WebBuilderIconMap || {});
   }
 
@@ -151,9 +145,7 @@
     }
     if (item.shapeType === "triangle") {
       const half = s / 2;
-      if (outline) {
-        return `<div style="position:relative; width:${s}px; height:${s}px;"><div style="position:absolute; inset:0; width:0; height:0; margin:auto; border-left:${half}px solid transparent; border-right:${half}px solid transparent; border-bottom:${s}px solid ${item.color};"></div><div style="position:absolute; top:3px; left:3px; width:0; height:0; border-left:${half - 3}px solid transparent; border-right:${half - 3}px solid transparent; border-bottom:${s - 6}px solid #ffffff;"></div></div>`;
-      }
+      if (outline) return `<div style="position:relative; width:${s}px; height:${s}px;"><div style="position:absolute; inset:0; width:0; height:0; margin:auto; border-left:${half}px solid transparent; border-right:${half}px solid transparent; border-bottom:${s}px solid ${item.color};"></div><div style="position:absolute; top:3px; left:3px; width:0; height:0; border-left:${half - 3}px solid transparent; border-right:${half - 3}px solid transparent; border-bottom:${s - 6}px solid #ffffff;"></div></div>`;
       return `<div style="width:0; height:0; border-left:${half}px solid transparent; border-right:${half}px solid transparent; border-bottom:${s}px solid ${item.color};"></div>`;
     }
     const h = Math.round(s * 0.65);
@@ -163,38 +155,24 @@
   function renderCanvas() {
     const canvas = getCanvas();
     if (!canvas) return false;
-
     const hint = document.getElementById("canvas-hint");
     canvas.querySelectorAll(".placed-element").forEach(el => el.remove());
     if (hint) hint.classList.toggle("hidden", state.elements.length > 0);
-
     const iconMap = getIconMap();
-
     state.elements.forEach(item => {
       const el = document.createElement("div");
-      el.className = [
-        "placed-element",
-        item.id === state.selectedElementId ? "selected" : "",
-        item.actionType !== "none" ? "has-action" : ""
-      ].filter(Boolean).join(" ");
+      el.className = ["placed-element", item.id === state.selectedElementId ? "selected" : "", item.actionType !== "none" ? "has-action" : ""].filter(Boolean).join(" ");
       el.style.left = `${item.x}px`;
       el.style.top = `${item.y}px`;
       el.style.color = item.color;
       el.dataset.id = item.id;
-
       const textDeco = item.underline ? "underline" : "none";
       const fontFam = item.fontFamily || "inherit";
       const align = item.align || "left";
-
       if (item.type === "icon" && iconMap[item.iconName]) {
-        el.innerHTML = item.iconFrame
-          ? `<span class="icon-frame-wrap" style="border-color:${item.iconFrameColor || "#111827"};">${iconMap[item.iconName]}</span>`
-          : iconMap[item.iconName];
+        el.innerHTML = item.iconFrame ? `<span class="icon-frame-wrap" style="border-color:${item.iconFrameColor || "#111827"};">${iconMap[item.iconName]}</span>` : iconMap[item.iconName];
         const svg = el.querySelector("svg, img");
-        if (svg) {
-          svg.style.width = `${item.size}px`;
-          svg.style.height = `${item.size}px`;
-        }
+        if (svg) { svg.style.width = `${item.size}px`; svg.style.height = `${item.size}px`; }
       } else if (item.type === "button") {
         el.innerHTML = `<button class="btn btn-primary" style="font-size:${item.size}px; background-color:${item.color}; font-weight:${item.bold ? "bold" : "600"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam};">${escapeHtml(item.text)}</button>`;
       } else if (item.type === "headline") {
@@ -209,36 +187,27 @@
       } else {
         el.innerHTML = `<p style="font-size:${item.size}px; color:${item.color}; font-weight:${item.bold ? "bold" : "normal"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam}; text-align:${align};">${escapeHtml(item.text)}</p>`;
       }
-
       const badge = document.createElement("span");
       badge.className = "element-badge";
       badge.innerText = "⚡ Logik";
       el.appendChild(badge);
-
       el.addEventListener("click", e => {
         e.stopPropagation();
         if (state.isPreviewMode) {
           if (typeof callbacks.onAction === "function") callbacks.onAction(item, el);
-        } else if (typeof callbacks.onSelect === "function") {
-          callbacks.onSelect(item.id);
-        } else if (window.WebBuilderInspector && typeof window.WebBuilderInspector.select === "function") {
-          window.WebBuilderInspector.select(item.id);
-        } else {
-          elementsService.setSelected(item.id);
-        }
+        } else if (typeof callbacks.onSelect === "function") callbacks.onSelect(item.id);
+        else if (window.WebBuilderInspector && typeof window.WebBuilderInspector.select === "function") window.WebBuilderInspector.select(item.id);
+        else elementsService.setSelected(item.id);
       }, true);
-
       makeDraggable(el, item, canvas);
       canvas.appendChild(el);
     });
-
     return true;
   }
 
   function setBackground(background = state.background) {
     const canvas = getCanvas();
     if (!canvas || !background) return false;
-
     if (background.type === "gradient") {
       canvas.style.backgroundImage = "none";
       canvas.style.background = `linear-gradient(${background.gradDir || "to right"}, ${background.grad1 || "#4f46e5"}, ${background.grad2 || "#06b6d4"})`;
@@ -255,27 +224,82 @@
     callbacks = Object.assign({}, callbacks, nextCallbacks);
   }
 
-  window.WebBuilderCanvas = {
-    getCanvas,
-    getCanvasColumn,
-    normalizeState,
-    applyZoom,
-    setZoom,
-    zoomIn,
-    zoomOut,
-    resetZoom,
-    setCanvasHeight,
-    extendCanvas,
-    syncDom,
-    toLocalCoords,
-    makeDraggable,
-    renderCanvas,
-    render: () => {
+  function isEditorEventTarget(target, id) {
+    return target && (target.id === id || target.closest?.(`#${id}`));
+  }
+
+  function handleCanvasControls(event) {
+    if (state.isPreviewMode) return;
+    if (isEditorEventTarget(event.target, "zoom-in")) { event.preventDefault(); event.stopImmediatePropagation(); zoomIn(false); return; }
+    if (isEditorEventTarget(event.target, "zoom-out")) { event.preventDefault(); event.stopImmediatePropagation(); zoomOut(false); return; }
+    if (isEditorEventTarget(event.target, "zoom-reset")) { event.preventDefault(); event.stopImmediatePropagation(); resetZoom(false); return; }
+    if (isEditorEventTarget(event.target, "btn-extend-canvas") || isEditorEventTarget(event.target, "btn-extend-canvas-side")) { event.preventDefault(); event.stopImmediatePropagation(); extendCanvas(300); return; }
+    if (isEditorEventTarget(event.target, "btn-shrink-canvas-side")) { event.preventDefault(); event.stopImmediatePropagation(); extendCanvas(-300); }
+  }
+
+  function handlePreviewAction(item) {
+    const actions = window.WebBuilderActionRuntime;
+    if (!state.isPreviewMode || !actions || !item) return false;
+    return actions.execute(item);
+  }
+
+  function renderOwnedCanvas() {
+    if (rendering) return;
+    const canvasEl = getCanvas();
+    if (!canvasEl) return;
+    rendering = true;
+    if (canvasObserver) canvasObserver.disconnect();
+    try {
+      setRendererCallbacks({ onAction: handlePreviewAction });
+      renderCanvas();
       setBackground(state.background);
-      return renderCanvas();
-    },
-    setBackground,
-    setRendererCallbacks,
-    constants: { ZOOM_MIN, ZOOM_MAX, CANVAS_MIN_HEIGHT, DEFAULT_ZOOM, DEFAULT_CANVAS_HEIGHT }
+      syncDom();
+    } finally {
+      rendering = false;
+      if (canvasObserver) canvasObserver.observe(canvasEl, { childList: true });
+    }
+  }
+
+  function scheduleRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    const run = () => { renderQueued = false; renderOwnedCanvas(); };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(run); else window.setTimeout(run, 0);
+  }
+
+  function installCanvasOwnership() {
+    const canvasEl = getCanvas();
+    if (!canvasEl || !window.MutationObserver) return;
+    if (canvasObserver) canvasObserver.disconnect();
+    canvasObserver = new MutationObserver(mutations => {
+      if (rendering) return;
+      if (mutations.some(mutation => mutation.type === "childList")) scheduleRender();
+    });
+    canvasObserver.observe(canvasEl, { childList: true });
+  }
+
+  state.subscribe?.(event => {
+    const domain = event?.domain;
+    if (["elements", "selection", "preview", "canvas", "background"].includes(domain)) scheduleRender();
+  });
+
+  window.addEventListener("webbuilder:state-change", event => {
+    const domain = event.detail?.domain;
+    if (["elements", "selection", "preview", "canvas", "background"].includes(domain)) scheduleRender();
+  });
+
+  document.addEventListener("click", handleCanvasControls, true);
+
+  document.addEventListener("DOMContentLoaded", () => {
+    window.setTimeout(() => { installCanvasOwnership(); renderOwnedCanvas(); }, 0);
+  });
+
+  window.WebBuilderCanvas = {
+    getCanvas, getCanvasColumn, normalizeState, applyZoom, setZoom, zoomIn, zoomOut,
+    resetZoom, setCanvasHeight, extendCanvas, syncDom, toLocalCoords, makeDraggable,
+    renderCanvas, render: () => { setBackground(state.background); return renderCanvas(); },
+    setBackground, setRendererCallbacks,
+    constants: { ZOOM_MIN, ZOOM_MAX, CANVAS_MIN_HEIGHT, DEFAULT_ZOOM, DEFAULT_CANVAS_HEIGHT },
+    render: renderOwnedCanvas
   };
 })();
