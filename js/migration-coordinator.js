@@ -6,6 +6,7 @@
   const bridge = window.WebBuilderLegacyBridge;
   const elementsService = window.WebBuilderElements;
   const cartService = window.WebBuilderCart;
+  const productsService = window.WebBuilderProducts;
   const headerFooterService = window.WebBuilderHeaderFooter;
   const canvasService = window.WebBuilderCanvas;
 
@@ -72,7 +73,8 @@
       domains.cart.hydrated = true;
     }
     if (Array.isArray(persisted.products)) {
-      state.products = persisted.products;
+      if (productsService && typeof productsService.replaceAll === "function") productsService.replaceAll(persisted.products);
+      else state.products = persisted.products;
       domains.products.hydrated = true;
     }
 
@@ -97,6 +99,7 @@
     if (persisted.background && typeof persisted.background === "object") state.background = persisted.background;
 
     if (cartService && typeof cartService.normalizeState === "function") cartService.normalizeState();
+    if (productsService && typeof productsService.normalizeState === "function") productsService.normalizeState();
     if (headerFooterService && typeof headerFooterService.normalizeState === "function") headerFooterService.normalizeState();
     if (canvasService && typeof canvasService.normalizeState === "function") {
       canvasService.normalizeState();
@@ -130,6 +133,7 @@
       zoomLevel: state.zoomLevel,
       canvasHeight: state.canvasHeight,
       normalizedCartProducts: !!(cartService && typeof cartService.normalizeState === "function"),
+      normalizedProducts: !!(productsService && typeof productsService.normalizeState === "function"),
       normalizedHeaderFooter: !!(headerFooterService && typeof headerFooterService.normalizeState === "function"),
       normalizedCanvas: !!(canvasService && typeof canvasService.normalizeState === "function")
     };
@@ -168,17 +172,32 @@
   });
 
   register("cart", {
-    connected: false,
+    connected: !!cartService,
     hydrated: false,
-    read: () => window.WebBuilderCart ? window.WebBuilderCart.getItems() : state.cartItems,
-    write: value => { if (!Array.isArray(value)) return false; state.cartItems = value; return true; }
+    read: () => cartService ? cartService.getItems() : state.cartItems,
+    write: value => {
+      if (!Array.isArray(value)) return false;
+      if (cartService && typeof cartService.clear === "function" && typeof cartService.addItem === "function") {
+        cartService.clear(false);
+        value.forEach(item => cartService.addItem(item, undefined, undefined, undefined, undefined, false));
+      } else {
+        state.cartItems = value;
+      }
+      if (cartService && typeof cartService.normalizeState === "function") cartService.normalizeState();
+      return true;
+    }
   });
 
   register("products", {
-    connected: false,
+    connected: !!productsService,
     hydrated: false,
-    read: () => window.WebBuilderCart ? window.WebBuilderCart.getProducts() : state.products,
-    write: value => { if (!Array.isArray(value)) return false; state.products = value; return true; }
+    read: () => productsService ? productsService.getAll() : state.products,
+    write: value => {
+      if (!Array.isArray(value)) return false;
+      if (productsService && typeof productsService.replaceAll === "function") productsService.replaceAll(value);
+      else state.products = value;
+      return true;
+    }
   });
 
   register("headerFooter", {
