@@ -110,6 +110,8 @@
       badge.innerText = "⚡ Logik";
       el.appendChild(badge);
 
+      // Capture-phase ownership prevents the legacy editor's bubble-phase
+      // click handlers from taking control of modular canvas elements.
       el.addEventListener("click", e => {
         e.stopPropagation();
         if (state.isPreviewMode) {
@@ -121,7 +123,7 @@
         } else {
           elementsService.setSelected(item.id);
         }
-      });
+      }, true);
 
       if (interaction && typeof interaction.makeDraggable === "function") {
         interaction.makeDraggable(el, item, canvas);
