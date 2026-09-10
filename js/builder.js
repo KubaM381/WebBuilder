@@ -17,6 +17,7 @@ document.write('<script src="js/products.js"><\/script>');
 document.write('<script src="js/cart.js"><\/script>');
 document.write('<script src="js/products-runtime.js"><\/script>');
 document.write('<script src="js/cart-runtime.js"><\/script>');
+document.write('<script src="js/cart-config-runtime.js"><\/script>');
 document.write('<script src="js/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
 document.write('<script src="js/legacy-bridge.js"><\/script>');
