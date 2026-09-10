@@ -1,0 +1,105 @@
+name: Migrate canvas runtime
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: "!contains(github.event.head_commit.message, '[canvas-migration]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Replace legacy canvas runtime with service delegation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('js/builder-legacy.js')
+          text = path.read_text(encoding='utf-8')
+
+          start = text.find('  // ============================================================\n  // ZOOM\n  // ============================================================')
+          end = text.find('  // ============================================================\n  // PRODUKTE\n  // ============================================================', start)
+          if start < 0 or end < 0:
+              raise SystemExit('Canvas runtime markers not found')
+
+          replacement = '''  // ============================================================
+  // CANVAS RUNTIME (delegated to shared canvas service)
+  // ============================================================
+  function applyZoom() {
+    if (window.WebBuilderCanvas) {
+      window.WebBuilderCanvas.applyZoom(isPreviewMode);
+      zoomLevel = window.WebBuilderState.zoomLevel;
+      if (zoomLevelLabel) zoomLevelLabel.textContent = Math.round(zoomLevel * 100) + "%";
+    }
+  }
+
+  if (zoomInBtn) zoomInBtn.addEventListener("click", () => {
+    if (!window.WebBuilderCanvas) return;
+    zoomLevel = window.WebBuilderCanvas.zoomIn(isPreviewMode);
+    applyZoom();
+  });
+  if (zoomOutBtn) zoomOutBtn.addEventListener("click", () => {
+    if (!window.WebBuilderCanvas) return;
+    zoomLevel = window.WebBuilderCanvas.zoomOut(isPreviewMode);
+    applyZoom();
+  });
+  if (zoomResetBtn) zoomResetBtn.addEventListener("click", () => {
+    if (!window.WebBuilderCanvas) return;
+    zoomLevel = window.WebBuilderCanvas.resetZoom(isPreviewMode);
+    applyZoom();
+  });
+
+  function toLocalCoords(containerEl, clientX, clientY) {
+    return window.WebBuilderCanvas
+      ? window.WebBuilderCanvas.toLocalCoords(containerEl, clientX, clientY)
+      : { x: 0, y: 0 };
+  }
+
+  function makeDraggable(domEl, item, containerEl, opts = {}) {
+    if (window.WebBuilderCanvas) {
+      return window.WebBuilderCanvas.makeDraggable(domEl, item, containerEl, opts);
+    }
+  }
+
+  // ============================================================
+  // SEITENGRÖSSE (delegated to shared canvas service)
+  // ============================================================
+  function setCanvasHeight(h) {
+    if (!window.WebBuilderCanvas) return canvasHeight;
+    canvasHeight = window.WebBuilderCanvas.setCanvasHeight(h);
+    return canvasHeight;
+  }
+
+  function extendCanvas(delta) {
+    if (!window.WebBuilderCanvas) return canvasHeight;
+    window.WebBuilderCanvas.extendCanvas(delta);
+    canvasHeight = window.WebBuilderState.canvasHeight;
+    showToast(delta > 0 ? "Seite verlängert ⬇️" : "Seite verkürzt ⬆️", "info");
+    return canvasHeight;
+  }
+
+  if (btnExtendCanvas) btnExtendCanvas.addEventListener("click", () => extendCanvas(300));
+  if (btnExtendCanvasSide) btnExtendCanvasSide.addEventListener("click", () => extendCanvas(300));
+  if (btnShrinkCanvasSide) btnShrinkCanvasSide.addEventListener("click", () => extendCanvas(-300));
+
+'''
+          path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
+          print('canvas runtime delegated')
+          PY
+
+      - name: Commit migration and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/builder-legacy.js
+          git rm .github/workflows/migrate-canvas-runtime.yml
+          git commit -m "refactor: delegate legacy canvas runtime [canvas-migration]"
+          git push
