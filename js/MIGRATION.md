@@ -8,8 +8,8 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 - `storage.js` — snapshots, localStorage and history persistence helpers
 - `history.js` — undo/redo service
 - `canvas.js` — canvas coordinates, zoom and drag helpers
-- `elements.js` — element data CRUD
-- `inspector.js` — selected-element updates
+- `elements.js` — shared element state + CRUD + legacy compatibility proxy
+- `inspector.js` — selected-element service
 - `header-footer.js` — header/footer data operations
 - `cart.js` — cart/product data operations
 - `legacy-bridge.js` — controlled connection point to the legacy editor
@@ -25,9 +25,12 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 
 **Complete.** The legacy editor no longer owns a separate header/footer state container. Its header/footer reads and writes go through `WebBuilderHeaderFooter`, while the service remains responsible for normalization and persistence hydration. Undo/redo snapshots restore the shared header/footer state as well.
 
+### Step 3 — Elements + inspector
+
+**Complete.** `WebBuilderState.elements` is now the authoritative element collection. The legacy editor uses the `WebBuilderElements` compatibility proxy for existing array operations, loads/restores through `replaceAll()`, removes through the element service, and resolves the selected element through the shared service. Selection changes are synchronized through `WebBuilderElements.setSelected()`. The migration coordinator registers the elements domain as connected and hydrates persisted elements before the legacy editor starts.
+
 ### Next
 
-3. Elements + inspector
 4. Canvas/zoom/drag
 5. Preview/modals
 6. Remove obsolete legacy state and rename the remaining implementation
