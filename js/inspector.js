@@ -4,7 +4,17 @@
   const state=window.WebBuilderState, elements=window.WebBuilderElements;
   if(!state||!elements){console.error("WebBuilderInspector: shared state/elements service missing.");return;}
   function refreshCanvas(){const c=window.WebBuilderCanvas;if(c?.render)c.render();}
-  function getSelected(){return elements.getSelected();} function select(id){const s=elements.setSelected(id);refreshCanvas();return s;}
+  function getSelected(){return elements.getSelected();}
+  function select(id){
+    const s=elements.setSelected(id);
+    // Selecting a real canvas element must deselect any header/footer bar
+    // item, and vice versa (see header-footer.js selectItem) — only one of
+    // the two right-hand inspector panels may be visible at a time.
+    if(id!=null&&state.selectedBarItemRef){state.selectedBarItemRef=null;}
+    if(id!=null)window.WebBuilderHeaderFooterRuntime?.render?.();
+    refreshCanvas();
+    return s;
+  }
   function update(id,patch,recordHistory=true){const target=id==null?state.selectedElementId:id;if(!target||!elements.getById(target))return null;if(recordHistory)window.WebBuilderHistory?.arm();const u=elements.update(target,patch);if(recordHistory)window.WebBuilderHistory?.commit();if(u)refreshCanvas();return u;}
   function updateField(id,field,value,recordHistory=true){return field?update(id,{[field]:value},recordHistory):null;}
   function remove(id,recordHistory=true){const target=id==null?state.selectedElementId:id;if(!target||!elements.getById(target))return false;if(recordHistory)window.WebBuilderHistory?.arm();const ok=elements.remove(target);if(recordHistory)window.WebBuilderHistory?.commit();if(ok)refreshCanvas();return ok;}
@@ -12,7 +22,20 @@
   window.WebBuilderInspector={getSelected,select,update,updateField,remove,duplicate};
 
   const byId=id=>document.getElementById(id), esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
-  function renderCore(){const form=byId("inspector-form"),empty=byId("no-selection"),item=getSelected();if(!form||!empty)return;const has=!!item;form.classList.toggle("hidden",!has);empty.classList.toggle("hidden",has);if(!item)return;const values={"prop-id":item.id||"","prop-text":item.text||"","prop-size":Number(item.size)||18,"prop-color":item.color||"#000000","prop-font-family":item.fontFamily||"inherit","prop-image-url":item.imageUrl||""};Object.entries(values).forEach(([id,v])=>{const e=byId(id);if(e&&document.activeElement!==e)e.value=v;});const image=item.type==="image",textLike=["text","headline","button"].includes(item.type);["group-image","group-text","group-color"].forEach(id=>byId(id)?.classList.toggle("hidden",id==="group-image"?!image:id==="group-text"?(image||item.type==="shape"||item.type==="icon"):!textLike));["bold","italic","underline"].forEach(f=>byId(`ttb-${f}`)?.classList.toggle("active",!!item[f]));["left","center","right"].forEach(a=>byId(`ttb-align-${a}`)?.classList.toggle("active",(item.align||"left")===a));}
+  function renderCore(){
+    const form=byId("inspector-form"),empty=byId("no-selection"),item=getSelected();
+    if(!form||!empty)return;
+    const has=!!item;
+    const barItems=state.selectedBarItemRef?(state.selectedBarItemRef.target==="footer"?state.footerItems:state.headerItems):null;
+    const barActive=!!(state.selectedBarItemRef&&barItems&&barItems.some(x=>x.id===state.selectedBarItemRef.id));
+    form.classList.toggle("hidden",!has);
+    // Keep the "no selection" hint hidden if a header/footer bar item is
+    // being edited instead — that panel (rendered by header-footer.js)
+    // takes its place.
+    empty.classList.toggle("hidden",has||barActive);
+    if(!item)return;
+    const values={"prop-id":item.id||"","prop-text":item.text||"","prop-size":Number(item.size)||18,"prop-color":item.color||"#000000","prop-font-family":item.fontFamily||"inherit","prop-image-url":item.imageUrl||""};Object.entries(values).forEach(([id,v])=>{const e=byId(id);if(e&&document.activeElement!==e)e.value=v;});const image=item.type==="image",textLike=["text","headline","button"].includes(item.type);["group-image","group-text","group-color"].forEach(id=>byId(id)?.classList.toggle("hidden",id==="group-image"?!image:id==="group-text"?(image||item.type==="shape"||item.type==="icon"):!textLike));["bold","italic","underline"].forEach(f=>byId(`ttb-${f}`)?.classList.toggle("active",!!item[f]));["left","center","right"].forEach(a=>byId(`ttb-align-${a}`)?.classList.toggle("active",(item.align||"left")===a));
+  }
   function updateCore(field,value){const item=getSelected();if(!item)return;updateField(item.id,field,value,true);renderAll();}
   function renderActions(){const item=getSelected();if(!item)return;const action=item.actionType||item.action||"none", sel=byId("prop-action-type");if(sel)sel.value=action;const url=byId("prop-action-url"),msg=byId("prop-action-msg"),product=byId("prop-product");if(url&&document.activeElement!==url)url.value=item.actionUrl||item.action_url||"";if(msg&&document.activeElement!==msg)msg.value=item.actionMsg||item.actionMessage||item.message||"";byId("group-action-url")?.classList.toggle("hidden",action!=="open-url");byId("group-action-msg")?.classList.toggle("hidden",!['alert-msg','open-custom-modal'].includes(action));byId("group-product")?.classList.toggle("hidden",action!=="cart-add");if(product){const list=window.WebBuilderProducts?.getAll?.()||[];product.innerHTML='<option value="">— Produkt auswählen —</option>'+list.map(p=>`<option value="${esc(p.id)}">${esc(p.name)} (${Number(p.discountPrice!=null?p.discountPrice:p.price).toFixed(2)} €)</option>`).join("");product.value=list.some(p=>p.id===item.productId)?item.productId:"";}}
   function renderSpecial(){let panel=byId("inspector-special-runtime"),form=byId("inspector-form");if(!panel&&form){panel=document.createElement("div");panel.id="inspector-special-runtime";panel.innerHTML='<hr class="divider"><h4>⚙️ Erweiterte Eigenschaften</h4>';form.appendChild(panel);const add=(label,input)=>{const g=document.createElement("div");g.className="form-group";const l=document.createElement("label");l.textContent=label;g.append(l,input);panel.appendChild(g);};const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.id="special-icon-frame";add("Icon-Rahmen anzeigen",checkbox);const color=document.createElement("input");color.type="color";color.id="special-icon-frame-color";add("Rahmenfarbe",color);const shape=document.createElement("select");shape.id="special-shape-type";[["rectangle","Rechteck"],["circle","Kreis"],["triangle","Dreieck"]].forEach(([v,t])=>shape.add(new Option(t,v)));add("Form",shape);const style=document.createElement("select");style.id="special-shape-style";[["solid","Gefüllt"],["outline","Umrandung"]].forEach(([v,t])=>style.add(new Option(t,v)));add("Form-Stil",style);const title=document.createElement("input");title.id="special-modal-title";add("Modal-Titel",title);const body=document.createElement("textarea");body.id="special-modal-body";body.rows=3;add("Modal-Inhalt",body);const footer=document.createElement("input");footer.id="special-modal-footer";add("Modal-Fußbereich",footer);const pos=document.createElement("select");pos.id="special-message-position";[["bottom-right","Unten rechts"],["bottom-left","Unten links"],["top-right","Oben rechts"],["top-left","Oben links"],["center","Zentriert"]].forEach(([v,t])=>pos.add(new Option(t,v)));add("Meldungsposition",pos);[[checkbox,"iconFrame",v=>v.checked],[color,"iconFrameColor",v=>v.value],[shape,"shapeType",v=>v.value],[style,"shapeStyle",v=>v.value],[title,"modalTitle",v=>v.value],[body,"modalBody",v=>v.value],[footer,"modalFooter",v=>v.value],[pos,"messagePosition",v=>v.value]].forEach(([e,f,r])=>e.addEventListener(e.type==="checkbox"?"change":(e.tagName==="INPUT"||e.tagName==="TEXTAREA")?"input":"change",()=>{const i=getSelected();if(i)update(i.id,{[f]:r(e)},true);renderAll();}));}
