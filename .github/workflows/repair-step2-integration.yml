@@ -17,11 +17,9 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import re
           p = Path('js/builder-legacy.js')
           text = p.read_text(encoding='utf-8')
-
-          for old, new in {
+          fixes = {
               'headerState.stickyToggle': 'headerStickyToggle',
               'headerState.heightInput': 'headerHeightInput',
               'headerState.itemsListEl': 'headerItemsListEl',
@@ -36,19 +34,11 @@ jobs:
               'prev.footerState.height': 'prev.footerHeight',
               'prev.footerState.bgColor': 'prev.footerBgColor',
               'prev.footerState.items': 'prev.footerItems',
-          }.items():
+              'headerState.enabled, headerState.sticky, headerState.height, headerState.bgColor, headerState.items,': 'headerEnabled: headerState.enabled, headerSticky: headerState.sticky, headerHeight: headerState.height, headerBgColor: headerState.bgColor, headerItems: headerState.items,',
+              'footerState.enabled, footerState.height, footerState.bgColor, footerState.items,': 'footerEnabled: footerState.enabled, footerHeight: footerState.height, footerBgColor: footerState.bgColor, footerItems: footerState.items,',
+          }
+          for old, new in fixes.items():
               text = text.replace(old, new)
-
-          text = re.sub(
-              r'^\s*headerState\.enabled, headerState\.sticky, headerState\.height, headerState\.bgColor, headerState\.items,\s*$',
-              '      headerEnabled: headerState.enabled, headerSticky: headerState.sticky, headerHeight: headerState.height, headerBgColor: headerState.bgColor, headerItems: headerState.items,',
-              text, flags=re.MULTILINE
-          )
-          text = re.sub(
-              r'^\s*footerState\.enabled, footerState\.height, footerState\.bgColor, footerState\.items\s*$',
-              '      footerEnabled: footerState.enabled, footerHeight: footerState.height, footerBgColor: footerState.bgColor, footerItems: footerState.items',
-              text, flags=re.MULTILINE
-          )
           p.write_text(text, encoding='utf-8')
       - name: Syntax check
         run: node --check js/builder-legacy.js
