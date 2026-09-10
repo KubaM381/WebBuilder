@@ -206,6 +206,23 @@
     return true;
   }
 
+  // NEU: reine Berechnungsfunktion für den Canvas-Hintergrund als CSS-String
+  // (ohne DOM-Zugriff). Rein additiv — setBackground() unten bleibt
+  // unverändert und nutzt diese Funktion NICHT, um bestehendes, funktionierendes
+  // Verhalten nicht anzufassen. Wird vom neuen export.js verwendet, damit die
+  // Export-Logik nicht dieselbe Hintergrund-Berechnung ein zweites Mal
+  // implementieren muss (siehe Projektregel 23: wenig Duplikation).
+  function computeBackgroundCss(background = state.background) {
+    if (!background) return "background:#ffffff;";
+    if (background.type === "gradient") {
+      return `background-image:linear-gradient(${background.gradDir || "to right"}, ${background.grad1 || "#4f46e5"}, ${background.grad2 || "#06b6d4"});`;
+    }
+    if (background.type === "image" && background.imageUrl) {
+      return `background:url("${background.imageUrl}") center/cover no-repeat;`;
+    }
+    return `background:${background.color || "#ffffff"};`;
+  }
+
   function setBackground(background = state.background) {
     const canvas = getCanvas();
     if (!canvas || !background) return false;
@@ -418,6 +435,8 @@
     renderCanvas, render: () => { setBackground(state.background); return renderCanvas(); },
     setBackground, setRendererCallbacks, bindPaletteDragAndDrop, bindBackgroundEditor,
     constants: { ZOOM_MIN, ZOOM_MAX, CANVAS_MIN_HEIGHT, DEFAULT_ZOOM, DEFAULT_CANVAS_HEIGHT },
-    render: renderOwnedCanvas
+    render: renderOwnedCanvas,
+    // NEU: additiv exponiert für js/export.js — kein bestehendes Verhalten geändert.
+    renderShapeInner, computeBackgroundCss
   };
 })();
