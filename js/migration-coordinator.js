@@ -11,6 +11,7 @@
   }
 
   const domains = {};
+  const STORAGE_KEY = state.STORAGE_KEY || state.storageKey || "webbuilder_pro_state";
 
   function register(name, adapter) {
     if (!name || !adapter || typeof adapter.read !== "function" || typeof adapter.write !== "function") {
@@ -29,7 +30,8 @@
     return Object.keys(domains).reduce((result, name) => {
       result[name] = {
         registered: true,
-        connected: !!domains[name].connected
+        connected: !!domains[name].connected,
+        hydrated: !!domains[name].hydrated
       };
       return result;
     }, {});
@@ -45,31 +47,82 @@
     return adapter ? adapter.write(value) : false;
   }
 
-  // Domain contracts. These are intentionally not connected to legacy locals
-  // yet; that connection is made only after the corresponding legacy domain
-  // has been patched safely.
+  function readPersistedProject() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      console.warn("WebBuilderMigration: persisted project could not be read.", error);
+      return null;
+    }
+  }
+
+  function hydrateSharedStateFromStorage() {
+    const persisted = readPersistedProject();
+    if (!persisted || typeof persisted !== "object") {
+      return { ok: false, reason: "no-persisted-project" };
+    }
+
+    if (Array.isArray(persisted.cartItems)) {
+      state.cartItems = persisted.cartItems;
+      domains.cart.hydrated = true;
+    }
+    if (Array.isArray(persisted.products)) {
+      state.products = persisted.products;
+      domains.products.hydrated = true;
+    }
+
+    if (persisted.cartButtonLabel != null) state.cartButtonLabel = persisted.cartButtonLabel;
+    if (persisted.cartConfig && typeof persisted.cartConfig === "object") {
+      state.cartConfig = persisted.cartConfig;
+    }
+    if (persisted.appliedDiscountPercent != null) state.appliedDiscountPercent = persisted.appliedDiscountPercent;
+    if (persisted.appliedDiscountLabel != null) state.appliedDiscountLabel = persisted.appliedDiscountLabel;
+
+    return {
+      ok: true,
+      cartItems: state.cartItems.length,
+      products: state.products.length
+    };
+  }
+
+  function validateArrayDomain(name) {
+    const adapter = get(name);
+    if (!adapter) return { ok: false, reason: "domain-not-registered" };
+    const value = adapter.read();
+    return {
+      ok: Array.isArray(value),
+      count: Array.isArray(value) ? value.length : 0
+    };
+  }
+
+  // Domain contracts. These remain separate from legacy lexical variables
+  // until the corresponding legacy domain is patched safely.
   register("cart", {
     connected: false,
-    read: () => window.WebBuilderCart ? window.WebBuilderCart.getItems() : [],
+    hydrated: false,
+    read: () => window.WebBuilderCart ? window.WebBuilderCart.getItems() : state.cartItems,
     write: value => {
-      if (!window.WebBuilderCart || !Array.isArray(value)) return false;
-      window.WebBuilderState.cartItems = value;
+      if (!Array.isArray(value)) return false;
+      state.cartItems = value;
       return true;
     }
   });
 
   register("products", {
     connected: false,
-    read: () => window.WebBuilderCart ? window.WebBuilderCart.getProducts() : [],
+    hydrated: false,
+    read: () => window.WebBuilderCart ? window.WebBuilderCart.getProducts() : state.products,
     write: value => {
       if (!Array.isArray(value)) return false;
-      window.WebBuilderState.products = value;
+      state.products = value;
       return true;
     }
   });
 
   register("headerFooter", {
     connected: false,
+    hydrated: false,
     read: () => window.WebBuilderHeaderFooter ? {
       header: window.WebBuilderHeaderFooter.getHeader(),
       footer: window.WebBuilderHeaderFooter.getFooter()
@@ -82,12 +135,21 @@
     }
   });
 
+  // Import existing localStorage data into the shared state before the legacy
+  // editor starts. This is deliberately one-way for now: legacy remains the
+  // live source of truth, but the modular state no longer starts empty.
+  const hydration = hydrateSharedStateFromStorage();
+
   window.WebBuilderMigration = {
     register,
     get,
     status,
     read,
     write,
-    domains
+    validateArrayDomain,
+    hydrateSharedStateFromStorage,
+    readPersistedProject,
+    domains,
+    hydration
   };
 })();
