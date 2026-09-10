@@ -17,8 +17,7 @@
 
   function normalizeCartItem(item = {}) {
     const price = Number(item.price) || 0;
-    const discountPrice = item.discountPrice != null && item.discountPrice !== ""
-      ? Number(item.discountPrice) || 0 : null;
+    const discountPrice = item.discountPrice != null && item.discountPrice !== "" ? Number(item.discountPrice) || 0 : null;
     return {
       id: item.id || `cart_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       name: item.name || "Produkt", price,
@@ -31,8 +30,7 @@
 
   function getEffectivePrice(item) {
     const discount = Number(item && item.discountPrice);
-    return Number.isFinite(discount) && discount > 0 && discount < (Number(item.price) || 0)
-      ? discount : Number(item && item.price) || 0;
+    return Number.isFinite(discount) && discount > 0 && discount < (Number(item.price) || 0) ? discount : Number(item && item.price) || 0;
   }
 
   function normalizeState(emit = false) {
@@ -53,16 +51,13 @@
     const normalized = normalizeCartItem(source);
     const existing = state.cartItems.find(item => item.name === normalized.name);
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    if (existing) existing.qty = (Number(existing.qty) || 0) + 1;
-    else state.cartItems.push(normalized);
+    if (existing) existing.qty = (Number(existing.qty) || 0) + 1; else state.cartItems.push(normalized);
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify(existing ? "increment" : "add", existing || normalized);
-    return existing || normalized;
+    notify(existing ? "increment" : "add", existing || normalized); return existing || normalized;
   }
 
   function updateQty(id, qty, recordHistory = true) {
-    const item = state.cartItems.find(entry => entry && entry.id === id);
-    if (!item) return null;
+    const item = state.cartItems.find(entry => entry && entry.id === id); if (!item) return null;
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
     item.qty = Math.max(1, Number(qty) || 1);
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
@@ -70,16 +65,13 @@
   }
 
   function changeQty(id, delta, recordHistory = true) {
-    const item = state.cartItems.find(entry => entry && entry.id === id);
-    if (!item) return null;
+    const item = state.cartItems.find(entry => entry && entry.id === id); if (!item) return null;
     const nextQty = (Number(item.qty) || 0) + (Number(delta) || 0);
-    if (nextQty <= 0) return removeItem(id, recordHistory);
-    return updateQty(id, nextQty, recordHistory);
+    return nextQty <= 0 ? removeItem(id, recordHistory) : updateQty(id, nextQty, recordHistory);
   }
 
   function updatePrice(id, price, recordHistory = true) {
-    const item = state.cartItems.find(entry => entry && entry.id === id);
-    if (!item) return null;
+    const item = state.cartItems.find(entry => entry && entry.id === id); if (!item) return null;
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
     item.price = Number(price) || 0;
     if (item.discountPrice != null && item.discountPrice >= item.price) item.discountPrice = null;
@@ -88,8 +80,7 @@
   }
 
   function updateDiscountPrice(id, discountPrice, recordHistory = true) {
-    const item = state.cartItems.find(entry => entry && entry.id === id);
-    if (!item) return null;
+    const item = state.cartItems.find(entry => entry && entry.id === id); if (!item) return null;
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
     const value = Number(discountPrice);
     item.discountPrice = Number.isFinite(value) && value > 0 && value < (Number(item.price) || 0) ? value : null;
@@ -98,8 +89,7 @@
   }
 
   function removeItem(id, recordHistory = true) {
-    const index = state.cartItems.findIndex(item => item && item.id === id);
-    if (index < 0) return false;
+    const index = state.cartItems.findIndex(item => item && item.id === id); if (index < 0) return false;
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
     const removed = state.cartItems.splice(index, 1)[0];
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
@@ -121,11 +111,26 @@
     notify("config", state.cartConfig); return state.cartConfig;
   }
 
+  function setItemDisplay(patch = {}, recordHistory = true) {
+    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
+    state.cartConfig.itemDisplay = Object.assign({}, state.cartConfig.itemDisplay || {}, clone(patch));
+    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
+    notify("display", state.cartConfig.itemDisplay); return state.cartConfig.itemDisplay;
+  }
+
+  function setButtonLabel(label, recordHistory = true) {
+    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
+    state.cartButtonLabel = String(label || "Zur Kasse gehen");
+    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
+    notify("button-label", state.cartButtonLabel); return state.cartButtonLabel;
+  }
+
   normalizeState();
   window.WebBuilderCart = {
     getItems, getProducts, getConfig, getCount, getSubtotal, getEffectivePrice,
     addItem, updateQty, changeQty, updatePrice, updateDiscountPrice, removeItem, clear,
-    addProduct: products.add, updateProduct: products.update, removeProduct: products.remove,
-    setConfig, normalizeProduct: products.normalize, normalizeCartItem, normalizeState
+    setConfig, setItemDisplay, setButtonLabel, normalizeProduct: products.normalize,
+    normalizeCartItem, normalizeState,
+    addProduct: products.add, updateProduct: products.update, removeProduct: products.remove
   };
 })();
