@@ -1,8 +1,6 @@
 // WebBuilder storage module
-// Transitional storage/history service.
-// The editor core still owns its legacy local variables; this module is the
-// shared service that future editor modules can consume without touching DOM.
-
+// Shared project persistence and snapshot service.
+// Domain services remain the source of truth for normalized runtime state.
 (() => {
   const state = window.WebBuilderState;
   if (!state) {
@@ -15,6 +13,19 @@
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
+  }
+
+  function normalizeRuntimeState() {
+    const products = window.WebBuilderProducts;
+    const cart = window.WebBuilderCart;
+    const headerFooter = window.WebBuilderHeaderFooter;
+    const canvas = window.WebBuilderCanvas;
+
+    if (products && typeof products.normalizeState === "function") products.normalizeState();
+    if (cart && typeof cart.normalizeState === "function") cart.normalizeState();
+    if (headerFooter && typeof headerFooter.normalizeState === "function") headerFooter.normalizeState();
+    if (canvas && typeof canvas.normalizeState === "function") canvas.normalizeState();
+    return state;
   }
 
   function createSnapshot(source = state) {
@@ -46,6 +57,7 @@
 
     const restored = createSnapshot(Object.assign({}, target, snapshot));
     Object.assign(target, restored);
+    if (target === state) normalizeRuntimeState();
     return true;
   }
 
@@ -57,6 +69,7 @@
   }
 
   function armHistory() {
+    normalizeRuntimeState();
     state.pendingSnapshot = createSnapshot();
     return state.pendingSnapshot;
   }
@@ -75,6 +88,7 @@
   }
 
   function save(extra = {}) {
+    normalizeRuntimeState();
     const snapshot = Object.assign(createSnapshot(), extra);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
@@ -123,6 +137,7 @@
     STORAGE_KEY,
     HISTORY_LIMIT,
     clone,
+    normalizeRuntimeState,
     createSnapshot,
     applySnapshot,
     pushHistory,
