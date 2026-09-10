@@ -4,65 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Visual Web Page Builder</title>
-  
+
   <!-- Zentrale Builder-CSS -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-  <!-- Top Toolbar -->
+  <!-- Top Toolbar: nur noch Speichern / Export / Vorschau -->
   <header class="app-header">
     <div class="brand">🚀 WebBuilder <span>Pro</span></div>
-
-    <!-- Canvas Background Controls -->
-    <div class="toolbar-center">
-      <span class="toolbar-group-label">Hintergrund:</span>
-      <div class="bg-controls">
-        <select id="bg-type">
-          <option value="solid">Einfarbig</option>
-          <option value="gradient">Farbverlauf</option>
-          <option value="image">Hintergrundbild</option>
-        </select>
-
-        <div id="bg-solid-group">
-          <input type="color" id="bg-color-input" value="#ffffff" title="Hintergrundfarbe wählen">
-        </div>
-
-        <div id="bg-gradient-group" class="hidden" style="display: flex; gap: 6px; align-items: center;">
-          <input type="color" id="bg-grad-1" value="#4f46e5" title="Farbe 1">
-          <input type="color" id="bg-grad-2" value="#06b6d4" title="Farbe 2">
-          <select id="bg-grad-dir" style="padding: 4px;">
-            <option value="to right">➔ Rechts</option>
-            <option value="to bottom">⬇️ Unten</option>
-            <option value="135deg">↘️ Diagonal</option>
-          </select>
-        </div>
-
-        <div id="bg-image-group" class="hidden" style="display: flex; gap: 6px; align-items: center;">
-          <input type="text" id="bg-image-url" placeholder="Bild URL eingeben..." style="width: 150px;">
-          <div class="file-input-wrapper">
-            <button class="file-input-btn">📁 Datei</button>
-            <input type="file" id="bg-image-file" accept="image/*">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- toolbar-actions trägt zusätzlich die Klasse "toolbar", damit builder.js
-         die Header-/Footer-Steuerung und den Filter-Toggle hier andocken kann -->
-    <div class="toolbar-actions toolbar">
-      <button id="btn-mode-toggle" class="btn btn-secondary">👁️ Vorschau-Modus</button>
-      <button id="btn-clear" class="btn btn-danger">🗑️ Canvas leeren</button>
-      <button id="btn-export" class="btn btn-primary">💾 HTML Code exportieren</button>
-      <!-- "Mehr"-Menüpunkt: builder.js sucht danach, um das Kategorien-Filter-Widget
-           direkt daneben einzuhängen (siehe ensureFilterMenuEntry in builder.js) -->
-      <button id="btn-more-menu" class="btn btn-secondary">Mehr</button>
+    <div class="toolbar-actions">
+      <button id="btn-save" class="btn btn-secondary">💾 Speichern</button>
+      <button id="btn-export" class="btn btn-primary">📤 Export</button>
+      <button id="btn-mode-toggle" class="btn btn-secondary">👁️ Vorschau</button>
     </div>
   </header>
 
   <div class="app-body">
-    <!-- sidebar trägt zusätzlich die Klasse "palette-panel", damit builder.js
-         die "Eigene Icons"-Palette hier andockt statt an den <body> zu hängen -->
+    <!-- LINKE SPALTE: alle Bearbeitungsoptionen -->
     <aside class="sidebar palette-panel">
       <h3>Bausteine</h3>
       <p class="help-text">Ziehe Bausteine auf die Zeichenfläche.</p>
@@ -76,7 +35,15 @@
         <div class="draggable-item" draggable="true" data-type="image"><span class="item-icon">🖼️</span><span>Bild</span></div>
       </div>
 
-      <div class="section-title">Icons & Symbole</div>
+      <div class="section-title">Test-Objekte</div>
+      <div class="palette-grid">
+        <div class="draggable-item" draggable="true" data-type="shape" data-shape="rectangle"><span class="item-icon">▭</span><span>Rechteck</span></div>
+        <div class="draggable-item" draggable="true" data-type="shape" data-shape="circle"><span class="item-icon">⚪</span><span>Kreis</span></div>
+        <div class="draggable-item" draggable="true" data-type="shape" data-shape="triangle"><span class="item-icon">▲</span><span>Dreieck</span></div>
+      </div>
+      <p class="help-text">Test-Objekt auf die Fläche ziehen und rechts im Inspector Form, Farbe &amp; Stil wählen.</p>
+
+      <div class="section-title">Icons &amp; Symbole</div>
       <div class="palette-grid">
         <div class="draggable-item" draggable="true" data-type="icon" data-icon="cart"><span class="item-icon">🛒</span><span>Warenkorb</span></div>
         <div class="draggable-item" draggable="true" data-type="icon" data-icon="settings"><span class="item-icon">⚙️</span><span>Einstellungen</span></div>
@@ -85,16 +52,95 @@
         <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-left"><span class="item-icon">⬅️</span><span>Pfeil Links</span></div>
         <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-right"><span class="item-icon">➡️</span><span>Pfeil Rechts</span></div>
       </div>
-      <!-- Ab hier hängt builder.js zur Laufzeit den Abschnitt "Eigene Icons"
-           (#icon-palette-custom) automatisch an, sobald addCustomIcon() genutzt wird. -->
+      <!-- builder.js hängt hier zur Laufzeit "Eigene Icons" (#icon-palette-custom) an -->
+
+      <div class="section-title">Hintergrund der Seite</div>
+      <div class="sidebar-subsection sidebar-bg-controls">
+        <div class="form-group">
+          <label for="bg-type">Typ</label>
+          <select id="bg-type">
+            <option value="solid">Einfarbig</option>
+            <option value="gradient">Farbverlauf</option>
+            <option value="image">Hintergrundbild</option>
+          </select>
+        </div>
+
+        <div id="bg-solid-group" class="form-group">
+          <label for="bg-color-input">Farbe</label>
+          <input type="color" id="bg-color-input" value="#ffffff" title="Hintergrundfarbe wählen">
+        </div>
+
+        <div id="bg-gradient-group" class="hidden form-group">
+          <label>Farbverlauf</label>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <input type="color" id="bg-grad-1" value="#4f46e5" title="Farbe 1">
+            <input type="color" id="bg-grad-2" value="#06b6d4" title="Farbe 2">
+            <select id="bg-grad-dir">
+              <option value="to right">➔ Rechts</option>
+              <option value="to bottom">⬇️ Unten</option>
+              <option value="135deg">↘️ Diagonal</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="bg-image-group" class="hidden form-group">
+          <label for="bg-image-url">Bild</label>
+          <input type="text" id="bg-image-url" placeholder="Bild URL eingeben...">
+          <div class="file-input-wrapper" style="margin-top:6px;">
+            <button type="button" class="file-input-btn">📁 Datei wählen</button>
+            <input type="file" id="bg-image-file" accept="image/*">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Kopf- &amp; Fußzeile</div>
+      <div class="sidebar-subsection">
+        <label class="checkbox-row"><input type="checkbox" id="header-toggle"> Header anzeigen</label>
+        <label class="checkbox-row"><input type="checkbox" id="header-sticky-toggle"> Header fixiert (sticky)</label>
+        <div class="form-group">
+          <label for="header-text-input">Header-Text</label>
+          <input type="text" id="header-text-input" value="Meine Website">
+        </div>
+        <hr class="divider">
+        <label class="checkbox-row"><input type="checkbox" id="footer-toggle"> Footer anzeigen</label>
+        <div class="form-group">
+          <label for="footer-text-input">Footer-Text</label>
+          <input type="text" id="footer-text-input" value="© 2026 WebBuilder Pro">
+        </div>
+      </div>
+
+      <div class="section-title">Warenkorb</div>
+      <div class="sidebar-subsection">
+        <button type="button" id="btn-open-cart" class="btn btn-secondary" style="width:100%;">🛒 Warenkorb bearbeiten</button>
+        <div class="form-group" style="margin-top:10px;">
+          <label for="cart-button-label">Beschriftung Checkout-Button</label>
+          <input type="text" id="cart-button-label" value="Zur Kasse gehen">
+        </div>
+      </div>
+
+      <div class="section-title">Kategorien</div>
+      <div id="category-manager-panel" class="sidebar-subsection">
+        <div id="category-add-row">
+          <input type="text" id="category-new-name" placeholder="z. B. Pulver">
+          <button type="button" class="btn btn-primary" id="category-add-btn">+</button>
+        </div>
+        <div id="category-manager-list"></div>
+        <p class="help-text">Elemente werden weiterhin rechts im Inspector einer Kategorie zugewiesen. Produkte werden hier später ergänzt.</p>
+      </div>
+
+      <div class="section-title">Danger Zone</div>
+      <button type="button" id="btn-clear" class="btn btn-danger-outline" style="width:100%;">🗑️ Canvas leeren</button>
     </aside>
 
     <main class="canvas-container">
-      <div id="canvas" class="canvas-area"><div id="canvas-hint" class="canvas-hint">Ziehe Elemente hierher...</div></div>
+      <div id="canvas-column" class="canvas-column">
+        <div id="canvas" class="canvas-area"><div id="canvas-hint" class="canvas-hint">Ziehe Elemente hierher...</div></div>
+      </div>
     </main>
 
+    <!-- RECHTE SPALTE: Bearbeitungsmöglichkeiten für das ausgewählte Element -->
     <aside class="inspector">
-      <h3>Eigenschaften & Logik</h3>
+      <h3>Eigenschaften &amp; Logik</h3>
       <div id="no-selection" class="empty-inspector"><p>Wähle ein Element auf der Zeichenfläche aus, um Text, Aussehen und Klick-Aktionen zu konfigurieren.</p></div>
       <div id="inspector-form" class="inspector-form hidden">
         <div class="form-group"><label for="prop-id">Element ID</label><input type="text" id="prop-id" readonly></div>
@@ -103,15 +149,14 @@
         <div class="form-group" id="group-size"><label for="prop-size">Größe / Breite (px)</label><input type="number" id="prop-size" min="12" max="800" value="24"></div>
         <div class="form-group" id="group-color"><label for="prop-color">Farbe</label><input type="color" id="prop-color" value="#000000"></div>
         <hr class="divider">
-        <h4>⚡ Verbindungsfunktion & Logik</h4>
+        <h4>⚡ Verbindungsfunktion &amp; Logik</h4>
         <p class="help-text">Wähle eine Aktion aus, die beim Anklicken des Elements ausgeführt werden soll:</p>
         <div class="form-group"><label for="prop-action-type">Aktion beim Klick</label><select id="prop-action-type"><option value="none">Keine Aktion</option><option value="scroll-top">Nach ganz oben scrollen ⬆️</option><option value="scroll-bottom">Nach ganz unten scrollen ⬇️</option><option value="history-back">Zurück-Funktion (Browser) ↩️</option><option value="open-url">Neue Seite / URL öffnen 🌐</option><option value="cart-add">In den Warenkorb legen 🛒</option><option value="open-cart-drawer">Warenkorb Drawer öffnen 🛍️</option><option value="open-custom-modal">Eigenes Modal öffnen 🪧</option><option value="alert-msg">Benutzerdefinierte Meldung anzeigen 💬</option></select></div>
         <div class="form-group hidden" id="group-action-url"><label for="prop-action-url">Ziel-URL / Link</label><input type="url" id="prop-action-url" placeholder="https://beispiel.de"></div>
         <div class="form-group hidden" id="group-action-msg"><label for="prop-action-msg">Meldungstext</label><input type="text" id="prop-action-msg" placeholder="Aktion erfolgreich!"></div>
         <div class="form-actions" style="margin-top:20px;"><button id="btn-delete-element" class="btn btn-danger-outline">Element löschen</button></div>
-        <!-- Ab hier hängt builder.js zur Laufzeit den Block #inspector-extended an
-             (Styling, Toast-Position, Modal-Inhalt, Text-Link/Hervorhebung,
-             Hover-Effekte, Kategorien, Gruppierung/Vorlagen). -->
+        <!-- builder.js hängt hier #inspector-extended an (Styling, Form-Optionen für
+             Test-Objekte, Toast-Position, Modal-Inhalt, Text-Link/Hervorhebung, Kategorie) -->
       </div>
     </aside>
   </div>
