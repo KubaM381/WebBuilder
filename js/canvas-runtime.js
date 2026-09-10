@@ -1,7 +1,6 @@
 // WebBuilder Canvas runtime takeover
 // Owns migrated canvas controls and routes preview clicks through the
-// extracted action runtime. The legacy editor remains only as a transition
-// layer until its duplicated canvas implementation is removed.
+// extracted action runtime. The legacy editor remains as a transition layer.
 (() => {
   const state = window.WebBuilderState;
   const canvas = window.WebBuilderCanvas;
@@ -12,6 +11,8 @@
     console.error("WebBuilderCanvasRuntime: required canvas services missing.");
     return;
   }
+
+  let renderQueued = false;
 
   function isEditorEventTarget(target, id) {
     return target && (target.id === id || target.closest?.(`#${id}`));
@@ -63,6 +64,32 @@
     canvas.setBackground(state.background);
     canvas.syncDom();
   }
+
+  function scheduleRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    window.requestAnimationFrame?.(() => {
+      renderQueued = false;
+      renderModularCanvas();
+    }) || window.setTimeout(() => {
+      renderQueued = false;
+      renderModularCanvas();
+    }, 0);
+  }
+
+  state.subscribe?.(event => {
+    const domain = event?.domain;
+    if (["elements", "selection", "preview", "canvas", "background"].includes(domain)) {
+      scheduleRender();
+    }
+  });
+
+  window.addEventListener("webbuilder:state-change", event => {
+    const domain = event.detail?.domain;
+    if (["elements", "selection", "preview", "canvas", "background"].includes(domain)) {
+      scheduleRender();
+    }
+  });
 
   document.addEventListener("click", handleCanvasControls, true);
 
