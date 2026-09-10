@@ -4,7 +4,6 @@
 (() => {
   const state = window.WebBuilderState;
   const inspector = window.WebBuilderInspector;
-  const products = window.WebBuilderProducts;
   if (!state || !inspector) {
     console.error("WebBuilderInspectorActionsRuntime: required services missing.");
     return;
@@ -15,6 +14,7 @@
   const byId = id => document.getElementById(id);
   const actionSelect = () => byId("prop-action-type");
   const selected = () => inspector.getSelected?.();
+  const getProducts = () => window.WebBuilderProducts;
 
   function setHidden(id, hidden) {
     const el = byId(id);
@@ -30,6 +30,7 @@
   function renderProducts() {
     const select = byId("prop-product");
     const hint = byId("prop-product-hint");
+    const products = getProducts();
     if (!select || !products) return;
 
     const list = products.getAll();
@@ -44,9 +45,8 @@
 
   function escapeHtml(value) {
     return String(value ?? "")
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
   }
   const escapeAttr = escapeHtml;
 
@@ -66,8 +66,8 @@
     if (actionSelectEl) actionSelectEl.value = action;
     const url = byId("prop-action-url");
     const msg = byId("prop-action-msg");
-    if (url) url.value = item.actionUrl || item.action_url || "";
-    if (msg) msg.value = item.actionMsg || item.actionMessage || item.message || "";
+    if (url && document.activeElement !== url) url.value = item.actionUrl || item.action_url || "";
+    if (msg && document.activeElement !== msg) msg.value = item.actionMsg || item.actionMessage || item.message || "";
     syncActionVisibility(action);
     renderProducts();
   }
@@ -82,9 +82,7 @@
   function handleActionType(event) {
     event.preventDefault();
     event.stopImmediatePropagation();
-    const value = event.target.value || "none";
-    updateField("actionType", value);
-    syncActionVisibility(value);
+    updateField("actionType", event.target.value || "none");
   }
 
   function handleActionValue(event, field) {
@@ -118,6 +116,5 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => window.setTimeout(bind, 0));
-
   window.WebBuilderInspectorActionsRuntime = { bind, render, renderProducts };
 })();
