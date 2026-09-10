@@ -12,6 +12,7 @@
     "WebBuilderInspector",
     "WebBuilderInspectorActionsRuntime",
     "WebBuilderInspectorPropertiesRuntime",
+    "WebBuilderInspectorSpecialRuntime",
     "WebBuilderHeaderFooter",
     "WebBuilderProducts",
     "WebBuilderProductsRuntime",
@@ -30,6 +31,7 @@
     const actionRuntime = window.WebBuilderActionRuntime;
     const inspectorActions = window.WebBuilderInspectorActionsRuntime;
     const inspectorProperties = window.WebBuilderInspectorPropertiesRuntime;
+    const inspectorSpecial = window.WebBuilderInspectorSpecialRuntime;
     const products = window.WebBuilderProducts;
     const productsRuntime = window.WebBuilderProductsRuntime;
     const cart = window.WebBuilderCart;
@@ -43,6 +45,7 @@
       actionRuntime: !!actionRuntime,
       inspectorActionsRuntime: !!inspectorActions,
       inspectorPropertiesRuntime: !!inspectorProperties,
+      inspectorSpecialRuntime: !!inspectorSpecial,
       productsService: !!products,
       productsRuntime: !!productsRuntime,
       cartService: !!cart,
