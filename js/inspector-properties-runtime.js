@@ -92,6 +92,21 @@
     update("align", align);
   }
 
+  function handleImageFile(event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const item = selected();
+    const file = event.target.files?.[0];
+    if (!item || !file || !file.type.startsWith("image/")) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") update("imageUrl", reader.result);
+    };
+    reader.onerror = () => console.error("WebBuilderInspectorPropertiesRuntime: image read failed.");
+    reader.readAsDataURL(file);
+  }
+
   function handleDelete(event) {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -110,6 +125,7 @@
     byId("prop-color")?.addEventListener("change", event => handleField(event, "color"), true);
     byId("prop-font-family")?.addEventListener("change", event => handleField(event, "fontFamily"), true);
     byId("prop-image-url")?.addEventListener("change", event => handleField(event, "imageUrl"), true);
+    byId("prop-image-file")?.addEventListener("change", handleImageFile, true);
 
     byId("ttb-bold")?.addEventListener("click", event => handleToggle(event, "bold"), true);
     byId("ttb-italic")?.addEventListener("click", event => handleToggle(event, "italic"), true);
