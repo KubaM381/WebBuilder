@@ -1,6 +1,6 @@
 // WebBuilder shared state registry
-// Transitional module: builder-core.js still owns its local state during the migration.
-// Future modules should read/write through WebBuilderState instead of introducing new globals.
+// Transitional source of truth for the modular migration.
+// builder-core.js still owns the live legacy variables until each subsystem is migrated.
 
 window.WebBuilderState = window.WebBuilderState || {
   elements: [],
@@ -44,6 +44,14 @@ window.WebBuilderState = window.WebBuilderState || {
   footerBgColor: "#111827",
   footerItems: [],
   selectedBarItemRef: null,
+  background: {
+    type: "solid",
+    color: "#ffffff",
+    grad1: "#4f46e5",
+    grad2: "#06b6d4",
+    gradDir: "to right",
+    imageUrl: ""
+  },
   storageKey: "webbuilder_pro_state",
   historyLimit: 30,
   historyStack: [],
