@@ -3,7 +3,12 @@
 (() => {
   const state=window.WebBuilderState;if(!state){console.error("WebBuilderPreview: WebBuilderState is not available.");return;}
   const isPreview=()=>!!state.isPreviewMode;
-  function apply(mode=state.isPreviewMode){state.isPreviewMode=!!mode;document.body.classList.toggle("preview-mode",state.isPreviewMode);const b=document.getElementById("btn-mode-toggle");if(b)b.innerHTML=state.isPreviewMode?"✏️ Editor-Modus":"👁️ Vorschau";window.WebBuilderCanvas?.applyZoom(state.isPreviewMode);window.WebBuilderCanvas?.render?.();state.notify?.({domain:"preview",type:state.isPreviewMode?"enter":"exit"});return state.isPreviewMode;}
+  function apply(mode=state.isPreviewMode){state.isPreviewMode=!!mode;document.body.classList.toggle("preview-mode",state.isPreviewMode);const b=document.getElementById("btn-mode-toggle");if(b)b.innerHTML=state.isPreviewMode?"✏️ Editor-Modus":"👁️ Vorschau";window.WebBuilderCanvas?.applyZoom(state.isPreviewMode);window.WebBuilderCanvas?.render?.();
+    // FIX: state.notify(domain, action, payload) expects positional args, not
+    // an object. Passing an object meant no subscriber ever matched
+    // domain === "preview", so nothing reacted to preview mode toggling.
+    state.notify?.("preview", state.isPreviewMode ? "enter" : "exit");
+    return state.isPreviewMode;}
   const enter=()=>apply(true),exit=()=>apply(false),toggle=()=>apply(!state.isPreviewMode);
   function bindToggle(){const b=document.getElementById("btn-mode-toggle");if(!b||b.dataset.webBuilderPreviewBound==="true")return;b.dataset.webBuilderPreviewBound="true";b.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();toggle();},true);}
   window.WebBuilderPreview={isPreview,apply,enter,exit,toggle,bindToggle};
