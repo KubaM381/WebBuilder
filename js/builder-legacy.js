@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================
   // GLOBAL STATE
   // ============================================================
-  let elements = []; // Canvas-Elemente
+  const elements = window.WebBuilderElements.createLegacyProxy(); // shared element state
   let selectedElementId = null;
   let isPreviewMode = false;
   let draggedType = null;
@@ -304,7 +304,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function restoreState(prev) {
-    elements = prev.elements;
+    WebBuilderElements.replaceAll(prev.elements);
+    selectedElementId = WebBuilderState.selectedElementId;
     cartItems = prev.cartItems;
     cartConfig = prev.cartConfig;
     cartButtonLabel = prev.cartButtonLabel;
@@ -319,6 +320,8 @@ document.addEventListener("DOMContentLoaded", () => {
     footerState.height = prev.footerHeight;
     footerState.bgColor = prev.footerBgColor;
     footerState.items = prev.footerItems;
+
+    WebBuilderElements.setSelected(null);
 
     selectedElementId = null;
     selectedBarItemRef = null;
@@ -1645,8 +1648,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function selectElement(id) {
-    selectedElementId = id;
-    const item = elements.find(el => el.id === id);
+    WebBuilderElements.setSelected(id);
+    selectedElementId = WebBuilderState.selectedElementId;
+    const item = WebBuilderElements.getSelected();
 
     if (!item) {
       noSelectionUI.classList.remove("hidden");
@@ -1727,7 +1731,8 @@ document.addEventListener("DOMContentLoaded", () => {
   btnDelete.addEventListener("click", () => {
     if (selectedElementId) {
       pushHistory();
-      elements = elements.filter(el => el.id !== selectedElementId);
+      WebBuilderElements.remove(selectedElementId);
+      WebBuilderElements.setSelected(null);
       selectedElementId = null;
       selectElement(null);
       renderCanvas();
@@ -1813,6 +1818,7 @@ document.addEventListener("DOMContentLoaded", () => {
     applyZoom();
 
     if (isPreviewMode) {
+      WebBuilderElements.setSelected(null);
       selectedElementId = null;
       renderCanvas();
       showToast("Vorschau-Modus aktiv - Klick-Aktionen sind bereit!", "info");
@@ -1824,7 +1830,8 @@ document.addEventListener("DOMContentLoaded", () => {
   btnClear.addEventListener("click", () => {
     if (confirm("Möchtest du wirklich alle Elemente von der Zeichenfläche löschen?")) {
       pushHistory();
-      elements = [];
+      WebBuilderElements.clear();
+      WebBuilderElements.setSelected(null);
       selectedElementId = null;
       selectElement(null);
       renderCanvas();
@@ -1905,7 +1912,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!raw) return;
     try {
       const state = JSON.parse(raw);
-      elements = state.elements || [];
+      WebBuilderElements.replaceAll(state.elements || []);
+      selectedElementId = WebBuilderState.selectedElementId;
       cartItems = state.cartItems || [];
       cartButtonLabel = state.cartButtonLabel || "Zur Kasse gehen";
       products = state.products || [];
