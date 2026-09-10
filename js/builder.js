@@ -15,6 +15,7 @@ document.write('<script src="js/inspector.js"><\/script>');
 document.write('<script src="js/products.js"><\/script>');
 document.write('<script src="js/inspector-actions-runtime.js"><\/script>');
 document.write('<script src="js/inspector-properties-runtime.js"><\/script>');
+document.write('<script src="js/inspector-special-runtime.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 document.write('<script src="js/header-footer.js"><\/script>');
 document.write('<script src="js/cart.js"><\/script>');
