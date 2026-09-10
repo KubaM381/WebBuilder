@@ -1,9 +1,34 @@
 // WebBuilder core orchestration layer
 //
-// The former monolithic editor implementation is preserved in builder-legacy.js
-// during the staged migration. Shared services are loaded by builder.js before
-// this file. The legacy canvas is followed by a modular takeover guard so the
-// extracted renderer remains the visual source of truth during the transition.
+// The staged legacy editor has been removed. All live builder behavior is now
+// provided by the modular services loaded by builder.js.
 
-document.write('<script src="js/builder-legacy.js"><\/script>');
-document.write('<script src="js/legacy-canvas-takeover.js"><\/script>');
+(() => {
+  const required = [
+    "WebBuilderState",
+    "WebBuilderCanvasRuntime",
+    "WebBuilderElements",
+    "WebBuilderInspector",
+    "WebBuilderProducts",
+    "WebBuilderCart",
+    "WebBuilderHeaderFooter",
+    "WebBuilderPreview"
+  ];
+
+  const missing = required.filter(name => !window[name]);
+  if (missing.length) {
+    console.error("WebBuilder core incomplete. Missing services:", missing);
+    return;
+  }
+
+  // Final modular initialization pass.
+  window.WebBuilderCanvasRuntime.render();
+  window.WebBuilderHeaderFooterRuntime?.render();
+  window.WebBuilderProductsRuntime?.render?.();
+  window.WebBuilderCartRuntime?.render?.();
+  window.WebBuilderCartConfigRuntime?.render?.();
+  window.WebBuilderInspectorPropertiesRuntime?.render?.();
+  window.WebBuilderInspectorSpecialRuntime?.render?.();
+
+  console.info("WebBuilder core ready: modular runtime active.");
+})();
