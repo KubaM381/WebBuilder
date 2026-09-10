@@ -1,1 +1,18 @@
-/* WebBuilder CSS architecture placeholder: toolbar styles will be migrated here in the dedicated CSS migration step. */
+.app-header { height: 64px; background: var(--bg-panel); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 20; box-shadow: var(--shadow-sm); gap: 15px; flex-shrink: 0; }
+.brand { font-size: 1.25rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.025em; white-space: nowrap; }
+.brand span { color: var(--primary); }
+.toolbar-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.btn { padding: 8px 14px; border-radius: 6px; border: none; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background-color: var(--primary); color: white; }
+.btn-primary:hover { background-color: var(--primary-hover); }
+.btn-secondary { background-color: var(--primary-light); color: var(--primary); }
+.btn-secondary:hover { background-color: #c7d2fe; }
+.btn-success { background-color: var(--success); color: white; }
+.btn-success:hover { background-color: var(--success-hover); }
+.btn-danger { background-color: var(--danger-light); color: var(--danger); }
+.btn-danger:hover { background-color: #fca5a5; }
+.btn-danger-outline { background: transparent; border: 1px solid var(--danger); color: var(--danger); width: 100%; }
+.btn-danger-outline:hover { background: var(--danger); color: white; }
+.btn-sm { padding: 5px 8px; font-size: 0.75rem; }
+.btn-pill { border-radius: 999px; }
