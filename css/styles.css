@@ -9,6 +9,7 @@
   --danger-hover: #dc2626;
   --danger-light: #fee2e2;
   --success: #10b981;
+  --success-hover: #0ea472;
   --text-main: #111827;
   --text-muted: #6b7280;
   --selection-color: #6366f1;
@@ -38,7 +39,7 @@ body {
   overflow: hidden;
 }
 
-/* --- Header Toolbar (schlank: nur Speichern / Export / Vorschau) --- */
+/* --- Header Toolbar (schlank: Speichern / Rückgängig / Export / Vorschau) --- */
 .app-header { height: 64px; background: var(--bg-panel); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 20; box-shadow: var(--shadow-sm); gap: 15px; flex-shrink: 0; }
 .brand { font-size: 1.25rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.025em; white-space: nowrap; }
 .brand span { color: var(--primary); }
@@ -50,10 +51,13 @@ body {
 .btn-primary:hover { background-color: var(--primary-hover); }
 .btn-secondary { background-color: var(--primary-light); color: var(--primary); }
 .btn-secondary:hover { background-color: #c7d2fe; }
+.btn-success { background-color: var(--success); color: white; }
+.btn-success:hover { background-color: var(--success-hover); }
 .btn-danger { background-color: var(--danger-light); color: var(--danger); }
 .btn-danger:hover { background-color: #fca5a5; }
 .btn-danger-outline { background: transparent; border: 1px solid var(--danger); color: var(--danger); width: 100%; }
 .btn-danger-outline:hover { background: var(--danger); color: white; }
+.btn-sm { padding: 5px 8px; font-size: 0.75rem; }
 
 /* --- Layout Body --- */
 .app-body { display: flex; flex: 1; height: calc(100vh - 64px); position: relative; min-width: 0; }
@@ -66,7 +70,7 @@ h4 { font-size: 0.95rem; margin-top: 15px; margin-bottom: 6px; font-weight: 600;
 .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 18px 0 10px 0; letter-spacing: 0.05em; }
 .help-text { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.4; }
 
-/* --- Sidebar-Unterabschnitte (Hintergrund, Header/Footer, Warenkorb, Kategorien) --- */
+/* --- Sidebar-Unterabschnitte --- */
 .sidebar-subsection { background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 6px; }
 .sidebar-subsection .form-group { margin-bottom: 10px; }
 .sidebar-subsection .form-group:last-child { margin-bottom: 0; }
@@ -77,6 +81,15 @@ h4 { font-size: 0.95rem; margin-top: 15px; margin-bottom: 6px; font-weight: 600;
 .file-input-wrapper { position: relative; display: inline-block; }
 .file-input-btn { padding: 5px 10px; font-size: 0.8rem; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; font-weight: 500; }
 .file-input-wrapper input[type="file"] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.mini-btn-row { display: flex; gap: 6px; margin: 8px 0; }
+
+/* --- Kleine Listenzeilen (Header/Footer-Items, Empfehlungen, Meilensteine) --- */
+.items-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.item-row { display: flex; align-items: center; gap: 6px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 6px; padding: 5px 6px; flex-wrap: wrap; }
+.item-row input[type="text"], .item-row input[type="number"], .item-row select { flex: 1; min-width: 60px; padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.78rem; }
+.item-row input[type="color"] { width: 24px; height: 24px; border: none; padding: 0; cursor: pointer; flex: none; }
+.item-delete { background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 0.9rem; flex: none; }
+.mini-check { display: flex; align-items: center; gap: 2px; font-size: 0.7rem; color: var(--text-muted); flex: none; }
 
 /* --- Palette Elements --- */
 .palette-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 8px; }
@@ -86,7 +99,7 @@ h4 { font-size: 0.95rem; margin-top: 15px; margin-bottom: 6px; font-weight: 600;
 .item-icon { font-size: 1.5rem; line-height: 1; }
 
 /* --- Canvas Area --- */
-.canvas-container { flex: 1; min-width: 0; background-color: #cbd5e1; padding: 30px; overflow: auto; display: flex; justify-content: center; align-items: flex-start; }
+.canvas-container { flex: 1; min-width: 0; background-color: #cbd5e1; padding: 30px; overflow: auto; display: flex; justify-content: center; align-items: flex-start; position: relative; }
 .canvas-column { display: flex; flex-direction: column; width: 100%; max-width: 960px; }
 .canvas-area { width: 100%; min-height: 1100px; background-color: #ffffff; border-radius: 8px; box-shadow: var(--shadow-lg); position: relative; transition: background 0.3s ease; background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px; overflow: hidden; }
 .canvas-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #9ca3af; font-size: 1.15rem; font-weight: 500; pointer-events: none; text-align: center; }
@@ -98,6 +111,25 @@ h4 { font-size: 0.95rem; margin-top: 15px; margin-bottom: 6px; font-weight: 600;
 .canvas-img { display: block; pointer-events: none; object-fit: cover; border-radius: 4px; }
 .cart-pop-anim { animation: cartPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 @keyframes cartPop { 0% { transform: scale(1); } 50% { transform: scale(1.25) rotate(-3deg); } 100% { transform: scale(1) rotate(0deg); } }
+
+/* --- Icon-Rahmen (rund), z.B. wie "Zurück"/"Entfernen"-Buttons im Shop --- */
+.icon-frame-wrap { display: inline-flex; align-items: center; justify-content: center; border-width: 2px; border-style: solid; border-radius: 50%; padding: 8px; background: #ffffff; }
+
+/* --- Zoom-Controls --- */
+.zoom-controls { position: absolute; top: 14px; right: 18px; z-index: 60; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 999px; padding: 5px 8px; display: flex; align-items: center; gap: 6px; box-shadow: var(--shadow-md); }
+.zoom-controls button { width: 26px; height: 26px; border: none; background: var(--primary-light); color: var(--primary); border-radius: 50%; cursor: pointer; font-weight: 700; font-size: 0.9rem; line-height: 1; }
+.zoom-controls button:hover { background: #c7d2fe; }
+.zoom-controls #zoom-reset { width: auto; border-radius: 999px; padding: 0 10px; font-size: 0.72rem; }
+#zoom-level { font-size: 0.75rem; color: var(--text-muted); min-width: 38px; text-align: center; }
+
+/* --- Kopf-/Fußzeile: Bars mit frei positionierbaren Elementen --- */
+.builder-bar { position: relative; box-sizing: border-box; width: 100%; }
+.builder-bar.sticky-header { position: sticky; top: 0; z-index: 300; }
+.bar-item { position: absolute; cursor: move; user-select: none; white-space: nowrap; }
+.bar-resize-handle { position: absolute; left: 0; right: 0; height: 10px; cursor: ns-resize; background: rgba(255, 255, 255, 0.12); z-index: 5; }
+.bar-resize-handle:hover { background: rgba(255, 255, 255, 0.28); }
+.bar-resize-handle.bottom { bottom: -5px; }
+.bar-resize-handle.top { top: -5px; }
 
 /* --- Forms & Inspector --- */
 .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
@@ -128,10 +160,43 @@ h4 { font-size: 0.95rem; margin-top: 15px; margin-bottom: 6px; font-weight: 600;
 .close-btn { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 4px 8px; border-radius: 4px; }
 .close-btn:hover { color: var(--text-main); background: var(--bg-main); }
 .drawer-body { padding: 20px; flex: 1; overflow-y: auto; }
-.cart-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-main); }
+.cart-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-main); }
+.cart-item.cart-item-square { border-radius: 0; }
 .cart-item-title { font-weight: 600; font-size: 0.9rem; }
-.cart-item-price { color: var(--primary); font-weight: 700; font-size: 0.9rem; }
 .drawer-footer { padding: 20px; border-top: 1px solid var(--border-color); background: var(--bg-main); }
+.cart-empty-msg { color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 24px 0; }
+
+.cart-item-price-input { padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; }
+.cart-item-remove { background: transparent; border: none; cursor: pointer; font-size: 0.95rem; padding: 2px 6px; }
+.cart-item-remove:hover { background: var(--danger-light); border-radius: 4px; }
+
+/* --- Warenkorb: Fortschrittsbalken --- */
+.cart-progress { margin-bottom: 16px; }
+.cart-progress-track { position: relative; height: 8px; background: var(--border-color); border-radius: 4px; margin: 10px 0 8px; }
+.cart-progress-fill { height: 100%; background: var(--success); border-radius: 4px; transition: width 0.3s ease; }
+.cart-progress-mark { position: absolute; top: -4px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--border-color); transform: translateX(-50%); }
+.cart-progress-mark.reached { border-color: var(--success); background: var(--success); }
+.cart-progress-msg { font-size: 0.78rem; color: var(--text-muted); }
+
+/* --- Warenkorb: Empfehlung --- */
+.cart-recommend { border: 1px dashed var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 16px; }
+.cart-recommend-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
+.cart-recommend-card { display: flex; align-items: center; gap: 8px; }
+.cart-recommend-icon { font-size: 1.4rem; }
+.cart-recommend-name { flex: 1; font-size: 0.85rem; }
+.cart-recommend-price { font-size: 0.8rem; color: var(--text-muted); }
+.cart-recommend-add { background: var(--primary); color: #fff; border: none; border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font-weight: 700; flex-shrink: 0; }
+
+/* --- Warenkorb: Rabattcode --- */
+.cart-discount { margin-bottom: 16px; }
+.cart-discount input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 6px; font-size: 0.85rem; }
+.cart-discount button { width: 100%; padding: 7px; border: none; border-radius: 6px; background: var(--primary); color: #fff; cursor: pointer; font-weight: 600; }
+.cart-discount-msg.ok { color: var(--success); font-size: 0.8rem; margin-top: 6px; }
+
+/* --- Warenkorb: Summen --- */
+.cart-totals { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); }
+.cart-total-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
+.cart-total-final { font-weight: 700; font-size: 1rem; margin-top: 8px; }
 
 /* --- Centered Modal System --- */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
@@ -142,13 +207,15 @@ h4 { font-size: 0.95rem; margin-top: 15px; margin-bottom: 6px; font-weight: 600;
 .modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; font-size: 0.925rem; line-height: 1.6; color: #374151; }
 .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-main); }
 
-/* --- Preview Mode --- */
+/* --- Preview Mode (KEINE Größenänderung von Canvas/Header/Footer!) --- */
 body.preview-mode .sidebar, body.preview-mode .inspector { display: none !important; }
 body.preview-mode .canvas-container { padding: 0; }
-body.preview-mode .canvas-area { background-image: none !important; box-shadow: none; border-radius: 0; min-height: 100vh; }
-body.preview-mode .canvas-column { max-width: 100%; }
+body.preview-mode .canvas-area { background-image: none !important; box-shadow: none; border-radius: 0; }
 body.preview-mode .placed-element { cursor: pointer; border-color: transparent !important; box-shadow: none !important; }
 body.preview-mode .element-badge { display: none !important; }
+body.preview-mode .zoom-controls { display: none !important; }
+body.preview-mode .bar-resize-handle { display: none !important; }
+body.preview-mode .bar-item { cursor: default; }
 
 /* --- Responsive --- */
 @media (max-width: 1024px) {
@@ -156,67 +223,3 @@ body.preview-mode .element-badge { display: none !important; }
   .sidebar, .inspector { width: 100%; min-width: 100%; max-width: 100%; height: auto; }
   .canvas-container { padding: 10px; }
 }
-
-/* ============================================================
-   ERWEITERUNGEN FÜR builder.js
-   Styles für Elemente, die builder.js zur Laufzeit ins DOM einfügt.
-   ============================================================ */
-
-/* --- Warenkorb-Badge: Hover-Vergrößerung --- */
-#cart-count-badge { display: inline-block; transition: transform 0.25s ease; transform-origin: center; }
-#cart-count-badge:hover { transform: scale(1.35); }
-.cart-total-row { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-weight: 600; }
-.cart-item-price-input { padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; }
-.cart-item-remove { background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 0.95rem; padding: 2px 6px; }
-.cart-item-remove:hover { background: var(--danger-light); border-radius: 4px; }
-
-/* --- Element-Styling (Hintergrund/Transparenz/Rahmenfarbe) --- */
-.placed-element .styled-wrapper { display: inline-block; box-sizing: border-box; }
-
-/* --- Eigene Icons --- */
-.icon-custom-img { width: 28px; height: 28px; object-fit: contain; display: inline-block; }
-.icon-palette-custom { margin-top: 18px; }
-
-/* --- Text-Interaktion & Wort-Hervorhebung --- */
-.text-word-link { color: blue; text-decoration: underline; cursor: pointer; }
-.text-word-highlight { font-weight: bold; }
-
-/* --- Dynamic Canvas: Resize-Handle & "Seite erweitern"-Button (mittig unten) --- */
-#canvas { position: relative; }
-#canvas-resize-handle {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 14px;
-  cursor: ns-resize; display: flex; align-items: center; justify-content: center;
-  background: repeating-linear-gradient(45deg, rgba(0,0,0,0.05), rgba(0,0,0,0.05) 4px, transparent 4px, transparent 8px);
-  z-index: 50; user-select: none;
-}
-#canvas-resize-handle:after { content: "⋯"; font-size: 14px; color: var(--text-muted); }
-#btn-grow-canvas {
-  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 51;
-  padding: 6px 16px; font-size: 12px; border-radius: 999px; cursor: pointer;
-  background: var(--bg-panel); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);
-}
-#btn-grow-canvas:hover { border-color: var(--primary); color: var(--primary); }
-
-/* --- Kategorien: Highlighting auf dem Canvas --- */
-.placed-element.category-dimmed { opacity: 0.25; transition: opacity 0.25s ease; }
-.placed-element.category-highlighted { opacity: 1; outline: 2px dashed var(--selection-color); transition: opacity 0.25s ease; }
-
-/* --- Kategorien-Verwaltung: jetzt fest in der linken Sidebar (kein Floating-Panel mehr) --- */
-#category-add-row { display: flex; gap: 6px; margin-bottom: 12px; }
-#category-add-row input { flex: 1; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; }
-.category-manager-item { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-.category-manager-item input[type="text"] { flex: 1; padding: 5px 7px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; }
-.category-manager-item input[type="color"] { width: 28px; height: 28px; border: none; cursor: pointer; background: transparent; }
-.category-manager-item .category-delete-btn { background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 0.95rem; }
-
-/* --- Kopf- & Fußzeile: liegen jetzt im canvas-column, wirklich oben/unten der Vorlage --- */
-#builder-header { width: 100%; padding: 14px 20px; background: #111827; color: #fff; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; }
-#builder-header.sticky-header { position: sticky; top: 0; z-index: 300; }
-#builder-footer { width: 100%; padding: 18px 20px; background: #111827; color: #cbd5e1; text-align: center; box-sizing: border-box; font-size: 13px; }
-
-/* --- Erweiterter Inspector-Bereich (Styling / Form-Optionen / Kategorien) --- */
-.inspector-subsection { margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
-.inspector-subsection h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
-.inspector-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
-.inspector-row label { font-size: 12px; min-width: 90px; color: #374151; }
-.inspector-row input[type="range"] { flex: 1; }
