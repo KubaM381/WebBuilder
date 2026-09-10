@@ -2,6 +2,7 @@
 // The js/ directory intentionally contains only the main builder domains.
 // builder.js remains the central bootstrap/core and is not split further.
 document.write('<script src="js/state.js"><\/script>');
+document.write('<script src="js/toast.js"><\/script>');
 document.write('<script src="js/storage.js"><\/script>');
 document.write('<script src="js/elements.js"><\/script>');
 document.write('<script src="js/cart.js"><\/script>');
@@ -9,9 +10,6 @@ document.write('<script src="js/canvas.js"><\/script>');
 document.write('<script src="js/inspector.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 document.write('<script src="js/header-footer.js"><\/script>');
-// NEU: export.js hängt von state.js, elements.js, canvas.js (renderShapeInner/
-// computeBackgroundCss) und header-footer.js (itemInnerHtml) ab — deshalb
-// erst nach diesen geladen.
 document.write('<script src="js/export.js"><\/script>');
 document.write('<script src="js/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
