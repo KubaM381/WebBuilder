@@ -13,17 +13,16 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function notify(type = "update") {
+    state.notify?.({ domain: "elements", type });
+  }
+
   function createId(prefix = "el") {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  function getAll() {
-    return state.elements;
-  }
-
-  function getById(id) {
-    return state.elements.find(element => element && element.id === id) || null;
-  }
+  function getAll() { return state.elements; }
+  function getById(id) { return state.elements.find(element => element && element.id === id) || null; }
 
   function create(type, iconName = null, x = 50, y = 50, shapeType = null) {
     return {
@@ -47,6 +46,7 @@
     const item = clone(element);
     if (!item.id) item.id = createId("elem");
     state.elements.push(item);
+    notify("add");
     return item;
   }
 
@@ -59,6 +59,7 @@
     if (index === -1) return false;
     state.elements.splice(index, 1);
     if (state.selectedElementId === id) state.selectedElementId = null;
+    notify("remove");
     return true;
   }
 
@@ -66,6 +67,7 @@
     const element = getById(id);
     if (!element || !patch || typeof patch !== "object") return null;
     Object.assign(element, clone(patch));
+    notify("update");
     return element;
   }
 
@@ -87,21 +89,22 @@
       });
     }
     if (!getById(state.selectedElementId)) state.selectedElementId = null;
+    notify("replace-all");
     return state.elements;
   }
 
   function setSelected(id) {
     state.selectedElementId = id == null ? null : id;
+    notify("selection");
     return state.selectedElementId;
   }
 
-  function getSelected() {
-    return getById(state.selectedElementId);
-  }
+  function getSelected() { return getById(state.selectedElementId); }
 
   function clear() {
     state.elements.length = 0;
     state.selectedElementId = null;
+    notify("clear");
   }
 
   // Compatibility proxy: legacy code can still call elements.push/find/filter
@@ -118,13 +121,16 @@
       set(_target, prop, value) {
         if (prop === "length") {
           currentLengthSet(value);
+          notify("proxy-set");
           return true;
         }
         state.elements[prop] = value;
+        notify("proxy-set");
         return true;
       },
       deleteProperty(_target, prop) {
         delete state.elements[prop];
+        notify("proxy-delete");
         return true;
       },
       ownKeys() { return Reflect.ownKeys(state.elements); },
@@ -137,9 +143,7 @@
     });
   }
 
-  function currentLengthSet(value) {
-    state.elements.length = Number(value) || 0;
-  }
+  function currentLengthSet(value) { state.elements.length = Number(value) || 0; }
 
   window.WebBuilderElements = {
     clone, createId, getAll, getById, create, add, addNew, remove, update,
