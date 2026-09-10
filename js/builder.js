@@ -1,26 +1,22 @@
 // WebBuilder bootstrap
-// Loads the main builder domains in dependency order.
+// The js/ directory intentionally contains only the main builder domains.
+// builder.js remains the central bootstrap/core and is not split further.
 document.write('<script src="js/state.js"><\/script>');
 document.write('<script src="js/storage.js"><\/script>');
-document.write('<script src="js/history.js"><\/script>');
-document.write('<script src="js/icon-registry.js"><\/script>');
 document.write('<script src="js/elements.js"><\/script>');
+document.write('<script src="js/cart.js"><\/script>');
 document.write('<script src="js/canvas.js"><\/script>');
 document.write('<script src="js/inspector.js"><\/script>');
-document.write('<script src="js/products.js"><\/script>');
-document.write('<script src="js/inspector-actions-runtime.js"><\/script>');
-document.write('<script src="js/inspector-properties-runtime.js"><\/script>');
-document.write('<script src="js/inspector-special-runtime.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 document.write('<script src="js/header-footer.js"><\/script>');
-document.write('<script src="js/header-footer-runtime.js"><\/script>');
-document.write('<script src="js/cart.js"><\/script>');
-document.write('<script src="js/products-runtime.js"><\/script>');
-document.write('<script src="js/cart-runtime.js"><\/script>');
-document.write('<script src="js/cart-config-runtime.js"><\/script>');
 document.write('<script src="js/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
-document.write('<script src="js/action-runtime.js"><\/script>');
-document.write('<script src="js/migration-coordinator.js"><\/script>');
-document.write('<script src="js/runtime-check.js"><\/script>');
-document.write('<script src="js/builder-core.js"><\/script>');
+document.write('<script src="js/supabase-config.js"><\/script>');
+document.write('<script src="js/supabase.js"><\/script>');
+
+document.addEventListener('DOMContentLoaded', () => {
+  window.WebBuilderCanvas?.render?.();
+  window.WebBuilderHeaderFooter?.normalizeState?.();
+  window.WebBuilderCart?.normalizeState?.();
+  window.WebBuilderPreview?.bindToggle?.();
+});
