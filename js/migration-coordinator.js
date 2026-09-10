@@ -1,17 +1,15 @@
 // WebBuilder migration coordinator
-// Keeps the staged migration explicit and prevents multiple modules from
-// becoming competing sources of truth while builder-legacy.js is still live.
+// Centralizes persisted project hydration for the modular architecture.
 (() => {
   const state = window.WebBuilderState;
-  const bridge = window.WebBuilderLegacyBridge;
   const elementsService = window.WebBuilderElements;
   const cartService = window.WebBuilderCart;
   const productsService = window.WebBuilderProducts;
   const headerFooterService = window.WebBuilderHeaderFooter;
   const canvasService = window.WebBuilderCanvas;
 
-  if (!state || !bridge) {
-    console.error("WebBuilderMigration: state/bridge missing.");
+  if (!state) {
+    console.error("WebBuilderMigration: shared state missing.");
     return;
   }
 
@@ -59,23 +57,21 @@
   function hydrateSharedStateFromStorage() {
     const persisted = readPersistedProject();
     if (!persisted || typeof persisted !== "object") {
-      if (canvasService && typeof canvasService.normalizeState === "function") canvasService.normalizeState();
+      canvasService?.normalizeState?.();
       return { ok: false, reason: "no-persisted-project" };
     }
 
     if (Array.isArray(persisted.elements)) {
-      if (elementsService && typeof elementsService.replaceAll === "function") elementsService.replaceAll(persisted.elements);
-      else state.elements = persisted.elements;
-      domains.elements.hydrated = true;
+      elementsService?.replaceAll?.(persisted.elements);
+      if (domains.elements) domains.elements.hydrated = true;
     }
     if (Array.isArray(persisted.cartItems)) {
       state.cartItems = persisted.cartItems;
-      domains.cart.hydrated = true;
+      if (domains.cart) domains.cart.hydrated = true;
     }
     if (Array.isArray(persisted.products)) {
-      if (productsService && typeof productsService.replaceAll === "function") productsService.replaceAll(persisted.products);
-      else state.products = persisted.products;
-      domains.products.hydrated = true;
+      productsService?.replaceAll?.(persisted.products);
+      if (domains.products) domains.products.hydrated = true;
     }
 
     if (persisted.cartButtonLabel != null) state.cartButtonLabel = persisted.cartButtonLabel;
@@ -87,24 +83,22 @@
     if (persisted.headerSticky != null) state.headerSticky = !!persisted.headerSticky;
     if (persisted.headerHeight != null) state.headerHeight = persisted.headerHeight;
     if (persisted.headerBgColor != null) state.headerBgColor = persisted.headerBgColor;
-    if (Array.isArray(persisted.headerItems)) { state.headerItems = persisted.headerItems; domains.headerFooter.hydrated = true; }
+    if (Array.isArray(persisted.headerItems)) { state.headerItems = persisted.headerItems; if (domains.headerFooter) domains.headerFooter.hydrated = true; }
 
     if (persisted.footerEnabled != null) state.footerEnabled = !!persisted.footerEnabled;
     if (persisted.footerHeight != null) state.footerHeight = persisted.footerHeight;
     if (persisted.footerBgColor != null) state.footerBgColor = persisted.footerBgColor;
-    if (Array.isArray(persisted.footerItems)) { state.footerItems = persisted.footerItems; domains.headerFooter.hydrated = true; }
+    if (Array.isArray(persisted.footerItems)) { state.footerItems = persisted.footerItems; if (domains.headerFooter) domains.headerFooter.hydrated = true; }
 
     if (persisted.zoomLevel != null) state.zoomLevel = persisted.zoomLevel;
     if (persisted.canvasHeight != null) state.canvasHeight = persisted.canvasHeight;
     if (persisted.background && typeof persisted.background === "object") state.background = persisted.background;
 
-    if (cartService && typeof cartService.normalizeState === "function") cartService.normalizeState();
-    if (productsService && typeof productsService.normalizeState === "function") productsService.normalizeState();
-    if (headerFooterService && typeof headerFooterService.normalizeState === "function") headerFooterService.normalizeState();
-    if (canvasService && typeof canvasService.normalizeState === "function") {
-      canvasService.normalizeState();
-      domains.canvas.hydrated = true;
-    }
+    cartService?.normalizeState?.();
+    productsService?.normalizeState?.();
+    headerFooterService?.normalizeState?.();
+    canvasService?.normalizeState?.();
+    if (domains.canvas) domains.canvas.hydrated = true;
 
     persisted.elements = state.elements;
     persisted.cartItems = state.cartItems;
@@ -132,10 +126,10 @@
       footerItems: state.footerItems.length,
       zoomLevel: state.zoomLevel,
       canvasHeight: state.canvasHeight,
-      normalizedCartProducts: !!(cartService && typeof cartService.normalizeState === "function"),
-      normalizedProducts: !!(productsService && typeof productsService.normalizeState === "function"),
-      normalizedHeaderFooter: !!(headerFooterService && typeof headerFooterService.normalizeState === "function"),
-      normalizedCanvas: !!(canvasService && typeof canvasService.normalizeState === "function")
+      normalizedCartProducts: !!cartService,
+      normalizedProducts: !!productsService,
+      normalizedHeaderFooter: !!headerFooterService,
+      normalizedCanvas: !!canvasService
     };
   }
 
@@ -147,19 +141,13 @@
   }
 
   register("elements", {
-    connected: true,
+    connected: !!elementsService,
     hydrated: false,
-    read: () => elementsService ? elementsService.getAll() : state.elements,
-    write: value => {
-      if (!Array.isArray(value)) return false;
-      if (elementsService && typeof elementsService.replaceAll === "function") elementsService.replaceAll(value);
-      else state.elements = value;
-      return true;
-    }
+    read: () => elementsService?.getAll?.() || state.elements,
+    write: value => { if (!Array.isArray(value)) return false; elementsService?.replaceAll?.(value); return true; }
   });
-
   register("canvas", {
-    connected: true,
+    connected: !!canvasService,
     hydrated: false,
     read: () => canvasService ? { zoomLevel: state.zoomLevel, canvasHeight: state.canvasHeight, background: state.background } : null,
     write: value => {
@@ -170,52 +158,25 @@
       return true;
     }
   });
-
   register("cart", {
     connected: !!cartService,
     hydrated: false,
-    read: () => cartService ? cartService.getItems() : state.cartItems,
-    write: value => {
-      if (!Array.isArray(value)) return false;
-      if (cartService && typeof cartService.clear === "function" && typeof cartService.addItem === "function") {
-        cartService.clear(false);
-        value.forEach(item => cartService.addItem(item, undefined, undefined, undefined, undefined, false));
-      } else {
-        state.cartItems = value;
-      }
-      if (cartService && typeof cartService.normalizeState === "function") cartService.normalizeState();
-      return true;
-    }
+    read: () => cartService?.getItems?.() || state.cartItems,
+    write: value => { if (!Array.isArray(value) || !cartService) return false; cartService.clear(false); value.forEach(item => cartService.addItem(item, undefined, undefined, undefined, undefined, false)); cartService.normalizeState(); return true; }
   });
-
   register("products", {
     connected: !!productsService,
     hydrated: false,
-    read: () => productsService ? productsService.getAll() : state.products,
-    write: value => {
-      if (!Array.isArray(value)) return false;
-      if (productsService && typeof productsService.replaceAll === "function") productsService.replaceAll(value);
-      else state.products = value;
-      return true;
-    }
+    read: () => productsService?.getAll?.() || state.products,
+    write: value => { if (!Array.isArray(value) || !productsService) return false; productsService.replaceAll(value); return true; }
   });
-
   register("headerFooter", {
-    connected: true,
+    connected: !!headerFooterService,
     hydrated: false,
-    read: () => window.WebBuilderHeaderFooter ? { header: window.WebBuilderHeaderFooter.getHeader(), footer: window.WebBuilderHeaderFooter.getFooter() } : null,
-    write: value => {
-      if (!value || !window.WebBuilderHeaderFooter) return false;
-      window.WebBuilderHeaderFooter.updateHeader(value.header || {}, false);
-      window.WebBuilderHeaderFooter.updateFooter(value.footer || {}, false);
-      return true;
-    }
+    read: () => headerFooterService ? { header: headerFooterService.getHeader(), footer: headerFooterService.getFooter() } : null,
+    write: value => { if (!value || !headerFooterService) return false; headerFooterService.updateHeader(value.header || {}, false); headerFooterService.updateFooter(value.footer || {}, false); return true; }
   });
 
   const hydration = hydrateSharedStateFromStorage();
-
-  window.WebBuilderMigration = {
-    register, get, status, read, write, validateArrayDomain,
-    hydrateSharedStateFromStorage, readPersistedProject, domains, hydration
-  };
+  window.WebBuilderMigration = { register, get, status, read, write, validateArrayDomain, hydrateSharedStateFromStorage, readPersistedProject, domains, hydration };
 })();
