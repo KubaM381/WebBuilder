@@ -10,17 +10,29 @@ document.addEventListener("DOMContentLoaded", () => {
   let draggedShape = null;
 
   let zoomLevel = 0.85;
+  let canvasHeight = 1100;
 
-  let cartItems = []; // { id, name, price, qty }
+  let products = []; // { id, name, price, icon, description, compareAtPrice }
+
+  let cartItems = []; // { id, name, price, qty, icon, description, compareAtPrice }
   let cartButtonLabel = "Zur Kasse gehen";
   let cartConfig = {
-    itemShape: "rounded", // 'rounded' | 'square'
+    itemShape: "rounded", // 'transparent' | 'square' | 'rounded' | 'pill'
     removeButtonColor: "#ef4444",
+    buttonColor: "#4f46e5",
+    buttonShape: "rounded", // 'rounded' | 'square' | 'pill'
     discountEnabled: false,
     recommendEnabled: false,
     recommendations: [], // { id, name, price, icon }
     progressEnabled: false,
-    milestones: [] // { id, amount, label, action }
+    milestones: [], // { id, amount, label, action }
+    itemDisplay: {
+      removeStyle: "x", // 'x' | 'trash' | 'text'
+      removeShape: "circle", // 'circle' | 'square' | 'text'
+      quantityStyle: "stepper", // 'stepper' | 'dropdown' | 'static'
+      priceStyle: "simple", // 'simple' | 'strikethrough' | 'perUnit'
+      showDescription: false
+    }
   };
   let appliedDiscountPercent = 0;
   let appliedDiscountLabel = "";
@@ -29,16 +41,19 @@ document.addEventListener("DOMContentLoaded", () => {
   let headerSticky = false;
   let headerHeight = 64;
   let headerBgColor = "#111827";
-  let headerItems = []; // { id, type:'text'|'icon', text, iconName, x, y, color, size, bold, italic }
+  let headerItems = []; // { id, type:'text'|'icon', text, iconName, x, y, color, size, bold, italic, underline, align, fontFamily, actionType, actionUrl, actionMsg, productId }
 
   let footerEnabled = false;
   let footerHeight = 70;
   let footerBgColor = "#111827";
   let footerItems = [];
 
+  let selectedBarItemRef = null; // { items, id, listType: 'header'|'footer' }
+
   const STORAGE_KEY = "webbuilder_pro_state";
   const HISTORY_LIMIT = 30;
   let historyStack = [];
+  let redoStack = [];
   let pendingSnapshot = null;
 
   // ============================================================
@@ -52,12 +67,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnExport = document.getElementById("btn-export");
   const btnSave = document.getElementById("btn-save");
   const btnUndo = document.getElementById("btn-undo");
+  const btnRedo = document.getElementById("btn-redo");
+
+  const btnExtendCanvas = document.getElementById("btn-extend-canvas");
+  const btnExtendCanvasSide = document.getElementById("btn-extend-canvas-side");
+  const btnShrinkCanvasSide = document.getElementById("btn-shrink-canvas-side");
 
   // Zoom
   const zoomInBtn = document.getElementById("zoom-in");
   const zoomOutBtn = document.getElementById("zoom-out");
   const zoomResetBtn = document.getElementById("zoom-reset");
   const zoomLevelLabel = document.getElementById("zoom-level");
+
+  // Sidebar Tabs
+  const sidebarTabs = document.querySelectorAll(".sidebar-tab");
+  const sidebarPanels = document.querySelectorAll(".sidebar-panel");
 
   // Hintergrund
   const bgType = document.getElementById("bg-type");
@@ -88,9 +112,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnAddFooterText = document.getElementById("btn-add-footer-text");
   const btnAddFooterIcon = document.getElementById("btn-add-footer-icon");
 
+  // Kopf-/Fußzeilen-Element-Editor
+  const barItemEditorEmpty = document.getElementById("bar-item-editor-empty");
+  const barItemEditorForm = document.getElementById("bar-item-editor-form");
+  const barItemTextGroup = document.getElementById("bar-item-text-group");
+  const barItemTextToolbar = document.getElementById("bar-item-text-toolbar");
+  const barPropText = document.getElementById("bar-prop-text");
+  const barPropActionType = document.getElementById("bar-prop-action-type");
+  const barPropActionUrl = document.getElementById("bar-prop-action-url");
+  const barPropActionMsg = document.getElementById("bar-prop-action-msg");
+  const barGroupActionUrl = document.getElementById("bar-group-action-url");
+  const barGroupActionMsg = document.getElementById("bar-group-action-msg");
+  const barGroupProduct = document.getElementById("bar-group-product");
+  const barPropProduct = document.getElementById("bar-prop-product");
+
   // Warenkorb Sidebar
   const btnOpenCart = document.getElementById("btn-open-cart");
   const cartButtonLabelInput = document.getElementById("cart-button-label");
+  const cartButtonColorInput = document.getElementById("cart-button-color");
+  const cartButtonShapeSelect = document.getElementById("cart-button-shape");
   const cartItemShapeSelect = document.getElementById("cart-item-shape");
   const cartRemoveColorInput = document.getElementById("cart-remove-color");
   const cartDiscountToggle = document.getElementById("cart-discount-toggle");
@@ -102,6 +142,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const cartProgressConfig = document.getElementById("cart-progress-config");
   const cartMilestoneList = document.getElementById("cart-milestone-list");
   const btnAddMilestone = document.getElementById("btn-add-milestone");
+  const cartItemDemoPreview = document.getElementById("cart-item-demo-preview");
+  const cartItemDisplayEditor = document.getElementById("cart-item-display-editor");
+
+  // Produkte
+  const productList = document.getElementById("product-list");
+  const btnAddProduct = document.getElementById("btn-add-product");
 
   // Inspector
   const noSelectionUI = document.getElementById("no-selection");
@@ -110,18 +156,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const propText = document.getElementById("prop-text");
   const propSize = document.getElementById("prop-size");
   const propColor = document.getElementById("prop-color");
+  const propFontFamily = document.getElementById("prop-font-family");
   const propImageUrl = document.getElementById("prop-image-url");
   const propImageFile = document.getElementById("prop-image-file");
   const propActionType = document.getElementById("prop-action-type");
   const propActionUrl = document.getElementById("prop-action-url");
   const propActionMsg = document.getElementById("prop-action-msg");
+  const propProduct = document.getElementById("prop-product");
+  const propProductHint = document.getElementById("prop-product-hint");
 
   const groupText = document.getElementById("group-text");
   const groupColor = document.getElementById("group-color");
   const groupImage = document.getElementById("group-image");
   const groupActionUrl = document.getElementById("group-action-url");
   const groupActionMsg = document.getElementById("group-action-msg");
+  const groupProduct = document.getElementById("group-product");
   const btnDelete = document.getElementById("btn-delete-element");
+  const propTextToolbar = document.getElementById("prop-text-toolbar");
 
   // Drawer & Modal
   const cartDrawerBackdrop = document.getElementById("cart-drawer-backdrop");
@@ -129,7 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeCartBtn = document.getElementById("close-cart-btn");
   const cartItemsList = document.getElementById("cart-items-list");
   const cartCountBadge = document.getElementById("cart-count-badge");
-  const cartCheckoutBtn = document.querySelector("#cart-drawer .drawer-footer button");
+  const cartCheckoutBtn = document.getElementById("cart-checkout-btn");
 
   const modalOverlay = document.getElementById("modal-overlay");
   const modalTitle = document.getElementById("modal-title");
@@ -193,11 +244,24 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ============================================================
-  // HISTORY / UNDO
+  // SIDEBAR TABS
+  // ============================================================
+  sidebarTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      sidebarTabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      sidebarPanels.forEach(p => p.classList.add("hidden"));
+      const target = document.getElementById("panel-" + tab.dataset.tab);
+      if (target) target.classList.remove("hidden");
+    });
+  });
+
+  // ============================================================
+  // HISTORY / UNDO / REDO
   // ============================================================
   function snapshotState() {
     return JSON.parse(JSON.stringify({
-      elements, cartItems, cartConfig, cartButtonLabel,
+      elements, cartItems, cartConfig, cartButtonLabel, products, canvasHeight,
       headerEnabled, headerSticky, headerHeight, headerBgColor, headerItems,
       footerEnabled, footerHeight, footerBgColor, footerItems
     }));
@@ -206,6 +270,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function pushHistory(snap) {
     historyStack.push(snap || snapshotState());
     if (historyStack.length > HISTORY_LIMIT) historyStack.shift();
+    redoStack = [];
+    updateUndoRedoButtons();
   }
 
   function armHistory() { pendingSnapshot = snapshotState(); }
@@ -219,13 +285,18 @@ document.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("change", commitHistory);
   }
 
-  function undo() {
-    if (!historyStack.length) { showToast("Nichts zum Rückgängigmachen", "info"); return; }
-    const prev = historyStack.pop();
+  function updateUndoRedoButtons() {
+    if (btnUndo) btnUndo.disabled = historyStack.length === 0;
+    if (btnRedo) btnRedo.disabled = redoStack.length === 0;
+  }
+
+  function restoreState(prev) {
     elements = prev.elements;
     cartItems = prev.cartItems;
     cartConfig = prev.cartConfig;
     cartButtonLabel = prev.cartButtonLabel;
+    products = prev.products || [];
+    canvasHeight = prev.canvasHeight || 1100;
     headerEnabled = prev.headerEnabled;
     headerSticky = prev.headerSticky;
     headerHeight = prev.headerHeight;
@@ -237,10 +308,13 @@ document.addEventListener("DOMContentLoaded", () => {
     footerItems = prev.footerItems;
 
     selectedElementId = null;
+    selectedBarItemRef = null;
     selectElement(null);
+    deselectBarItem();
     syncCartConfigUI();
     renderRecommendList();
     renderMilestoneList();
+    renderProductList();
     if (headerToggle) headerToggle.checked = headerEnabled;
     if (headerStickyToggle) headerStickyToggle.checked = headerSticky;
     if (headerHeightInput) headerHeightInput.value = headerHeight;
@@ -250,14 +324,34 @@ document.addEventListener("DOMContentLoaded", () => {
     if (footerBgInput) footerBgInput.value = footerBgColor;
     if (cartButtonLabelInput) cartButtonLabelInput.value = cartButtonLabel;
     if (cartCheckoutBtn) cartCheckoutBtn.innerText = cartButtonLabel;
+    setCanvasHeight(canvasHeight);
     renderBarItemsList(headerItems, headerItemsListEl);
     renderBarItemsList(footerItems, footerItemsListEl);
     renderCanvas();
     renderHeaderFooter();
     renderCart();
+    renderCartItemDemo();
+    refreshAllProductSelects();
+  }
+
+  function undo() {
+    if (!historyStack.length) { showToast("Nichts zum Rückgängigmachen", "info"); return; }
+    redoStack.push(snapshotState());
+    const prev = historyStack.pop();
+    restoreState(prev);
+    updateUndoRedoButtons();
     showToast("Rückgängig gemacht", "info");
   }
+  function redo() {
+    if (!redoStack.length) { showToast("Nichts zum Wiederholen", "info"); return; }
+    historyStack.push(snapshotState());
+    const next = redoStack.pop();
+    restoreState(next);
+    updateUndoRedoButtons();
+    showToast("Wiederholt", "info");
+  }
   if (btnUndo) btnUndo.addEventListener("click", undo);
+  if (btnRedo) btnRedo.addEventListener("click", redo);
 
   // ============================================================
   // ZOOM
@@ -326,14 +420,105 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ============================================================
+  // SEITENGRÖSSE (Canvas verlängern / verkürzen)
+  // ============================================================
+  function setCanvasHeight(h) {
+    canvasHeight = Math.max(400, h);
+    canvas.style.minHeight = canvasHeight + "px";
+  }
+  function extendCanvas(delta) {
+    pushHistory();
+    setCanvasHeight(canvasHeight + delta);
+    showToast(delta > 0 ? "Seite verlängert ⬇️" : "Seite verkürzt ⬆️", "info");
+  }
+  if (btnExtendCanvas) btnExtendCanvas.addEventListener("click", () => extendCanvas(300));
+  if (btnExtendCanvasSide) btnExtendCanvasSide.addEventListener("click", () => extendCanvas(300));
+  if (btnShrinkCanvasSide) btnShrinkCanvasSide.addEventListener("click", () => extendCanvas(-300));
+
+  // ============================================================
+  // PRODUKTE
+  // ============================================================
+  function renderProductList() {
+    if (!productList) return;
+    productList.innerHTML = "";
+    if (!products.length) {
+      productList.innerHTML = `<p class="help-text">Noch keine Produkte angelegt. Klicke oben auf „+ Neues Produkt“.</p>`;
+      return;
+    }
+    products.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "product-card";
+      card.innerHTML = `
+        <div class="product-card-row">
+          <span class="product-icon-preview">${escapeHtml(p.icon || "📦")}</span>
+          <input type="text" class="prod-icon" data-id="${p.id}" value="${escapeAttr(p.icon || "📦")}" style="max-width:54px;" title="Emoji-Icon">
+          <input type="text" class="prod-name" data-id="${p.id}" value="${escapeAttr(p.name)}" placeholder="Produktname">
+          <button type="button" class="item-delete prod-delete" data-id="${p.id}" title="Löschen">✕</button>
+        </div>
+        <div class="product-card-row">
+          <input type="number" class="prod-price" data-id="${p.id}" value="${p.price}" step="0.01" placeholder="Preis (€)">
+          <input type="number" class="prod-compare" data-id="${p.id}" value="${p.compareAtPrice != null ? p.compareAtPrice : ""}" step="0.01" placeholder="Streichpreis (optional)">
+        </div>
+        <div class="product-card-row">
+          <textarea class="prod-desc" data-id="${p.id}" rows="2" placeholder="Beschreibung (optional)">${escapeHtml(p.description || "")}</textarea>
+        </div>`;
+      productList.appendChild(card);
+    });
+
+    productList.querySelectorAll(".prod-icon").forEach(inp => { wireHistory(inp); inp.addEventListener("input", e => { const p = products.find(x => x.id === e.target.dataset.id); if (p) { p.icon = e.target.value; renderProductList(); refreshAllProductSelects(); } }); });
+    productList.querySelectorAll(".prod-name").forEach(inp => { wireHistory(inp); inp.addEventListener("input", e => { const p = products.find(x => x.id === e.target.dataset.id); if (p) { p.name = e.target.value; refreshAllProductSelects(); } }); });
+    productList.querySelectorAll(".prod-price").forEach(inp => { wireHistory(inp); inp.addEventListener("input", e => { const p = products.find(x => x.id === e.target.dataset.id); if (p) { p.price = parseFloat(e.target.value) || 0; refreshAllProductSelects(); } }); });
+    productList.querySelectorAll(".prod-compare").forEach(inp => { wireHistory(inp); inp.addEventListener("input", e => { const p = products.find(x => x.id === e.target.dataset.id); if (p) { p.compareAtPrice = e.target.value === "" ? null : (parseFloat(e.target.value) || 0); } }); });
+    productList.querySelectorAll(".prod-desc").forEach(ta => { wireHistory(ta); ta.addEventListener("input", e => { const p = products.find(x => x.id === e.target.dataset.id); if (p) { p.description = e.target.value; } }); });
+    productList.querySelectorAll(".prod-delete").forEach(btn => btn.addEventListener("click", e => {
+      pushHistory();
+      products = products.filter(x => x.id !== e.target.dataset.id);
+      renderProductList();
+      refreshAllProductSelects();
+      showToast("Produkt gelöscht", "info");
+    }));
+  }
+
+  if (btnAddProduct) btnAddProduct.addEventListener("click", () => {
+    pushHistory();
+    products.push({ id: "prod_" + Date.now(), name: "Neues Produkt", price: 9.99, icon: "📦", description: "", compareAtPrice: null });
+    renderProductList();
+    refreshAllProductSelects();
+    showToast("Produkt angelegt", "success");
+  });
+
+  function populateProductSelect(selectEl, selectedId) {
+    if (!selectEl) return;
+    if (!products.length) {
+      selectEl.innerHTML = `<option value="">— Kein Produkt vorhanden —</option>`;
+      return;
+    }
+    selectEl.innerHTML = products.map(p => `<option value="${p.id}">${escapeAttr(p.icon || "📦")} ${escapeAttr(p.name)} — ${eur(p.price)}</option>`).join("");
+    if (selectedId) selectEl.value = selectedId;
+  }
+
+  function refreshAllProductSelects() {
+    const item = getSelected();
+    if (item && item.actionType === "cart-add") populateProductSelect(propProduct, item.productId);
+    if (propProductHint) propProductHint.classList.toggle("hidden", products.length > 0);
+    if (selectedBarItemRef) {
+      const barItem = selectedBarItemRef.items.find(x => x.id === selectedBarItemRef.id);
+      if (barItem && barItem.actionType === "cart-add") populateProductSelect(barPropProduct, barItem.productId);
+    }
+  }
+
+  // ============================================================
   // WARENKORB
   // ============================================================
-  function addCartItem(name, price) {
+  function addCartItem(name, price, icon, description, compareAtPrice) {
     const existing = cartItems.find(ci => ci.name === name);
     if (existing) {
       existing.qty += 1;
     } else {
-      cartItems.push({ id: "cart_" + Date.now(), name: name || "Produkt", price: parseFloat(price) || 0, qty: 1 });
+      cartItems.push({
+        id: "cart_" + Date.now(), name: name || "Produkt", price: parseFloat(price) || 0, qty: 1,
+        icon: icon || "📦", description: description || "", compareAtPrice: compareAtPrice != null ? compareAtPrice : null
+      });
     }
     renderCart();
   }
@@ -344,6 +529,24 @@ document.addEventListener("DOMContentLoaded", () => {
       item.price = parseFloat(newPrice) || 0;
       renderCart();
     }
+  }
+
+  function changeCartQty(cartId, delta) {
+    const item = cartItems.find(ci => ci.id === cartId);
+    if (!item) return;
+    item.qty += delta;
+    if (item.qty <= 0) {
+      removeCartItem(cartId);
+    } else {
+      renderCart();
+    }
+  }
+
+  function setCartItemQty(cartId, qty) {
+    const item = cartItems.find(ci => ci.id === cartId);
+    if (!item) return;
+    item.qty = Math.max(1, qty);
+    renderCart();
   }
 
   function removeCartItem(cartId) {
@@ -362,6 +565,66 @@ document.addEventListener("DOMContentLoaded", () => {
     const reached = sorted.filter(m => subtotal >= m.amount);
     const next = sorted.find(m => subtotal < m.amount);
     return { sorted, reached, next };
+  }
+
+  /** Baut das HTML für eine einzelne Warenkorb-Zeile - abhängig von den
+      UI/UX-Einstellungen in cartConfig.itemDisplay. Wird sowohl für den
+      echten Warenkorb als auch für die Beispiel-Vorschau im Editor genutzt. */
+  function buildCartItemHTML(ci, isDemo) {
+    const disp = cartConfig.itemDisplay || {};
+    const idAttr = isDemo ? "" : `data-cart-id="${ci.id}"`;
+
+    let removeInner = "✕";
+    if (disp.removeStyle === "trash") removeInner = "🗑️";
+    if (disp.removeStyle === "text") removeInner = "Entfernen";
+    const removeShapeClass = disp.removeShape === "circle" ? "remove-shape-circle" : (disp.removeShape === "square" ? "remove-shape-square" : "");
+    const removeBtn = `<button class="cart-item-remove ${removeShapeClass}" ${idAttr} title="Entfernen" style="color:${cartConfig.removeButtonColor};">${removeInner}</button>`;
+
+    let qtyHtml;
+    if (disp.quantityStyle === "dropdown") {
+      const opts = Array.from({ length: 10 }, (_, i) => i + 1).map(n => `<option value="${n}" ${n === ci.qty ? "selected" : ""}>${n}</option>`).join("");
+      qtyHtml = `<select class="cart-qty-select" ${idAttr}>${opts}</select>`;
+    } else if (disp.quantityStyle === "static") {
+      qtyHtml = `<span class="cart-qty-static">× ${ci.qty}</span>`;
+    } else {
+      qtyHtml = `<span class="cart-qty-stepper">
+        <button type="button" class="cart-qty-minus" ${idAttr}>−</button>
+        <span>${ci.qty}</span>
+        <button type="button" class="cart-qty-plus" ${idAttr}>+</button>
+      </span>`;
+    }
+
+    let priceHtml;
+    if (disp.priceStyle === "strikethrough" && ci.compareAtPrice && ci.compareAtPrice > ci.price) {
+      priceHtml = `<span class="cart-item-price-strike">${eur(ci.compareAtPrice)}</span><span>${eur(ci.price)}</span>`;
+    } else if (disp.priceStyle === "perUnit") {
+      priceHtml = `<span>${eur(ci.price)} / Stk · Summe ${eur(ci.price * ci.qty)}</span>`;
+    } else if (isDemo) {
+      priceHtml = `<span>${eur(ci.price)}</span>`;
+    } else {
+      priceHtml = `<input type="number" class="cart-item-price-input" data-cart-id="${ci.id}" value="${ci.price.toFixed(2)}" step="0.01" style="width:70px;" />`;
+    }
+
+    const descHtml = disp.showDescription && ci.description ? `<div class="cart-item-desc">${escapeHtml(ci.description)}</div>` : "";
+    const shapeClass = "cart-item-" + (cartConfig.itemShape || "rounded");
+
+    return `<div class="cart-item ${shapeClass}">
+      <span class="cart-item-title">${ci.icon ? escapeHtml(ci.icon) + " " : ""}${escapeHtml(ci.name)} ${disp.quantityStyle === "static" || disp.quantityStyle === "dropdown" ? "" : "× " + ci.qty}</span>
+      ${qtyHtml}
+      ${priceHtml}
+      ${removeBtn}
+      ${descHtml}
+    </div>`;
+  }
+
+  function renderCartItemDemo() {
+    if (!cartItemDemoPreview) return;
+    const demoSource = products[0] || { name: "Beispielprodukt", price: 19.99, icon: "📦", description: "Kurze Beschreibung des Produkts.", compareAtPrice: 24.99 };
+    cartItemDemoPreview.innerHTML = buildCartItemHTML({ id: "demo", name: demoSource.name, price: demoSource.price, qty: 2, icon: demoSource.icon, description: demoSource.description || "Kurze Beschreibung des Produkts.", compareAtPrice: demoSource.compareAtPrice }, true);
+    const demoEl = cartItemDemoPreview.querySelector(".cart-item");
+    if (demoEl) demoEl.addEventListener("click", () => {
+      cartItemDisplayEditor.classList.remove("hidden");
+    });
   }
 
   function renderCart() {
@@ -387,12 +650,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!cartItems.length) {
       html += `<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>`;
     } else {
-      html += cartItems.map(ci => `
-        <div class="cart-item ${cartConfig.itemShape === "square" ? "cart-item-square" : ""}">
-          <span class="cart-item-title">${escapeHtml(ci.name)} × ${ci.qty}</span>
-          <input type="number" class="cart-item-price-input" data-cart-id="${ci.id}" value="${ci.price.toFixed(2)}" step="0.01" style="width:70px;" />
-          <button class="cart-item-remove" data-cart-id="${ci.id}" title="Entfernen" style="color:${cartConfig.removeButtonColor};">✕</button>
-        </div>`).join("");
+      html += cartItems.map(ci => buildCartItemHTML(ci, false)).join("");
     }
 
     // Empfehlung
@@ -448,15 +706,19 @@ document.addEventListener("DOMContentLoaded", () => {
     cartItemsList.querySelectorAll(".cart-item-remove").forEach(btn => {
       btn.addEventListener("click", (e) => {
         pushHistory();
-        removeCartItem(e.target.dataset.cartId);
+        removeCartItem(e.currentTarget.dataset.cartId);
         showToast("Artikel entfernt", "info");
       });
     });
+    cartItemsList.querySelectorAll(".cart-qty-minus").forEach(btn => btn.addEventListener("click", (e) => { pushHistory(); changeCartQty(e.currentTarget.dataset.cartId, -1); }));
+    cartItemsList.querySelectorAll(".cart-qty-plus").forEach(btn => btn.addEventListener("click", (e) => { pushHistory(); changeCartQty(e.currentTarget.dataset.cartId, 1); }));
+    cartItemsList.querySelectorAll(".cart-qty-select").forEach(sel => sel.addEventListener("change", (e) => { pushHistory(); setCartItemQty(e.currentTarget.dataset.cartId, parseInt(e.target.value) || 1); }));
+
     const recAddBtn = cartItemsList.querySelector(".cart-recommend-add");
     if (recAddBtn) recAddBtn.addEventListener("click", (e) => {
       pushHistory();
       const rec = cartConfig.recommendations.find(r => r.id === e.target.dataset.recId);
-      if (rec) { addCartItem(rec.name, rec.price); showToast("Empfehlung hinzugefügt", "success"); }
+      if (rec) { addCartItem(rec.name, rec.price, rec.icon); showToast("Empfehlung hinzugefügt", "success"); }
     });
     const discountApplyBtn = cartItemsList.querySelector("#cart-discount-apply");
     if (discountApplyBtn) discountApplyBtn.addEventListener("click", () => {
@@ -490,6 +752,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function applyCheckoutButtonStyle() {
+    if (!cartCheckoutBtn) return;
+    cartCheckoutBtn.style.background = cartConfig.buttonColor || "#4f46e5";
+    cartCheckoutBtn.style.borderRadius = cartConfig.buttonShape === "pill" ? "999px" : (cartConfig.buttonShape === "square" ? "0px" : "6px");
+  }
+  if (cartButtonColorInput) {
+    wireHistory(cartButtonColorInput);
+    cartButtonColorInput.addEventListener("input", () => { cartConfig.buttonColor = cartButtonColorInput.value; applyCheckoutButtonStyle(); });
+  }
+  if (cartButtonShapeSelect) {
+    cartButtonShapeSelect.addEventListener("change", () => { pushHistory(); cartConfig.buttonShape = cartButtonShapeSelect.value; applyCheckoutButtonStyle(); });
+  }
+
   function syncCartConfigUI() {
     if (cartItemShapeSelect) cartItemShapeSelect.value = cartConfig.itemShape;
     if (cartRemoveColorInput) cartRemoveColorInput.value = cartConfig.removeButtonColor;
@@ -502,12 +777,21 @@ document.addEventListener("DOMContentLoaded", () => {
       cartProgressToggle.checked = cartConfig.progressEnabled;
       cartProgressConfig.classList.toggle("hidden", !cartConfig.progressEnabled);
     }
+    const disp = cartConfig.itemDisplay || {};
+    const cidRemoveStyleEl = document.getElementById("cid-remove-style"); if (cidRemoveStyleEl) cidRemoveStyleEl.value = disp.removeStyle || "x";
+    const cidRemoveShapeEl = document.getElementById("cid-remove-shape"); if (cidRemoveShapeEl) cidRemoveShapeEl.value = disp.removeShape || "circle";
+    const cidQtyEl = document.getElementById("cid-quantity-style"); if (cidQtyEl) cidQtyEl.value = disp.quantityStyle || "stepper";
+    const cidPriceEl = document.getElementById("cid-price-style"); if (cidPriceEl) cidPriceEl.value = disp.priceStyle || "simple";
+    const cidDescEl = document.getElementById("cid-show-description"); if (cidDescEl) cidDescEl.checked = !!disp.showDescription;
+    if (cartButtonColorInput) cartButtonColorInput.value = cartConfig.buttonColor || "#4f46e5";
+    if (cartButtonShapeSelect) cartButtonShapeSelect.value = cartConfig.buttonShape || "rounded";
+    applyCheckoutButtonStyle();
   }
 
-  if (cartItemShapeSelect) cartItemShapeSelect.addEventListener("change", () => { pushHistory(); cartConfig.itemShape = cartItemShapeSelect.value; renderCart(); });
+  if (cartItemShapeSelect) cartItemShapeSelect.addEventListener("change", () => { pushHistory(); cartConfig.itemShape = cartItemShapeSelect.value; renderCart(); renderCartItemDemo(); });
   if (cartRemoveColorInput) {
     wireHistory(cartRemoveColorInput);
-    cartRemoveColorInput.addEventListener("input", () => { cartConfig.removeButtonColor = cartRemoveColorInput.value; renderCart(); });
+    cartRemoveColorInput.addEventListener("input", () => { cartConfig.removeButtonColor = cartRemoveColorInput.value; renderCart(); renderCartItemDemo(); });
   }
   if (cartDiscountToggle) cartDiscountToggle.addEventListener("change", () => { pushHistory(); cartConfig.discountEnabled = cartDiscountToggle.checked; renderCart(); });
   if (cartRecommendToggle) cartRecommendToggle.addEventListener("change", () => {
@@ -517,10 +801,20 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCart();
   });
   if (btnAddRecommendation) btnAddRecommendation.addEventListener("click", () => {
-    pushHistory();
-    cartConfig.recommendations.push({ id: "rec_" + Date.now(), name: "Neues Produkt", price: 9.99, icon: "📦" });
-    renderRecommendList();
-    renderCart();
+    if (!products.length) { showToast("Lege zuerst im Tab „📦 Produkte“ ein Produkt an.", "danger"); return; }
+    const bodyHtml = `<div style="display:flex;flex-direction:column;gap:8px;">${products.map(p => `<button type="button" class="btn btn-secondary product-pick-btn" data-id="${p.id}" style="justify-content:flex-start;">${escapeHtml(p.icon || "📦")} ${escapeHtml(p.name)} — ${eur(p.price)}</button>`).join("")}</div>`;
+    openModal("Produkt als Empfehlung wählen", bodyHtml);
+    document.querySelectorAll(".product-pick-btn").forEach(btn => btn.addEventListener("click", (e) => {
+      const p = products.find(x => x.id === e.currentTarget.dataset.id);
+      if (p) {
+        pushHistory();
+        cartConfig.recommendations.push({ id: "rec_" + Date.now(), name: p.name, price: p.price, icon: p.icon });
+        renderRecommendList();
+        renderCart();
+        showToast("Empfehlung hinzugefügt", "success");
+      }
+      closeModal();
+    }));
   });
   if (cartProgressToggle) cartProgressToggle.addEventListener("change", () => {
     pushHistory();
@@ -534,6 +828,14 @@ document.addEventListener("DOMContentLoaded", () => {
     renderMilestoneList();
     renderCart();
   });
+
+  // UI/UX-Editor für die Artikel-Darstellung im Warenkorb
+  [["cid-remove-style", "removeStyle"], ["cid-remove-shape", "removeShape"], ["cid-quantity-style", "quantityStyle"], ["cid-price-style", "priceStyle"]].forEach(([id, prop]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", () => { pushHistory(); cartConfig.itemDisplay[prop] = el.value; renderCart(); renderCartItemDemo(); });
+  });
+  const cidShowDescEl = document.getElementById("cid-show-description");
+  if (cidShowDescEl) cidShowDescEl.addEventListener("change", () => { pushHistory(); cartConfig.itemDisplay.showDescription = cidShowDescEl.checked; renderCart(); renderCartItemDemo(); });
 
   function renderRecommendList() {
     if (!cartRecommendList) return;
@@ -631,7 +933,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderIconPalette() {
     let palette = document.getElementById("icon-palette-custom");
     if (!palette) {
-      const host = document.querySelector(".palette-panel") || document.body;
+      const host = document.querySelector("#panel-elements") || document.body;
       palette = ensureEl("icon-palette-custom", host, "div", "icon-palette-custom");
       palette.innerHTML = `<h4 style="font-size:12px; margin:10px 0 6px; color:#6b7280;">Eigene Icons</h4><div id="icon-palette-list" style="display:flex; gap:6px; flex-wrap:wrap;"></div>`;
     }
@@ -672,6 +974,72 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ============================================================
+  // TEXTFORMAT-LEISTE (gemeinsam genutzt: Canvas-Inspector & Kopf-/Fußzeile)
+  // ============================================================
+  function setupPropTextToolbar() {
+    document.getElementById("ttb-bold").addEventListener("click", () => { const item = getSelected(); if (!item) return; pushHistory(); item.bold = !item.bold; refreshTextToolbarActiveStates(item); renderCanvas(); });
+    document.getElementById("ttb-italic").addEventListener("click", () => { const item = getSelected(); if (!item) return; pushHistory(); item.italic = !item.italic; refreshTextToolbarActiveStates(item); renderCanvas(); });
+    document.getElementById("ttb-underline").addEventListener("click", () => { const item = getSelected(); if (!item) return; pushHistory(); item.underline = !item.underline; refreshTextToolbarActiveStates(item); renderCanvas(); });
+    ["left", "center", "right"].forEach(a => {
+      document.getElementById("ttb-align-" + a).addEventListener("click", () => { const item = getSelected(); if (!item) return; pushHistory(); item.align = a; refreshTextToolbarActiveStates(item); renderCanvas(); });
+    });
+    wireHistory(propColor);
+    propColor.addEventListener("input", (e) => { const item = getSelected(); if (item) { item.color = e.target.value; renderCanvas(); } });
+    propFontFamily.addEventListener("change", (e) => { const item = getSelected(); if (item) { pushHistory(); item.fontFamily = e.target.value; renderCanvas(); } });
+  }
+  function refreshTextToolbarActiveStates(item) {
+    document.getElementById("ttb-bold").classList.toggle("active", !!item.bold);
+    document.getElementById("ttb-italic").classList.toggle("active", !!item.italic);
+    document.getElementById("ttb-underline").classList.toggle("active", !!item.underline);
+    ["left", "center", "right"].forEach(a => document.getElementById("ttb-align-" + a).classList.toggle("active", (item.align || "left") === a));
+  }
+  setupPropTextToolbar();
+
+  /** Baut eine eigenständige Textformat-Leiste in containerEl für ein
+      beliebiges Item (genutzt für Kopf-/Fußzeilen-Textelemente). */
+  function renderTextToolbarInto(container, item, onChange) {
+    container.classList.remove("hidden");
+    container.innerHTML = `
+      <button type="button" class="ttb-btn" data-act="bold" title="Fett"><b>F</b></button>
+      <button type="button" class="ttb-btn" data-act="italic" title="Kursiv"><i>K</i></button>
+      <button type="button" class="ttb-btn" data-act="underline" title="Unterstrichen"><u>U</u></button>
+      <span class="ttb-sep"></span>
+      <button type="button" class="ttb-btn" data-act="align-left" title="Linksbündig">⬅</button>
+      <button type="button" class="ttb-btn" data-act="align-center" title="Zentriert">↔</button>
+      <button type="button" class="ttb-btn" data-act="align-right" title="Rechtsbündig">➡</button>
+      <span class="ttb-sep"></span>
+      <input type="color" data-act="color" value="${item.color || "#ffffff"}" title="Farbe">
+      <select data-act="font" title="Schriftart">
+        <option value="inherit">Standard</option>
+        <option value="'Georgia', serif">Serif</option>
+        <option value="'Courier New', monospace">Monospace</option>
+        <option value="'Segoe UI', sans-serif">Sans-Serif</option>
+        <option value="'Comic Sans MS', cursive">Verspielt</option>
+      </select>`;
+    const setActive = () => {
+      container.querySelector('[data-act="bold"]').classList.toggle("active", !!item.bold);
+      container.querySelector('[data-act="italic"]').classList.toggle("active", !!item.italic);
+      container.querySelector('[data-act="underline"]').classList.toggle("active", !!item.underline);
+      container.querySelectorAll('[data-act^="align-"]').forEach(b => b.classList.remove("active"));
+      const alignBtn = container.querySelector(`[data-act="align-${item.align || "left"}"]`);
+      if (alignBtn) alignBtn.classList.add("active");
+      container.querySelector('[data-act="font"]').value = item.fontFamily || "inherit";
+    };
+    container.querySelector('[data-act="bold"]').addEventListener("click", () => { pushHistory(); item.bold = !item.bold; setActive(); onChange(); });
+    container.querySelector('[data-act="italic"]').addEventListener("click", () => { pushHistory(); item.italic = !item.italic; setActive(); onChange(); });
+    container.querySelector('[data-act="underline"]').addEventListener("click", () => { pushHistory(); item.underline = !item.underline; setActive(); onChange(); });
+    container.querySelectorAll('[data-act^="align-"]').forEach(btn => {
+      btn.addEventListener("click", () => { pushHistory(); item.align = btn.dataset.act.replace("align-", ""); setActive(); onChange(); });
+    });
+    const colorInput = container.querySelector('[data-act="color"]');
+    wireHistory(colorInput);
+    colorInput.addEventListener("input", () => { item.color = colorInput.value; onChange(); });
+    const fontSelect = container.querySelector('[data-act="font"]');
+    fontSelect.addEventListener("change", () => { pushHistory(); item.fontFamily = fontSelect.value; onChange(); });
+    setActive();
+  }
+
+  // ============================================================
   // KOPF- & FUSSZEILE
   // ============================================================
   function setupBarResize(handleEl, getHeight, setHeight, dir) {
@@ -684,7 +1052,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const onMove = (moveEvent) => {
         const rawDelta = (moveEvent.clientY - startY) / zoomLevel;
         const delta = dir === "up" ? -rawDelta : rawDelta;
-        const newHeight = Math.min(200, Math.max(40, Math.round(startHeight + delta)));
+        const newHeight = Math.min(400, Math.max(40, Math.round(startHeight + delta)));
         setHeight(newHeight);
       };
       const onUp = () => {
@@ -697,9 +1065,70 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function renderBarItem(it, containerEl, barHeight) {
+  function deselectBarItem() {
+    selectedBarItemRef = null;
+    if (barItemEditorEmpty) barItemEditorEmpty.classList.remove("hidden");
+    if (barItemEditorForm) barItemEditorForm.classList.add("hidden");
+  }
+
+  function toggleBarActionFields(actionType) {
+    barGroupActionUrl.classList.toggle("hidden", actionType !== "open-url");
+    barGroupActionMsg.classList.toggle("hidden", actionType !== "alert-msg");
+    barGroupProduct.classList.toggle("hidden", actionType !== "cart-add");
+  }
+
+  function selectBarItem(items, id, listType) {
+    selectedBarItemRef = { items, id, listType };
+    const item = items.find(x => x.id === id);
+    if (!item) { deselectBarItem(); return; }
+
+    barItemEditorEmpty.classList.add("hidden");
+    barItemEditorForm.classList.remove("hidden");
+
+    if (item.type === "text") {
+      barItemTextGroup.classList.remove("hidden");
+      barPropText.value = item.text || "";
+      renderTextToolbarInto(barItemTextToolbar, item, () => { renderHeaderFooter(); renderBarItemsList(items, listType === "header" ? headerItemsListEl : footerItemsListEl); });
+    } else {
+      barItemTextGroup.classList.add("hidden");
+      barItemTextToolbar.classList.add("hidden");
+    }
+
+    barPropActionType.value = item.actionType || "none";
+    barPropActionUrl.value = item.actionUrl || "";
+    barPropActionMsg.value = item.actionMsg || "";
+    toggleBarActionFields(item.actionType || "none");
+    if ((item.actionType || "none") === "cart-add") populateProductSelect(barPropProduct, item.productId);
+
+    renderBarItemsList(items, listType === "header" ? headerItemsListEl : footerItemsListEl);
+    renderHeaderFooter();
+  }
+
+  wireHistory(barPropText);
+  barPropText.addEventListener("input", (e) => {
+    if (!selectedBarItemRef) return;
+    const item = selectedBarItemRef.items.find(x => x.id === selectedBarItemRef.id);
+    if (item) { item.text = e.target.value; renderHeaderFooter(); }
+  });
+  barPropActionType.addEventListener("change", (e) => {
+    if (!selectedBarItemRef) return;
+    pushHistory();
+    const item = selectedBarItemRef.items.find(x => x.id === selectedBarItemRef.id);
+    if (item) {
+      item.actionType = e.target.value;
+      toggleBarActionFields(item.actionType);
+      if (item.actionType === "cart-add") populateProductSelect(barPropProduct, item.productId);
+    }
+  });
+  wireHistory(barPropActionUrl);
+  barPropActionUrl.addEventListener("input", (e) => { if (!selectedBarItemRef) return; const item = selectedBarItemRef.items.find(x => x.id === selectedBarItemRef.id); if (item) item.actionUrl = e.target.value; });
+  wireHistory(barPropActionMsg);
+  barPropActionMsg.addEventListener("input", (e) => { if (!selectedBarItemRef) return; const item = selectedBarItemRef.items.find(x => x.id === selectedBarItemRef.id); if (item) item.actionMsg = e.target.value; });
+  barPropProduct.addEventListener("change", (e) => { if (!selectedBarItemRef) return; pushHistory(); const item = selectedBarItemRef.items.find(x => x.id === selectedBarItemRef.id); if (item) item.productId = e.target.value; });
+
+  function renderBarItem(it, containerEl, barHeight, listType) {
     const el = document.createElement("div");
-    el.className = "bar-item";
+    el.className = "bar-item" + (selectedBarItemRef && selectedBarItemRef.id === it.id ? " bar-item-selected" : "");
     el.style.left = (it.x != null ? it.x : 10) + "px";
     el.style.top = (it.y != null ? it.y : Math.max(0, (barHeight - 24) / 2)) + "px";
     el.style.color = it.color || "#ffffff";
@@ -708,9 +1137,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const svg = el.querySelector("svg, img");
       if (svg) { svg.style.width = (it.size || 28) + "px"; svg.style.height = (it.size || 28) + "px"; }
     } else {
-      el.innerHTML = `<span style="font-size:${it.size || 18}px; font-weight:${it.bold ? "bold" : "normal"}; font-style:${it.italic ? "italic" : "normal"};">${escapeHtml(it.text || "")}</span>`;
+      el.innerHTML = `<span style="font-size:${it.size || 18}px; font-weight:${it.bold ? "bold" : "normal"}; font-style:${it.italic ? "italic" : "normal"}; text-decoration:${it.underline ? "underline" : "none"}; font-family:${it.fontFamily || "inherit"}; text-align:${it.align || "left"}; display:block;">${escapeHtml(it.text || "")}</span>`;
     }
     makeDraggable(el, it, containerEl, { minY: 0, maxY: Math.max(0, barHeight - 20) });
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (isPreviewMode) {
+        executeAction(it, el);
+      } else {
+        selectBarItem(listType === "header" ? headerItems : footerItems, it.id, listType);
+      }
+    });
     return el;
   }
 
@@ -724,12 +1161,13 @@ document.addEventListener("DOMContentLoaded", () => {
         header.id = "builder-header";
         header.className = "builder-bar";
         canvasColumn.insertBefore(header, canvas);
+        header.addEventListener("click", () => { if (!isPreviewMode) { deselectBarItem(); renderHeaderFooter(); } });
       }
       header.classList.toggle("sticky-header", headerSticky);
       header.style.height = headerHeight + "px";
       header.style.background = headerBgColor;
       header.innerHTML = "";
-      headerItems.forEach(it => header.appendChild(renderBarItem(it, header, headerHeight)));
+      headerItems.forEach(it => header.appendChild(renderBarItem(it, header, headerHeight, "header")));
       const handle = document.createElement("div");
       handle.className = "bar-resize-handle bottom";
       header.appendChild(handle);
@@ -748,6 +1186,7 @@ document.addEventListener("DOMContentLoaded", () => {
         footer.id = "builder-footer";
         footer.className = "builder-bar";
         canvasColumn.appendChild(footer);
+        footer.addEventListener("click", () => { if (!isPreviewMode) { deselectBarItem(); renderHeaderFooter(); } });
       }
       footer.style.height = footerHeight + "px";
       footer.style.background = footerBgColor;
@@ -755,7 +1194,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const handle = document.createElement("div");
       handle.className = "bar-resize-handle top";
       footer.appendChild(handle);
-      footerItems.forEach(it => footer.appendChild(renderBarItem(it, footer, footerHeight)));
+      footerItems.forEach(it => footer.appendChild(renderBarItem(it, footer, footerHeight, "footer")));
       setupBarResize(handle, () => footerHeight, (h) => {
         footerHeight = h;
         footer.style.height = h + "px";
@@ -768,50 +1207,60 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderBarItemsList(items, listEl) {
     if (!listEl) return;
+    const listType = listEl === headerItemsListEl ? "header" : "footer";
     listEl.innerHTML = "";
     items.forEach(it => {
       const row = document.createElement("div");
       row.className = "item-row";
+      row.dataset.id = it.id;
+      if (selectedBarItemRef && selectedBarItemRef.id === it.id) row.classList.add("active-item-row");
       if (it.type === "text") {
         row.innerHTML = `
+          <span class="item-row-drag-handle">⠿</span>
           <input type="text" class="bar-item-text" data-id="${it.id}" value="${escapeAttr(it.text || "")}" placeholder="Text">
           <input type="color" class="bar-item-color" data-id="${it.id}" value="${it.color || "#ffffff"}">
-          <label class="mini-check"><input type="checkbox" class="bar-item-bold" data-id="${it.id}" ${it.bold ? "checked" : ""}>F</label>
-          <label class="mini-check"><input type="checkbox" class="bar-item-italic" data-id="${it.id}" ${it.italic ? "checked" : ""}>K</label>
           <button type="button" class="item-delete" data-id="${it.id}">✕</button>`;
       } else {
         const iconOptions = Object.keys(SVGMAP).map(name => `<option value="${name}" ${it.iconName === name ? "selected" : ""}>${name}</option>`).join("");
         row.innerHTML = `
+          <span class="item-row-drag-handle">⠿</span>
           <select class="bar-item-icon" data-id="${it.id}">${iconOptions}</select>
           <input type="color" class="bar-item-color" data-id="${it.id}" value="${it.color || "#ffffff"}">
           <button type="button" class="item-delete" data-id="${it.id}">✕</button>`;
       }
+      row.addEventListener("click", (e) => {
+        if (e.target.closest("input, select, button")) return;
+        selectBarItem(items, it.id, listType);
+      });
       listEl.appendChild(row);
     });
 
     listEl.querySelectorAll(".bar-item-text").forEach(inp => {
       wireHistory(inp);
-      inp.addEventListener("input", (e) => { const it = items.find(x => x.id === e.target.dataset.id); if (it) { it.text = e.target.value; renderHeaderFooter(); } });
+      inp.addEventListener("input", (e) => {
+        const it = items.find(x => x.id === e.target.dataset.id);
+        if (it) {
+          it.text = e.target.value;
+          renderHeaderFooter();
+          if (selectedBarItemRef && selectedBarItemRef.id === it.id) barPropText.value = it.text;
+        }
+      });
     });
     listEl.querySelectorAll(".bar-item-color").forEach(inp => {
       wireHistory(inp);
       inp.addEventListener("input", (e) => { const it = items.find(x => x.id === e.target.dataset.id); if (it) { it.color = e.target.value; renderHeaderFooter(); } });
-    });
-    listEl.querySelectorAll(".bar-item-bold").forEach(inp => {
-      inp.addEventListener("change", (e) => { pushHistory(); const it = items.find(x => x.id === e.target.dataset.id); if (it) { it.bold = e.target.checked; renderHeaderFooter(); } });
-    });
-    listEl.querySelectorAll(".bar-item-italic").forEach(inp => {
-      inp.addEventListener("change", (e) => { pushHistory(); const it = items.find(x => x.id === e.target.dataset.id); if (it) { it.italic = e.target.checked; renderHeaderFooter(); } });
     });
     listEl.querySelectorAll(".bar-item-icon").forEach(sel => {
       sel.addEventListener("change", (e) => { pushHistory(); const it = items.find(x => x.id === e.target.dataset.id); if (it) { it.iconName = e.target.value; renderHeaderFooter(); } });
     });
     listEl.querySelectorAll(".item-delete").forEach(btn => {
       btn.addEventListener("click", (e) => {
+        e.stopPropagation();
         pushHistory();
         const id = e.target.dataset.id;
         const idx = items.findIndex(x => x.id === id);
         if (idx > -1) items.splice(idx, 1);
+        if (selectedBarItemRef && selectedBarItemRef.id === id) deselectBarItem();
         renderBarItemsList(items, listEl);
         renderHeaderFooter();
       });
@@ -822,7 +1271,7 @@ document.addEventListener("DOMContentLoaded", () => {
     pushHistory();
     headerEnabled = headerToggle.checked;
     if (headerEnabled && headerItems.length === 0) {
-      headerItems.push({ id: "hitem_" + Date.now(), type: "text", text: "Meine Website", x: 20, y: Math.max(0, (headerHeight - 24) / 2), color: "#ffffff", size: 20, bold: true, italic: false });
+      headerItems.push({ id: "hitem_" + Date.now(), type: "text", text: "Meine Website", x: 20, y: Math.max(0, (headerHeight - 24) / 2), color: "#ffffff", size: 20, bold: true, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
       renderBarItemsList(headerItems, headerItemsListEl);
     }
     renderHeaderFooter();
@@ -839,13 +1288,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (btnAddHeaderText) btnAddHeaderText.addEventListener("click", () => {
     pushHistory();
-    headerItems.push({ id: "hitem_" + Date.now(), type: "text", text: "Text", x: 20, y: Math.max(0, (headerHeight - 24) / 2), color: "#ffffff", size: 16, bold: false, italic: false });
+    headerItems.push({ id: "hitem_" + Date.now(), type: "text", text: "Text", x: 20, y: Math.max(0, (headerHeight - 24) / 2), color: "#ffffff", size: 16, bold: false, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
     renderBarItemsList(headerItems, headerItemsListEl);
     renderHeaderFooter();
   });
   if (btnAddHeaderIcon) btnAddHeaderIcon.addEventListener("click", () => {
     pushHistory();
-    headerItems.push({ id: "hitem_" + Date.now(), type: "icon", iconName: "settings", x: 20, y: Math.max(0, (headerHeight - 28) / 2), color: "#ffffff", size: 24 });
+    headerItems.push({ id: "hitem_" + Date.now(), type: "icon", iconName: "settings", x: 20, y: Math.max(0, (headerHeight - 28) / 2), color: "#ffffff", size: 24, actionType: "none", actionUrl: "", actionMsg: "", productId: null });
     renderBarItemsList(headerItems, headerItemsListEl);
     renderHeaderFooter();
   });
@@ -854,7 +1303,7 @@ document.addEventListener("DOMContentLoaded", () => {
     pushHistory();
     footerEnabled = footerToggle.checked;
     if (footerEnabled && footerItems.length === 0) {
-      footerItems.push({ id: "fitem_" + Date.now(), type: "text", text: "© 2026 WebBuilder Pro", x: 20, y: Math.max(0, (footerHeight - 20) / 2), color: "#cbd5e1", size: 14, bold: false, italic: false });
+      footerItems.push({ id: "fitem_" + Date.now(), type: "text", text: "© 2026 WebBuilder Pro", x: 20, y: Math.max(0, (footerHeight - 20) / 2), color: "#cbd5e1", size: 14, bold: false, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
       renderBarItemsList(footerItems, footerItemsListEl);
     }
     renderHeaderFooter();
@@ -870,13 +1319,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   if (btnAddFooterText) btnAddFooterText.addEventListener("click", () => {
     pushHistory();
-    footerItems.push({ id: "fitem_" + Date.now(), type: "text", text: "Text", x: 20, y: Math.max(0, (footerHeight - 20) / 2), color: "#cbd5e1", size: 14, bold: false, italic: false });
+    footerItems.push({ id: "fitem_" + Date.now(), type: "text", text: "Text", x: 20, y: Math.max(0, (footerHeight - 20) / 2), color: "#cbd5e1", size: 14, bold: false, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
     renderBarItemsList(footerItems, footerItemsListEl);
     renderHeaderFooter();
   });
   if (btnAddFooterIcon) btnAddFooterIcon.addEventListener("click", () => {
     pushHistory();
-    footerItems.push({ id: "fitem_" + Date.now(), type: "icon", iconName: "arrow-up", x: 20, y: Math.max(0, (footerHeight - 24) / 2), color: "#cbd5e1", size: 20 });
+    footerItems.push({ id: "fitem_" + Date.now(), type: "icon", iconName: "arrow-up", x: 20, y: Math.max(0, (footerHeight - 24) / 2), color: "#cbd5e1", size: 20, actionType: "none", actionUrl: "", actionMsg: "", productId: null });
     renderBarItemsList(footerItems, footerItemsListEl);
     renderHeaderFooter();
   });
@@ -910,16 +1359,10 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
 
       <div class="inspector-subsection" id="ext-icon-frame-section" style="display:none;">
-        <h4>Icon-Rahmen</h4>
-        <div class="inspector-row"><label>Rahmen (rund)</label><input type="checkbox" id="ext-icon-frame" /></div>
+        <h4>Icon-Rahmen (Liquid Glass)</h4>
+        <div class="inspector-row"><label>Rahmen (rund, Glas-Optik)</label><input type="checkbox" id="ext-icon-frame" /></div>
         <div class="inspector-row"><label>Rahmenfarbe</label><input type="color" id="ext-icon-frame-color" value="#111827" /></div>
-      </div>
-
-      <div class="inspector-subsection" id="ext-format-section" style="display:none;">
-        <h4>Textformat</h4>
-        <div class="inspector-row"><label>Fett</label><input type="checkbox" id="ext-bold" /></div>
-        <div class="inspector-row"><label>Kursiv</label><input type="checkbox" id="ext-italic" /></div>
-        <p class="help-text" style="margin:6px 0 0;">Für Verlinkungen nutze oben die Aktion „Neue Seite / URL öffnen“.</p>
+        <p class="help-text" style="margin:6px 0 0;">Der Bereich zwischen Rahmen und Icon bleibt transparent mit Glas-Effekt (Blur).</p>
       </div>
 
       <div class="inspector-subsection" id="ext-modal-section" style="display:none;">
@@ -959,9 +1402,6 @@ document.addEventListener("DOMContentLoaded", () => {
     wireHistory(document.getElementById("ext-icon-frame-color"));
     document.getElementById("ext-icon-frame-color").addEventListener("input", (e) => { const item = getSelected(); if (item) { item.iconFrameColor = e.target.value; renderCanvas(); } });
 
-    document.getElementById("ext-bold").addEventListener("change", (e) => { pushHistory(); const item = getSelected(); if (item) { item.bold = e.target.checked; renderCanvas(); } });
-    document.getElementById("ext-italic").addEventListener("change", (e) => { pushHistory(); const item = getSelected(); if (item) { item.italic = e.target.checked; renderCanvas(); } });
-
     const bindStyleField = (fieldId, prop, parser = (v) => v) => {
       const el = document.getElementById(fieldId);
       wireHistory(el);
@@ -988,13 +1428,6 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("ext-icon-frame-color").value = item.iconFrameColor || "#111827";
     }
 
-    const isTextLike = ["text", "headline", "button"].includes(item.type);
-    document.getElementById("ext-format-section").style.display = isTextLike ? "block" : "none";
-    if (isTextLike) {
-      document.getElementById("ext-bold").checked = !!item.bold;
-      document.getElementById("ext-italic").checked = !!item.italic;
-    }
-
     const isCustomModal = item.actionType === "open-custom-modal";
     document.getElementById("ext-modal-section").style.display = isCustomModal ? "block" : "none";
     document.getElementById("ext-modal-title").value = item.modalTitle || "";
@@ -1004,20 +1437,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("ext-message-section").style.display = isAlertMsg ? "block" : "none";
     document.getElementById("ext-message-position").value = item.messagePosition || "bottom-right";
   }
-
-  function ensureGenericModalActionOption() {
-    if (!propActionType) return;
-    Array.from(propActionType.options).forEach(opt => {
-      if (opt.value === "open-cookie-modal" || opt.value === "open-agb-modal" || opt.value === "open-modal") opt.remove();
-    });
-    if (!Array.from(propActionType.options).some(o => o.value === "open-custom-modal")) {
-      const opt = document.createElement("option");
-      opt.value = "open-custom-modal";
-      opt.innerText = "Eigenes Modal öffnen";
-      propActionType.appendChild(opt);
-    }
-  }
-  ensureGenericModalActionOption();
 
   // ============================================================
   // CANVAS BACKGROUND
@@ -1095,13 +1514,16 @@ document.addEventListener("DOMContentLoaded", () => {
       actionType: "none",
       actionUrl: "",
       actionMsg: "",
+      productId: null,
       shapeType: type === "shape" ? (shapeType || "rectangle") : null,
       shapeStyle: type === "shape" ? "solid" : null,
       bold: type === "headline",
       italic: false,
+      underline: false,
+      align: "left",
+      fontFamily: "inherit",
       iconFrame: false,
       iconFrameColor: "#111827",
-      price: 9.99,
       modalTitle: "",
       modalBody: "",
       messagePosition: "bottom-right"
@@ -1148,6 +1570,10 @@ document.addEventListener("DOMContentLoaded", () => {
       el.style.color = item.color;
       el.dataset.id = item.id;
 
+      const textDeco = item.underline ? "underline" : "none";
+      const fontFam = item.fontFamily || "inherit";
+      const align = item.align || "left";
+
       if (item.type === "icon" && SVGMAP[item.iconName]) {
         el.innerHTML = item.iconFrame
           ? `<span class="icon-frame-wrap" style="border-color:${item.iconFrameColor || "#111827"};">${SVGMAP[item.iconName]}</span>`
@@ -1155,9 +1581,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const svg = el.querySelector("svg, img");
         if (svg) { svg.style.width = `${item.size}px`; svg.style.height = `${item.size}px`; }
       } else if (item.type === "button") {
-        el.innerHTML = `<button class="btn btn-primary" style="font-size:${item.size}px; background-color:${item.color}; font-weight:${item.bold ? "bold" : "600"}; font-style:${item.italic ? "italic" : "normal"};">${escapeHtml(item.text)}</button>`;
+        el.innerHTML = `<button class="btn btn-primary" style="font-size:${item.size}px; background-color:${item.color}; font-weight:${item.bold ? "bold" : "600"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam};">${escapeHtml(item.text)}</button>`;
       } else if (item.type === "headline") {
-        el.innerHTML = `<h2 style="font-size:${item.size}px; color:${item.color}; font-weight:${item.bold ? "bold" : "400"}; font-style:${item.italic ? "italic" : "normal"};">${escapeHtml(item.text)}</h2>`;
+        el.innerHTML = `<h2 style="font-size:${item.size}px; color:${item.color}; font-weight:${item.bold ? "bold" : "400"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam}; text-align:${align};">${escapeHtml(item.text)}</h2>`;
       } else if (item.type === "box") {
         el.innerHTML = `<div style="width:140px; height:90px; background:${item.color}; border-radius:8px; box-shadow: var(--shadow-md);"></div>`;
       } else if (item.type === "shape") {
@@ -1166,7 +1592,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const src = item.imageUrl || "https://via.placeholder.com/200";
         el.innerHTML = `<img src="${src}" class="canvas-img" style="width:${item.size}px; height:auto;" alt="Bild Element" />`;
       } else {
-        el.innerHTML = `<p style="font-size:${item.size}px; color:${item.color}; font-weight:${item.bold ? "bold" : "normal"}; font-style:${item.italic ? "italic" : "normal"};">${escapeHtml(item.text)}</p>`;
+        el.innerHTML = `<p style="font-size:${item.size}px; color:${item.color}; font-weight:${item.bold ? "bold" : "normal"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam}; text-align:${align};">${escapeHtml(item.text)}</p>`;
       }
 
       const badge = document.createElement("span");
@@ -1224,16 +1650,19 @@ document.addEventListener("DOMContentLoaded", () => {
     groupText.classList.toggle("hidden", isImage || isBoxLike);
     groupColor.classList.toggle("hidden", isImage);
     groupImage.classList.toggle("hidden", !isImage);
+    propTextToolbar.classList.toggle("text-only-hidden", isBoxLike);
 
     propId.value = item.id;
     propText.value = item.text || "";
     propSize.value = item.size || 20;
     propColor.value = item.color || "#1f2937";
+    propFontFamily.value = item.fontFamily || "inherit";
     propImageUrl.value = item.imageUrl || "";
     propActionType.value = item.actionType || "none";
     propActionUrl.value = item.actionUrl || "";
     propActionMsg.value = item.actionMsg || "";
 
+    refreshTextToolbarActiveStates(item);
     toggleActionFields(item.actionType);
     populateExtendedInspector(item);
     renderCanvas();
@@ -1248,9 +1677,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   wireHistory(propSize);
   propSize.addEventListener("input", (e) => { const item = getSelected(); if (item) { item.size = parseInt(e.target.value) || 16; renderCanvas(); } });
-
-  wireHistory(propColor);
-  propColor.addEventListener("input", (e) => { const item = getSelected(); if (item) { item.color = e.target.value; renderCanvas(); } });
 
   wireHistory(propImageUrl);
   propImageUrl.addEventListener("input", (e) => { const item = getSelected(); if (item) { item.imageUrl = e.target.value; renderCanvas(); } });
@@ -1283,6 +1709,8 @@ document.addEventListener("DOMContentLoaded", () => {
   wireHistory(propActionMsg);
   propActionMsg.addEventListener("input", (e) => { const item = getSelected(); if (item) item.actionMsg = e.target.value; });
 
+  if (propProduct) propProduct.addEventListener("change", (e) => { pushHistory(); const item = getSelected(); if (item) item.productId = e.target.value; });
+
   btnDelete.addEventListener("click", () => {
     if (selectedElementId) {
       pushHistory();
@@ -1299,6 +1727,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function toggleActionFields(actionType) {
     groupActionUrl.classList.toggle("hidden", actionType !== "open-url");
     groupActionMsg.classList.toggle("hidden", actionType !== "alert-msg");
+    groupProduct.classList.toggle("hidden", actionType !== "cart-add");
+    if (actionType === "cart-add") {
+      const item = getSelected();
+      populateProductSelect(propProduct, item ? item.productId : null);
+      if (propProductHint) propProductHint.classList.toggle("hidden", products.length > 0);
+    }
   }
 
   // ============================================================
@@ -1317,7 +1751,10 @@ document.addEventListener("DOMContentLoaded", () => {
         showToast("Nach unten gescrollt ⬇️", "info");
         break;
       case "history-back":
-        showToast("Browser Zurück-Funktion ausgelöst ↩️", "info");
+        showToast("Zurück-Funktion ausgelöst ↩️ (im Export: echtes Browser-Zurück)", "info");
+        break;
+      case "history-forward":
+        showToast("Vorwärts-Funktion ausgelöst ↪️ (im Export: echtes Browser-Vorwärts)", "info");
         break;
       case "open-url":
         if (item.actionUrl) {
@@ -1327,13 +1764,16 @@ document.addEventListener("DOMContentLoaded", () => {
           showToast("Keine Ziel-URL im Inspector hinterlegt!", "danger");
         }
         break;
-      case "cart-add":
+      case "cart-add": {
+        const product = products.find(p => p.id === item.productId);
+        if (!product) { showToast("Kein Produkt für diese Aktion ausgewählt!", "danger"); break; }
         domEl.classList.remove("cart-pop-anim");
         void domEl.offsetWidth;
         domEl.classList.add("cart-pop-anim");
-        addCartItem(item.text || "Produkt", item.price != null ? item.price : 9.99);
-        showToast("Artikel in den Warenkorb gelegt! 🛒", "success");
+        addCartItem(product.name, product.price, product.icon, product.description, product.compareAtPrice);
+        showToast(`„${product.name}“ in den Warenkorb gelegt! 🛒`, "success");
         break;
+      }
       case "alert-msg":
         showPositionedMessage(item.actionMsg || "Eine Benachrichtigung wurde ausgelöst!", item.messagePosition || "bottom-right");
         break;
@@ -1382,28 +1822,28 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderBarItemExport(it) {
     const style = `position:absolute; left:${it.x || 0}px; top:${it.y || 0}px; color:${it.color || "#fff"};`;
     if (it.type === "icon" && SVGMAP[it.iconName]) return `<span style="${style}">${SVGMAP[it.iconName]}</span>`;
-    return `<span style="${style} font-size:${it.size || 18}px; font-weight:${it.bold ? "bold" : "normal"}; font-style:${it.italic ? "italic" : "normal"};">${escapeHtml(it.text || "")}</span>`;
+    return `<span style="${style} font-size:${it.size || 18}px; font-weight:${it.bold ? "bold" : "normal"}; font-style:${it.italic ? "italic" : "normal"}; text-decoration:${it.underline ? "underline" : "none"}; font-family:${it.fontFamily || "inherit"};">${escapeHtml(it.text || "")}</span>`;
   }
 
   btnExport.addEventListener("click", () => {
-    let exportedHTML = `<!-- WebBuilder Pro Export -->\n`;
+    let exportedHTML = `<!-- WebBuilder Pro Export -->\n<!-- Hinweis: Dies ist ein visueller Export. Klick-Aktionen (z.B. Zurück/Vorwärts, In den Warenkorb) sind Platzhalter und müssten für eine echte Website noch mit echtem JavaScript verknüpft werden. -->\n`;
     if (headerEnabled) {
       exportedHTML += `<div style="position:relative; width:100%; height:${headerHeight}px; background:${headerBgColor};${headerSticky ? " position:sticky; top:0; z-index:300;" : ""}">\n`;
       headerItems.forEach(it => { exportedHTML += `  ${renderBarItemExport(it)}\n`; });
       exportedHTML += `</div>\n`;
     }
-    exportedHTML += `<div style="position:relative; width:100%; min-height:100vh; background:${canvas.style.background};">\n`;
+    exportedHTML += `<div style="position:relative; width:100%; min-height:${canvasHeight}px; background:${canvas.style.background};">\n`;
     elements.forEach(item => {
       exportedHTML += `  <!-- Element: ${item.id} (${item.type}) -->\n`;
       exportedHTML += `  <div style="position:absolute; left:${item.x}px; top:${item.y}px; color:${item.color};">\n`;
       if (item.type === "icon" && SVGMAP[item.iconName]) {
         exportedHTML += item.iconFrame
-          ? `    <span style="display:inline-flex;align-items:center;justify-content:center;border:2px solid ${item.iconFrameColor};border-radius:50%;padding:8px;background:#fff;">${SVGMAP[item.iconName]}</span>\n`
+          ? `    <span style="display:inline-flex;align-items:center;justify-content:center;border:1.5px solid rgba(255,255,255,0.55);border-radius:50%;padding:10px;background:rgba(255,255,255,0.12);backdrop-filter:blur(10px) saturate(180%);">${SVGMAP[item.iconName]}</span>\n`
           : `    ${SVGMAP[item.iconName]}\n`;
       } else if (item.type === "button") {
-        exportedHTML += `    <button style="font-size:${item.size}px; background:${item.color}; color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:${item.bold ? "bold" : "600"}; font-style:${item.italic ? "italic" : "normal"};">${item.text}</button>\n`;
+        exportedHTML += `    <button style="font-size:${item.size}px; background:${item.color}; color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:${item.bold ? "bold" : "600"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${item.underline ? "underline" : "none"}; font-family:${item.fontFamily || "inherit"};">${item.text}</button>\n`;
       } else if (item.type === "headline") {
-        exportedHTML += `    <h2 style="font-size:${item.size}px; color:${item.color}; margin:0; font-weight:${item.bold ? "bold" : "400"}; font-style:${item.italic ? "italic" : "normal"};">${item.text}</h2>\n`;
+        exportedHTML += `    <h2 style="font-size:${item.size}px; color:${item.color}; margin:0; font-weight:${item.bold ? "bold" : "400"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${item.underline ? "underline" : "none"}; font-family:${item.fontFamily || "inherit"}; text-align:${item.align || "left"};">${item.text}</h2>\n`;
       } else if (item.type === "image") {
         exportedHTML += `    <img src="${item.imageUrl}" style="width:${item.size}px; height:auto; display:block;" alt="Exportiertes Bild" />\n`;
       } else if (item.type === "box") {
@@ -1411,7 +1851,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (item.type === "shape") {
         exportedHTML += `    ${renderShapeInner(item)}\n`;
       } else {
-        exportedHTML += `    <p style="font-size:${item.size}px; color:${item.color}; margin:0; font-weight:${item.bold ? "bold" : "normal"}; font-style:${item.italic ? "italic" : "normal"};">${item.text}</p>\n`;
+        exportedHTML += `    <p style="font-size:${item.size}px; color:${item.color}; margin:0; font-weight:${item.bold ? "bold" : "normal"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${item.underline ? "underline" : "none"}; font-family:${item.fontFamily || "inherit"}; text-align:${item.align || "left"};">${item.text}</p>\n`;
       }
       exportedHTML += `  </div>\n`;
     });
@@ -1430,7 +1870,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================================
   function saveProjectState() {
     const state = {
-      elements, cartItems, cartButtonLabel, cartConfig,
+      elements, cartItems, cartButtonLabel, cartConfig, products, canvasHeight,
       headerEnabled, headerSticky, headerHeight, headerBgColor, headerItems,
       footerEnabled, footerHeight, footerBgColor, footerItems,
       background: {
@@ -1455,10 +1895,16 @@ document.addEventListener("DOMContentLoaded", () => {
       elements = state.elements || [];
       cartItems = state.cartItems || [];
       cartButtonLabel = state.cartButtonLabel || "Zur Kasse gehen";
+      products = state.products || [];
+      canvasHeight = state.canvasHeight || 1100;
+
+      const defaultItemDisplay = { removeStyle: "x", removeShape: "circle", quantityStyle: "stepper", priceStyle: "simple", showDescription: false };
       cartConfig = Object.assign({
-        itemShape: "rounded", removeButtonColor: "#ef4444", discountEnabled: false,
-        recommendEnabled: false, recommendations: [], progressEnabled: false, milestones: []
+        itemShape: "rounded", removeButtonColor: "#ef4444", buttonColor: "#4f46e5", buttonShape: "rounded",
+        discountEnabled: false, recommendEnabled: false, recommendations: [], progressEnabled: false, milestones: [],
+        itemDisplay: defaultItemDisplay
       }, state.cartConfig || {});
+      cartConfig.itemDisplay = Object.assign({}, defaultItemDisplay, (state.cartConfig && state.cartConfig.itemDisplay) || {});
 
       headerEnabled = !!state.headerEnabled;
       headerSticky = !!state.headerSticky;
@@ -1480,6 +1926,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (footerBgInput) footerBgInput.value = footerBgColor;
       if (cartButtonLabelInput) cartButtonLabelInput.value = cartButtonLabel;
       if (cartCheckoutBtn) cartCheckoutBtn.innerText = cartButtonLabel;
+
+      setCanvasHeight(canvasHeight);
 
       if (state.background) {
         bgType.value = state.background.type || "solid";
@@ -1507,10 +1955,13 @@ document.addEventListener("DOMContentLoaded", () => {
   syncCartConfigUI();
   renderRecommendList();
   renderMilestoneList();
+  renderProductList();
   renderBarItemsList(headerItems, headerItemsListEl);
   renderBarItemsList(footerItems, footerItemsListEl);
   renderCart();
+  renderCartItemDemo();
   renderCanvas();
   renderHeaderFooter();
   applyZoom();
+  updateUndoRedoButtons();
 });
