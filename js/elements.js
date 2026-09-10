@@ -1,7 +1,6 @@
 // WebBuilder elements service
-// Transitional module for the staged extraction of element logic from the
-// legacy editor. This module owns element data operations; DOM rendering and
-// inspector behaviour remain in builder-legacy.js until the next integration cut.
+// Shared element state + CRUD operations. The legacy adapter proxy keeps
+// existing editor code compatible while the DOM/inspector logic is migrated.
 
 (() => {
   const state = window.WebBuilderState;
@@ -27,34 +26,20 @@
   }
 
   function create(type, iconName = null, x = 50, y = 50, shapeType = null) {
-    const item = {
-      id: createId("elem"),
-      type,
-      iconName,
-      x,
-      y,
+    return {
+      id: createId("elem"), type, iconName, x, y,
       text: type === "button" ? "Klick mich" : (type === "headline" ? "Neue Überschrift" : "Beispieltext..."),
       color: type === "shape" ? "#4f46e5" : "#1f2937",
       size: type === "icon" ? 36 : (type === "headline" ? 32 : (type === "image" ? 200 : (type === "shape" ? 100 : 18))),
       imageUrl: type === "image" ? "https://picsum.photos/300/200" : "",
-      actionType: "none",
-      actionUrl: "",
-      actionMsg: "",
-      productId: null,
+      actionType: "none", actionUrl: "", actionMsg: "", productId: null,
       shapeType: type === "shape" ? (shapeType || "rectangle") : null,
       shapeStyle: type === "shape" ? "solid" : null,
-      bold: type === "headline",
-      italic: false,
-      underline: false,
-      align: "left",
-      fontFamily: "inherit",
-      iconFrame: false,
-      iconFrameColor: "#111827",
-      modalTitle: "",
-      modalBody: "",
+      bold: type === "headline", italic: false, underline: false,
+      align: "left", fontFamily: "inherit", iconFrame: false,
+      iconFrameColor: "#111827", modalTitle: "", modalBody: "",
       messagePosition: "bottom-right"
     };
-    return item;
   }
 
   function add(element) {
@@ -119,20 +104,45 @@
     state.selectedElementId = null;
   }
 
+  // Compatibility proxy: legacy code can still call elements.push/find/filter
+  // while the actual array remains WebBuilderState.elements.
+  function createLegacyProxy() {
+    return new Proxy([], {
+      get(_target, prop) {
+        const current = state.elements;
+        if (prop === "length") return current.length;
+        if (prop === Symbol.iterator) return current[Symbol.iterator].bind(current);
+        const value = current[prop];
+        return typeof value === "function" ? value.bind(current) : value;
+      },
+      set(_target, prop, value) {
+        if (prop === "length") {
+          currentLengthSet(value);
+          return true;
+        }
+        state.elements[prop] = value;
+        return true;
+      },
+      deleteProperty(_target, prop) {
+        delete state.elements[prop];
+        return true;
+      },
+      ownKeys() { return Reflect.ownKeys(state.elements); },
+      getOwnPropertyDescriptor(_target, prop) {
+        if (prop in state.elements) {
+          return { configurable: true, enumerable: true, writable: true, value: state.elements[prop] };
+        }
+        return undefined;
+      }
+    });
+  }
+
+  function currentLengthSet(value) {
+    state.elements.length = Number(value) || 0;
+  }
+
   window.WebBuilderElements = {
-    clone,
-    createId,
-    getAll,
-    getById,
-    create,
-    add,
-    addNew,
-    remove,
-    update,
-    duplicate,
-    replaceAll,
-    setSelected,
-    getSelected,
-    clear
+    clone, createId, getAll, getById, create, add, addNew, remove, update,
+    duplicate, replaceAll, setSelected, getSelected, clear, createLegacyProxy
   };
 })();
