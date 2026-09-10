@@ -10,6 +10,7 @@
     "WebBuilderActionRuntime",
     "WebBuilderElements",
     "WebBuilderInspector",
+    "WebBuilderInspectorActionsRuntime",
     "WebBuilderHeaderFooter",
     "WebBuilderProducts",
     "WebBuilderProductsRuntime",
@@ -26,6 +27,7 @@
     const migration = window.WebBuilderMigration;
     const canvasRuntime = window.WebBuilderCanvasRuntime;
     const actionRuntime = window.WebBuilderActionRuntime;
+    const inspectorActions = window.WebBuilderInspectorActionsRuntime;
     const products = window.WebBuilderProducts;
     const productsRuntime = window.WebBuilderProductsRuntime;
     const cart = window.WebBuilderCart;
@@ -37,6 +39,7 @@
       sharedState: !!window.WebBuilderState,
       canvasRuntime: !!canvasRuntime,
       actionRuntime: !!actionRuntime,
+      inspectorActionsRuntime: !!inspectorActions,
       productsService: !!products,
       productsRuntime: !!productsRuntime,
       cartService: !!cart,
