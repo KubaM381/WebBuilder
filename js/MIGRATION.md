@@ -7,7 +7,11 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 - `state.js` — shared editor state registry
 - `storage.js` — snapshots, localStorage and history persistence helpers
 - `history.js` — undo/redo service
-- `canvas.js` — canvas coordinates, zoom and drag helpers
+- `canvas.js` — central canvas facade
+- `canvas-viewport.js` — zoom, coordinate conversion and canvas sizing
+- `canvas-interaction.js` — reusable drag interaction
+- `canvas-renderer.js` — modular rendering of placed canvas elements
+- `icon-registry.js` — shared built-in/custom icon registry
 - `elements.js` — shared element state + CRUD + legacy compatibility proxy
 - `inspector.js` — selected-element service
 - `header-footer.js` — header/footer data operations
@@ -19,7 +23,7 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 
 ### Step 1 — Cart + products
 
-**Data service prepared; live legacy renderer is not yet switched.**
+**Data service prepared; live legacy renderer is not yet switched.** Discount-price normalization is supported by `cart.js`.
 
 ### Step 2 — Header + footer
 
@@ -29,11 +33,15 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 
 **Complete.** `WebBuilderState.elements` is now the authoritative element collection. The legacy editor uses the `WebBuilderElements` compatibility proxy for existing array operations, loads/restores through `replaceAll()`, removes through the element service, and resolves the selected element through the shared service. Selection changes are synchronized through `WebBuilderElements.setSelected()`. The migration coordinator registers the elements domain as connected and hydrates persisted elements before the legacy editor starts.
 
+### Step 4 — Canvas/zoom/drag
+
+**Module split complete; live legacy ownership remains.** The canvas facade, viewport, interaction and renderer modules are implemented and loaded before the legacy editor. Canvas state is persisted and hydrated through the migration coordinator. The renderer also consumes the shared icon registry. The remaining work is to switch the live legacy DOM rendering/event wiring to these services and then remove the duplicated legacy canvas implementation.
+
 ### Next
 
-4. Canvas/zoom/drag
 5. Preview/modals
-6. Remove obsolete legacy state and rename the remaining implementation
+6. Switch remaining legacy DOM implementations to modular services
+7. Remove obsolete legacy state and eventually delete `builder-legacy.js`
 
 ## Integration rule
 
