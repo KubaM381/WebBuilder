@@ -1,136 +1,45 @@
-// WebBuilder cart service
-// Owns cart data operations during the staged migration.
-// Product CRUD lives in products.js; DOM rendering is migrated separately.
-
+// WebBuilder cart domain
+// Owns product data, cart data and their editor UI. No separate product/cart runtime files.
 (() => {
   const state = window.WebBuilderState;
-  const products = window.WebBuilderProducts;
-  if (!state || !products) {
-    console.error("WebBuilderCart: shared state/products service missing.");
-    return;
-  }
-
-  function clone(value) { return JSON.parse(JSON.stringify(value)); }
-  function notify(action, payload) {
-    if (typeof state.notify === "function") state.notify("cart", action, payload);
-  }
-
-  function normalizeCartItem(item = {}) {
-    const price = Number(item.price) || 0;
-    const discountPrice = item.discountPrice != null && item.discountPrice !== "" ? Number(item.discountPrice) || 0 : null;
-    return {
-      id: item.id || `cart_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      name: item.name || "Produkt", price,
-      discountPrice: discountPrice != null && discountPrice > 0 && discountPrice < price ? discountPrice : null,
-      qty: Math.max(1, Number(item.qty) || 1), icon: item.icon || "📦",
-      description: item.description || "",
-      compareAtPrice: item.compareAtPrice != null && item.compareAtPrice !== "" ? Number(item.compareAtPrice) || 0 : null
-    };
-  }
-
-  function getEffectivePrice(item) {
-    const discount = Number(item && item.discountPrice);
-    return Number.isFinite(discount) && discount > 0 && discount < (Number(item.price) || 0) ? discount : Number(item && item.price) || 0;
-  }
-
-  function normalizeState(emit = false) {
-    products.normalizeState();
-    state.cartItems = Array.isArray(state.cartItems) ? state.cartItems.map(normalizeCartItem) : [];
-    if (emit) notify("normalize", { count: state.cartItems.length });
-    return state;
-  }
-
-  function getItems() { return state.cartItems; }
-  function getProducts() { return products.getAll(); }
-  function getConfig() { return state.cartConfig; }
-  function getCount() { return state.cartItems.reduce((sum, item) => sum + (Number(item.qty) || 0), 0); }
-  function getSubtotal() { return state.cartItems.reduce((sum, item) => sum + getEffectivePrice(item) * (Number(item.qty) || 0), 0); }
-
-  function addItem(productOrItem, price, icon, description, compareAtPrice, recordHistory = true) {
-    const source = typeof productOrItem === "object" ? productOrItem : { name: productOrItem, price, icon, description, compareAtPrice };
-    const normalized = normalizeCartItem(source);
-    const existing = state.cartItems.find(item => item.name === normalized.name);
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    if (existing) existing.qty = (Number(existing.qty) || 0) + 1; else state.cartItems.push(normalized);
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify(existing ? "increment" : "add", existing || normalized); return existing || normalized;
-  }
-
-  function updateQty(id, qty, recordHistory = true) {
-    const item = state.cartItems.find(entry => entry && entry.id === id); if (!item) return null;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    item.qty = Math.max(1, Number(qty) || 1);
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify("updateQty", item); return item;
-  }
-
-  function changeQty(id, delta, recordHistory = true) {
-    const item = state.cartItems.find(entry => entry && entry.id === id); if (!item) return null;
-    const nextQty = (Number(item.qty) || 0) + (Number(delta) || 0);
-    return nextQty <= 0 ? removeItem(id, recordHistory) : updateQty(id, nextQty, recordHistory);
-  }
-
-  function updatePrice(id, price, recordHistory = true) {
-    const item = state.cartItems.find(entry => entry && entry.id === id); if (!item) return null;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    item.price = Number(price) || 0;
-    if (item.discountPrice != null && item.discountPrice >= item.price) item.discountPrice = null;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify("updatePrice", item); return item;
-  }
-
-  function updateDiscountPrice(id, discountPrice, recordHistory = true) {
-    const item = state.cartItems.find(entry => entry && entry.id === id); if (!item) return null;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    const value = Number(discountPrice);
-    item.discountPrice = Number.isFinite(value) && value > 0 && value < (Number(item.price) || 0) ? value : null;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify("updateDiscountPrice", item); return item;
-  }
-
-  function removeItem(id, recordHistory = true) {
-    const index = state.cartItems.findIndex(item => item && item.id === id); if (index < 0) return false;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    const removed = state.cartItems.splice(index, 1)[0];
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify("remove", removed); return true;
-  }
-
-  function clear(recordHistory = true) {
-    if (!state.cartItems.length) return;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    state.cartItems.length = 0;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify("clear");
-  }
-
-  function setConfig(patch = {}, recordHistory = true) {
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    Object.assign(state.cartConfig, clone(patch));
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify("config", state.cartConfig); return state.cartConfig;
-  }
-
-  function setItemDisplay(patch = {}, recordHistory = true) {
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    state.cartConfig.itemDisplay = Object.assign({}, state.cartConfig.itemDisplay || {}, clone(patch));
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify("display", state.cartConfig.itemDisplay); return state.cartConfig.itemDisplay;
-  }
-
-  function setButtonLabel(label, recordHistory = true) {
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    state.cartButtonLabel = String(label || "Zur Kasse gehen");
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    notify("button-label", state.cartButtonLabel); return state.cartButtonLabel;
-  }
-
+  if (!state) { console.error("WebBuilderCart: WebBuilderState is not available."); return; }
+  const clone = value => JSON.parse(JSON.stringify(value));
+  function notify(domain, action, payload) { if (typeof state.notify === "function") state.notify(domain, action, payload); }
+  function normalizeProduct(product = {}) { const price = Number(product.price) || 0; const discountPrice = product.discountPrice != null && product.discountPrice !== "" ? Number(product.discountPrice) || 0 : null; return { id: product.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, name: product.name || "Neues Produkt", price, discountPrice: discountPrice != null && discountPrice > 0 && discountPrice < price ? discountPrice : null, icon: product.icon || "📦", description: product.description || "", compareAtPrice: product.compareAtPrice != null && product.compareAtPrice !== "" ? Number(product.compareAtPrice) || 0 : null }; }
+  function normalizeProducts() { state.products = Array.isArray(state.products) ? state.products.map(normalizeProduct) : []; return state.products; }
+  function getProducts() { return state.products; } function getProduct(id) { return state.products.find(p => p?.id === id) || null; }
+  function addProduct(product = {}, recordHistory = true) { if (recordHistory) window.WebBuilderHistory?.arm(); const item = normalizeProduct(product); state.products.push(item); if (recordHistory) window.WebBuilderHistory?.commit(); notify("products", "add", item); return item; }
+  function updateProduct(id, patch = {}, recordHistory = true) { const product = getProduct(id); if (!product) return null; if (recordHistory) window.WebBuilderHistory?.arm(); Object.assign(product, clone(patch)); Object.assign(product, normalizeProduct(product)); if (recordHistory) window.WebBuilderHistory?.commit(); notify("products", "update", product); return product; }
+  function removeProduct(id, recordHistory = true) { const i = state.products.findIndex(p => p?.id === id); if (i < 0) return false; if (recordHistory) window.WebBuilderHistory?.arm(); const removed = state.products.splice(i,1)[0]; if (recordHistory) window.WebBuilderHistory?.commit(); notify("products", "remove", removed); return true; }
+  function replaceProducts(items = [], recordHistory = false) { if (recordHistory) window.WebBuilderHistory?.arm(); state.products.length = 0; state.products.push(...(Array.isArray(items) ? items.map(normalizeProduct) : [])); if (recordHistory) window.WebBuilderHistory?.commit(); notify("products", "replaceAll", {count:state.products.length}); return state.products; }
+  function normalizeCartItem(item = {}) { const price = Number(item.price) || 0; const discountPrice = item.discountPrice != null && item.discountPrice !== "" ? Number(item.discountPrice) || 0 : null; return { id: item.id || `cart_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, name: item.name || "Produkt", price, discountPrice: discountPrice != null && discountPrice > 0 && discountPrice < price ? discountPrice : null, qty: Math.max(1, Number(item.qty) || 1), icon: item.icon || "📦", description: item.description || "", compareAtPrice: item.compareAtPrice != null && item.compareAtPrice !== "" ? Number(item.compareAtPrice) || 0 : null }; }
+  function getEffectivePrice(item) { const discount = Number(item?.discountPrice); return Number.isFinite(discount) && discount > 0 && discount < (Number(item?.price) || 0) ? discount : Number(item?.price) || 0; }
+  function normalizeState() { normalizeProducts(); state.cartItems = Array.isArray(state.cartItems) ? state.cartItems.map(normalizeCartItem) : []; return state; }
+  function getItems() { return state.cartItems; } function getConfig() { return state.cartConfig; } function getCount() { return state.cartItems.reduce((s,i)=>s+(Number(i.qty)||0),0); } function getSubtotal() { return state.cartItems.reduce((s,i)=>s+getEffectivePrice(i)*(Number(i.qty)||0),0); }
+  function addItem(productOrItem, price, icon, description, compareAtPrice, recordHistory = true) { const source = typeof productOrItem === "object" ? productOrItem : {name:productOrItem,price,icon,description,compareAtPrice}; const normalized=normalizeCartItem(source); const existing=state.cartItems.find(i=>i.name===normalized.name); if(recordHistory) window.WebBuilderHistory?.arm(); if(existing) existing.qty=(Number(existing.qty)||0)+1; else state.cartItems.push(normalized); if(recordHistory) window.WebBuilderHistory?.commit(); notify("cart", existing?"increment":"add", existing||normalized); return existing||normalized; }
+  function updateQty(id,qty,recordHistory=true){const item=state.cartItems.find(i=>i?.id===id);if(!item)return null;if(recordHistory)window.WebBuilderHistory?.arm();item.qty=Math.max(1,Number(qty)||1);if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","updateQty",item);return item;}
+  function changeQty(id,delta,recordHistory=true){const item=state.cartItems.find(i=>i?.id===id);if(!item)return null;const next=(Number(item.qty)||0)+(Number(delta)||0);return next<=0?removeItem(id,recordHistory):updateQty(id,next,recordHistory);}
+  function updatePrice(id,price,recordHistory=true){const item=state.cartItems.find(i=>i?.id===id);if(!item)return null;if(recordHistory)window.WebBuilderHistory?.arm();item.price=Number(price)||0;if(item.discountPrice!=null&&item.discountPrice>=item.price)item.discountPrice=null;if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","updatePrice",item);return item;}
+  function updateDiscountPrice(id,value,recordHistory=true){const item=state.cartItems.find(i=>i?.id===id);if(!item)return null;if(recordHistory)window.WebBuilderHistory?.arm();const v=Number(value);item.discountPrice=Number.isFinite(v)&&v>0&&v<(Number(item.price)||0)?v:null;if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","updateDiscountPrice",item);return item;}
+  function removeItem(id,recordHistory=true){const i=state.cartItems.findIndex(x=>x?.id===id);if(i<0)return false;if(recordHistory)window.WebBuilderHistory?.arm();const removed=state.cartItems.splice(i,1)[0];if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","remove",removed);return true;}
+  function clear(recordHistory=true){if(!state.cartItems.length)return;if(recordHistory)window.WebBuilderHistory?.arm();state.cartItems.length=0;if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","clear");}
+  function setConfig(patch={},recordHistory=true){if(recordHistory)window.WebBuilderHistory?.arm();Object.assign(state.cartConfig,clone(patch));if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","config",state.cartConfig);return state.cartConfig;}
+  function setItemDisplay(patch={},recordHistory=true){if(recordHistory)window.WebBuilderHistory?.arm();state.cartConfig.itemDisplay=Object.assign({},state.cartConfig.itemDisplay||{},clone(patch));if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","display",state.cartConfig.itemDisplay);return state.cartConfig.itemDisplay;}
+  function setButtonLabel(label,recordHistory=true){if(recordHistory)window.WebBuilderHistory?.arm();state.cartButtonLabel=String(label||"Zur Kasse gehen");if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","button-label",state.cartButtonLabel);return state.cartButtonLabel;}
   normalizeState();
-  window.WebBuilderCart = {
-    getItems, getProducts, getConfig, getCount, getSubtotal, getEffectivePrice,
-    addItem, updateQty, changeQty, updatePrice, updateDiscountPrice, removeItem, clear,
-    setConfig, setItemDisplay, setButtonLabel, normalizeProduct: products.normalize,
-    normalizeCartItem, normalizeState,
-    addProduct: products.add, updateProduct: products.update, removeProduct: products.remove
-  };
+  window.WebBuilderCart={getItems,getProducts,getProduct,getConfig,getCount,getSubtotal,getEffectivePrice,addItem,updateQty,changeQty,updatePrice,updateDiscountPrice,removeItem,clear,setConfig,setItemDisplay,setButtonLabel,normalizeProduct:normalizeProduct,normalizeCartItem,normalizeState,addProduct,updateProduct,removeProduct,replaceProducts};
+  window.WebBuilderProducts={normalize:normalizeProduct,normalizeState:normalizeProducts,getAll:getProducts,getById:getProduct,add:addProduct,update:updateProduct,remove:removeProduct,replaceAll:replaceProducts};
+
+  const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
+  const eur=v=>`${Number(v||0).toFixed(2).replace(".",",")} €`;
+  function renderProducts(){const list=document.getElementById("product-list");if(!list)return;const items=getProducts();list.innerHTML=items.length?"":'<p class="help-text">Noch keine Produkte angelegt. Klicke oben auf „+ Neues Produkt“.</p>';items.forEach(p=>{const card=document.createElement("div");card.className="product-card";card.dataset.productId=p.id;card.innerHTML=`<div class="product-card-header"><span class="product-card-icon">${esc(p.icon)}</span><div class="product-card-title"><strong>${esc(p.name)}</strong><span>${esc(p.description)}</span></div><button type="button" class="product-delete" data-product-action="delete">×</button></div><div class="product-card-fields"><label>Name<input data-product-field="name" value="${esc(p.name)}"></label><label>Preis (€)<input type="number" min="0" step="0.01" data-product-field="price" value="${esc(p.price)}"></label><label>Rabattpreis (€)<input type="number" min="0" step="0.01" data-product-field="discountPrice" value="${p.discountPrice==null?"":esc(p.discountPrice)}"></label><label>Icon<input data-product-field="icon" value="${esc(p.icon)}"></label><label class="product-card-description">Beschreibung<textarea data-product-field="description" rows="2">${esc(p.description)}</textarea></label></div><div class="product-card-price">${p.discountPrice!=null?`<s>${Number(p.price).toFixed(2)} €</s> <strong>${Number(p.discountPrice).toFixed(2)} €</strong>`:`<strong>${Number(p.price).toFixed(2)} €</strong>`}</div>`;list.appendChild(card);});}
+  function renderCart(){const list=document.getElementById("cart-items-list");if(!list)return;const config=getConfig()||{},items=getItems(),subtotal=getSubtotal();const milestones=Array.isArray(config.milestones)?[...config.milestones].sort((a,b)=>Number(a.amount)-Number(b.amount)):[];let html="";if(config.progressEnabled&&milestones.length){const max=Number(milestones[milestones.length-1].amount||1),pct=Math.min(100,subtotal/max*100),next=milestones.find(m=>subtotal<Number(m.amount));html+=`<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%"></div></div><p class="cart-progress-msg">${next?`Noch ${eur(Number(next.amount)-subtotal)} bis „${esc(next.label)}“`:"✓ Alle Ziele freigeschaltet"}</p></div>`;}html+=items.length?items.map(i=>{const e=getEffectivePrice(i),d=i.discountPrice!=null&&e<Number(i.price);return `<div class="cart-item cart-item-rounded" data-cart-id="${esc(i.id)}"><span class="cart-item-title">${esc(i.icon)} ${esc(i.name)}</span><span class="cart-qty-stepper"><button type="button" class="cart-qty-minus" data-cart-id="${esc(i.id)}">−</button><span>${Number(i.qty)||1}</span><button type="button" class="cart-qty-plus" data-cart-id="${esc(i.id)}">+</button></span><span>${d?`<s>${eur(i.price)}</s> `:""}${eur(e)}</span><button type="button" class="cart-item-remove" data-cart-id="${esc(i.id)}">✕</button></div>`;}).join(""):'<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';const reached=milestones.filter(m=>subtotal>=Number(m.amount||0)),free=reached.some(m=>m.action==="free-shipping"),extra=reached.some(m=>m.action==="discount")?10:0,discountPercent=Number(state.appliedDiscountPercent||0)+extra,discountAmount=subtotal*discountPercent/100,shipping=config.progressEnabled?(free?0:4.95):0,total=Math.max(0,subtotal-discountAmount)+shipping;html+=`<div class="cart-totals"><div class="cart-total-row"><span>Zwischensumme</span><span>${eur(subtotal)}</span></div>${discountAmount?`<div class="cart-total-row"><span>Rabatt</span><span>−${eur(discountAmount)}</span></div>`:""}${config.progressEnabled?`<div class="cart-total-row"><span>Versand</span><span>${shipping?eur(shipping):"Kostenlos"}</span></div>`:""}<div class="cart-total-row cart-total-final"><span>Gesamt</span><span>${eur(total)}</span></div></div>`;list.innerHTML=html;document.getElementById("cart-count-badge")?.replaceChildren(document.createTextNode(String(getCount())));const checkout=document.getElementById("cart-checkout-btn");if(checkout)checkout.textContent=state.cartButtonLabel||"Zur Kasse gehen";}
+  function bind(){document.getElementById("product-list")?.addEventListener("click",e=>{const b=e.target.closest?.('[data-product-action="delete"]');if(!b)return;const c=b.closest("[data-product-id]");if(!c)return;e.preventDefault();e.stopImmediatePropagation();removeProduct(c.dataset.productId);renderProducts();},true);document.getElementById("product-list")?.addEventListener("change",e=>{const f=e.target.closest?.("[data-product-field]");const c=f?.closest("[data-product-id]");if(!f||!c)return;const value=f.type==="number"?(f.value===""?null:Number(f.value)):f.value;updateProduct(c.dataset.productId,{[f.dataset.productField]:value});renderProducts();},true);document.getElementById("btn-add-product")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();const p=addProduct();renderProducts();document.querySelector(`[data-product-id="${CSS.escape(p.id)}"] [data-product-field="name"]`)?.focus();},true);const list=document.getElementById("cart-items-list");list?.addEventListener("click",e=>{const t=e.target.closest?.("[data-cart-id]");if(!t)return;e.preventDefault();e.stopImmediatePropagation();const id=t.dataset.cartId;if(t.classList.contains("cart-item-remove"))removeItem(id);else if(t.classList.contains("cart-qty-minus"))changeQty(id,-1);else if(t.classList.contains("cart-qty-plus"))changeQty(id,1);renderCart();},true);document.getElementById("close-cart-btn")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();closeCart();},true);document.getElementById("cart-drawer-backdrop")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();closeCart();},true);document.getElementById("btn-open-cart")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();openCart();},true);state.subscribe?.(e=>{if(["cart","products"].includes(e?.domain)){renderProducts();renderCart();}});renderProducts();renderCart();}
+  function openCart(){document.getElementById("cart-drawer")?.classList.add("active");document.getElementById("cart-drawer-backdrop")?.classList.add("active");renderCart();return true;} function closeCart(){document.getElementById("cart-drawer")?.classList.remove("active");document.getElementById("cart-drawer-backdrop")?.classList.remove("active");return true;}
+  document.addEventListener("DOMContentLoaded",()=>setTimeout(bind,0));
+  window.WebBuilderCartRuntime={render:renderCart,open:openCart,close:closeCart}; window.WebBuilderProductsRuntime={render:renderProducts,addProduct};
+  // Cart configuration editor lives in the cart domain.
+  function renderConfig(){const c=getConfig()||{},d=c.itemDisplay||{};const map={"cart-item-shape":c.itemShape,"cart-remove-color":c.removeButtonColor,"cid-remove-style":d.removeStyle||"x","cid-remove-shape":d.removeShape||"circle","cid-quantity-style":d.quantityStyle||"stepper","cid-price-style":d.priceStyle||"simple"};Object.entries(map).forEach(([id,v])=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;});const ids=[["cart-discount-toggle",c.discountEnabled],["cart-recommend-toggle",c.recommendEnabled],["cart-progress-toggle",c.progressEnabled],["cid-show-description",d.showDescription]];ids.forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.checked=!!v;});const color=document.getElementById("cart-button-color");if(color)color.value=c.buttonColor||"#4f46e5";const shape=document.getElementById("cart-button-shape");if(shape)shape.value=c.buttonShape||"rounded";const label=document.getElementById("cart-button-label");if(label)label.value=state.cartButtonLabel||"Zur Kasse gehen";document.getElementById("cart-recommend-config")?.classList.toggle("hidden",!c.recommendEnabled);document.getElementById("cart-progress-config")?.classList.toggle("hidden",!c.progressEnabled);}
+  function bindConfig(){const map={"cart-item-shape":"itemShape","cart-remove-color":"removeButtonColor","cart-discount-toggle":"discountEnabled","cart-recommend-toggle":"recommendEnabled","cart-progress-toggle":"progressEnabled","cart-button-color":"buttonColor","cart-button-shape":"buttonShape"};Object.entries(map).forEach(([id,p])=>document.getElementById(id)?.addEventListener("change",e=>{window.WebBuilderHistory?.arm();setConfig({[p]:e.target.type==="checkbox"?e.target.checked:e.target.value},false);window.WebBuilderHistory?.commit();renderConfig();},true));[["cid-remove-style","removeStyle"],["cid-remove-shape","removeShape"],["cid-quantity-style","quantityStyle"],["cid-price-style","priceStyle"]].forEach(([id,p])=>document.getElementById(id)?.addEventListener("change",e=>{window.WebBuilderHistory?.arm();setItemDisplay({[p]:e.target.value},false);window.WebBuilderHistory?.commit();renderConfig();},true));document.getElementById("cid-show-description")?.addEventListener("change",e=>{window.WebBuilderHistory?.arm();setItemDisplay({showDescription:e.target.checked},false);window.WebBuilderHistory?.commit();renderConfig();},true);document.getElementById("cart-button-label")?.addEventListener("change",e=>{window.WebBuilderHistory?.arm();setButtonLabel(e.target.value,false);window.WebBuilderHistory?.commit();renderConfig();},true);renderConfig();}
+  document.addEventListener("DOMContentLoaded",()=>setTimeout(bindConfig,0)); window.WebBuilderCartConfigRuntime={render:renderConfig};
 })();
