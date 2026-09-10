@@ -1,0 +1,75 @@
+name: Canvas refactor once
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: "!contains(github.event.head_commit.message, '[skip-canvas-refactor]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Migrate legacy canvas renderer
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('js/builder-legacy.js')
+          text = path.read_text(encoding='utf-8')
+
+          # Expose the existing legacy icon registry to the modular renderer.
+          marker = '  function addCustomIcon(name, svgOrUrl) {'
+          if 'window.WebBuilderIconMap = SVGMAP;' not in text:
+              text = text.replace(marker, '  window.WebBuilderIconMap = SVGMAP;\n\n' + marker, 1)
+
+          # Replace the duplicated legacy canvas renderer with the modular facade.
+          start = text.index('  function renderCanvas() {')
+          end = text.index('\n  // ============================================================\n  // INSPECTOR SYNC & INTERACTION', start)
+          replacement = '''  function renderCanvas() {
+    return window.WebBuilderCanvas
+      ? window.WebBuilderCanvas.renderCanvas()
+      : false;
+  }
+'''
+          text = text[:start] + replacement + text[end:]
+
+          # Keep shape rendering in the modular renderer; export code can call it there.
+          shape_start = text.index('  function renderShapeInner(item) {')
+          shape_end = text.index('\n\n  function renderCanvas()', shape_start)
+          text = text[:shape_start] + text[shape_end+2:]
+          text = text.replace('renderShapeInner(item)', 'window.WebBuilderCanvasRenderer.renderShapeInner(item)')
+
+          # Wire selection/action callbacks once the legacy functions are declared.
+          init_marker = '  // ============================================================\n  // TOOLBAR CONTROLS'
+          callback_block = '''  // Canvas renderer callbacks keep legacy UI/action behavior while the renderer lives in its own module.
+  if (window.WebBuilderCanvas && typeof window.WebBuilderCanvas.setRendererCallbacks === "function") {
+    window.WebBuilderCanvas.setRendererCallbacks({
+      onSelect: selectElement,
+      onAction: executeAction
+    });
+  }
+
+'''
+          if 'Canvas renderer callbacks keep legacy UI/action behavior' not in text:
+              text = text.replace(init_marker, callback_block + init_marker, 1)
+
+          path.write_text(text, encoding='utf-8')
+
+          # Keep this workflow from running a second time; it will be deleted after verification.
+          print('Legacy canvas renderer migration applied.')
+      - name: Commit migration
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add js/builder-legacy.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Migrate legacy canvas renderer to modular canvas [skip-canvas-refactor]'
+          git push
