@@ -8,6 +8,7 @@ document.write('<script src="js/canvas-viewport.js"><\/script>');
 document.write('<script src="js/canvas-interaction.js"><\/script>');
 document.write('<script src="js/canvas-renderer.js"><\/script>');
 document.write('<script src="js/canvas.js"><\/script>');
+document.write('<script src="js/action-runtime.js"><\/script>');
 document.write('<script src="js/canvas-runtime.js"><\/script>');
 document.write('<script src="js/elements.js"><\/script>');
 document.write('<script src="js/inspector.js"><\/script>');
