@@ -9,7 +9,6 @@
   const state = window.WebBuilderState;
   const canvas = window.WebBuilderCanvas;
   const renderer = window.WebBuilderCanvasRenderer;
-  const history = window.WebBuilderHistory;
 
   if (!state || !canvas || !renderer) {
     console.error("WebBuilderCanvasRuntime: required canvas services missing.");
@@ -65,6 +64,8 @@
     canvas.syncDom();
   }
 
+  // Capture phase runs before the legacy editor's bubble-phase handlers.
+  // This lets the extracted viewport own the migrated canvas controls.
   document.addEventListener("click", handleCanvasControls, true);
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -74,19 +75,6 @@
     window.setTimeout(() => {
       renderModularCanvas();
     }, 0);
-  });
-
-  renderer.setCallbacks({
-    onSelect: id => {
-      if (window.WebBuilderInspector?.select) {
-        window.WebBuilderInspector.select(id);
-      }
-    },
-    onAction: item => {
-      if (typeof window.WebBuilderLegacyAction === "function") {
-        window.WebBuilderLegacyAction(item);
-      }
-    }
   });
 
   window.WebBuilderCanvasRuntime = {
