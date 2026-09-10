@@ -1,1 +1,1 @@
-/* WebBuilder CSS architecture placeholder: layout styles will be migrated here in the dedicated CSS migration step. */
+.app-body { display: flex; flex: 1; height: calc(100vh - 64px); position: relative; min-width: 0; }
