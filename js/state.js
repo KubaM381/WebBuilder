@@ -1,6 +1,6 @@
 // WebBuilder shared state registry
-// Transitional source of truth for the modular migration.
-// builder-core.js still owns the live legacy variables until each subsystem is migrated.
+// Canonical source of truth for the modular migration.
+// Legacy locals may remain only until their domain is fully switched.
 
 window.WebBuilderState = window.WebBuilderState || {
   elements: [],
@@ -59,5 +59,22 @@ window.WebBuilderState = window.WebBuilderState || {
   pendingSnapshot: null
 };
 
-window.WebBuilderState.STORAGE_KEY = window.WebBuilderState.storageKey;
-window.WebBuilderState.HISTORY_LIMIT = window.WebBuilderState.historyLimit;
+const WebBuilderState = window.WebBuilderState;
+WebBuilderState.STORAGE_KEY = WebBuilderState.storageKey;
+WebBuilderState.HISTORY_LIMIT = WebBuilderState.historyLimit;
+WebBuilderState._listeners = WebBuilderState._listeners || new Set();
+
+WebBuilderState.subscribe = function subscribe(listener) {
+  if (typeof listener !== "function") return () => {};
+  this._listeners.add(listener);
+  return () => this._listeners.delete(listener);
+};
+
+WebBuilderState.notify = function notify(domain, action, payload) {
+  const event = { domain: domain || "state", action: action || "change", payload: payload || null, state: this };
+  this._listeners.forEach(listener => {
+    try { listener(event); } catch (error) { console.error("WebBuilderState listener failed", error); }
+  });
+  window.dispatchEvent(new CustomEvent("webbuilder:state-change", { detail: event }));
+  return event;
+};
