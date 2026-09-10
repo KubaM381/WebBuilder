@@ -126,15 +126,32 @@
             <label for="header-height-input">Höhe (px) — auch direkt am Header ziehbar</label>
             <input type="number" id="header-height-input" value="64" min="40" max="400">
           </div>
+
           <div class="form-group">
+            <label for="header-bg-type">Hintergrund-Typ</label>
+            <select id="header-bg-type">
+              <option value="solid">Einfarbig</option>
+              <option value="image">Bild</option>
+            </select>
+          </div>
+          <div id="header-bg-solid-group" class="form-group">
             <label for="header-bg-input">Hintergrundfarbe</label>
             <input type="color" id="header-bg-input" value="#111827">
           </div>
+          <div id="header-bg-image-group" class="hidden form-group">
+            <label for="header-bg-image-url">Bild</label>
+            <input type="text" id="header-bg-image-url" placeholder="Bild URL eingeben...">
+            <div class="file-input-wrapper" style="margin-top:6px;">
+              <button type="button" class="file-input-btn">📁 Datei wählen</button>
+              <input type="file" id="header-bg-image-file" accept="image/*">
+            </div>
+          </div>
+
           <div class="mini-btn-row">
             <button type="button" id="btn-add-header-text" class="btn btn-secondary btn-sm">+ Text</button>
             <button type="button" id="btn-add-header-icon" class="btn btn-secondary btn-sm">+ Icon</button>
           </div>
-          <p class="help-text" style="margin:4px 0 8px;">Klicke auf ein Element in der Liste, um Text, Format, Farbe und Klick-Aktion einzustellen.</p>
+          <p class="help-text" style="margin:4px 0 8px;">Klicke auf ein Element in der Liste oder direkt auf der Fläche, um Text, Format, Farbe und Klick-Aktion rechts im Eigenschaften-Bereich einzustellen.</p>
           <div id="header-items-list" class="items-list"></div>
         </div>
 
@@ -145,46 +162,32 @@
             <label for="footer-height-input">Höhe (px) — auch direkt am Footer ziehbar</label>
             <input type="number" id="footer-height-input" value="70" min="40" max="400">
           </div>
+
           <div class="form-group">
+            <label for="footer-bg-type">Hintergrund-Typ</label>
+            <select id="footer-bg-type">
+              <option value="solid">Einfarbig</option>
+              <option value="image">Bild</option>
+            </select>
+          </div>
+          <div id="footer-bg-solid-group" class="form-group">
             <label for="footer-bg-input">Hintergrundfarbe</label>
             <input type="color" id="footer-bg-input" value="#111827">
           </div>
+          <div id="footer-bg-image-group" class="hidden form-group">
+            <label for="footer-bg-image-url">Bild</label>
+            <input type="text" id="footer-bg-image-url" placeholder="Bild URL eingeben...">
+            <div class="file-input-wrapper" style="margin-top:6px;">
+              <button type="button" class="file-input-btn">📁 Datei wählen</button>
+              <input type="file" id="footer-bg-image-file" accept="image/*">
+            </div>
+          </div>
+
           <div class="mini-btn-row">
             <button type="button" id="btn-add-footer-text" class="btn btn-secondary btn-sm">+ Text</button>
             <button type="button" id="btn-add-footer-icon" class="btn btn-secondary btn-sm">+ Icon</button>
           </div>
           <div id="footer-items-list" class="items-list"></div>
-        </div>
-
-        <!-- Ausgewähltes Kopf-/Fußzeilen-Element: volle Bearbeitung -->
-        <div class="section-title">Element bearbeiten</div>
-        <div class="sidebar-subsection" id="bar-item-editor">
-          <p class="help-text" id="bar-item-editor-empty">Wähle links ein Kopf-/Fußzeilen-Element aus der Liste aus.</p>
-          <div id="bar-item-editor-form" class="hidden">
-            <div id="bar-item-text-toolbar" class="text-toolbar hidden"></div>
-            <div class="form-group" id="bar-item-text-group">
-              <label>Text</label>
-              <input type="text" id="bar-prop-text">
-            </div>
-            <div class="form-group">
-              <label>Aktion beim Klick</label>
-              <select id="bar-prop-action-type">
-                <option value="none">Keine Aktion</option>
-                <option value="scroll-top">Nach ganz oben scrollen ⬆️</option>
-                <option value="scroll-bottom">Nach ganz unten scrollen ⬇️</option>
-                <option value="history-back">Zurück (Browser-Verlauf) ↩️</option>
-                <option value="history-forward">Vorwärts (Browser-Verlauf) ↪️</option>
-                <option value="open-url">Neue Seite / URL öffnen 🌐</option>
-                <option value="cart-add">Produkt in den Warenkorb legen 🛒</option>
-                <option value="open-cart-drawer">Warenkorb Drawer öffnen 🛍️</option>
-                <option value="open-custom-modal">Eigenes Modal öffnen 🪧</option>
-                <option value="alert-msg">Benutzerdefinierte Meldung anzeigen 💬</option>
-              </select>
-            </div>
-            <div class="form-group hidden" id="bar-group-action-url"><label>Ziel-URL / Link</label><input type="url" id="bar-prop-action-url" placeholder="https://beispiel.de"></div>
-            <div class="form-group hidden" id="bar-group-action-msg"><label>Meldungstext</label><input type="text" id="bar-prop-action-msg" placeholder="Aktion erfolgreich!"></div>
-            <div class="form-group hidden" id="bar-group-product"><label>Produkt</label><select id="bar-prop-product"></select></div>
-          </div>
         </div>
       </div>
 
@@ -334,6 +337,8 @@
     <aside class="inspector">
       <h3>Eigenschaften &amp; Logik</h3>
       <div id="no-selection" class="empty-inspector"><p>Wähle ein Element auf der Zeichenfläche aus, um Text, Aussehen und Klick-Aktionen zu konfigurieren.</p></div>
+
+      <!-- Bearbeitung eines normalen Canvas-Elements -->
       <div id="inspector-form" class="inspector-form hidden">
         <div class="form-group"><label for="prop-id">Element ID</label><input type="text" id="prop-id" readonly></div>
         <div class="form-group" id="group-text"><label for="prop-text">Text / Inhalt</label><input type="text" id="prop-text" placeholder="Beschriftung eingeben..."></div>
@@ -393,6 +398,62 @@
         </div>
         <div class="form-actions" style="margin-top:20px;"><button id="btn-delete-element" class="btn btn-danger-outline">Element löschen</button></div>
         <!-- builder.js hängt hier #inspector-extended an -->
+      </div>
+
+      <!-- Bearbeitung eines Kopf-/Fußzeilen-Elements (eigenständiges Panel) -->
+      <div id="bar-inspector-form" class="inspector-form hidden">
+        <p class="help-text" style="margin-bottom:12px;">📐 Kopf-/Fußzeilen-Element</p>
+        <div class="form-group" id="bar-item-text-group">
+          <label for="bar-prop-text">Text</label>
+          <input type="text" id="bar-prop-text">
+        </div>
+        <div class="form-group">
+          <label for="bar-prop-size">Größe (px)</label>
+          <input type="number" id="bar-prop-size" min="8" max="300" value="16">
+        </div>
+        <div class="form-group">
+          <label>Textformat</label>
+          <div class="text-toolbar" id="bar-item-text-toolbar">
+            <button type="button" class="ttb-btn" id="bar-ttb-bold" title="Fett"><b>F</b></button>
+            <button type="button" class="ttb-btn" id="bar-ttb-italic" title="Kursiv"><i>K</i></button>
+            <button type="button" class="ttb-btn" id="bar-ttb-underline" title="Unterstrichen"><u>U</u></button>
+            <span class="ttb-sep"></span>
+            <button type="button" class="ttb-btn" id="bar-ttb-align-left" title="Linksbündig">⬅</button>
+            <button type="button" class="ttb-btn" id="bar-ttb-align-center" title="Zentriert">↔</button>
+            <button type="button" class="ttb-btn" id="bar-ttb-align-right" title="Rechtsbündig">➡</button>
+            <span class="ttb-sep"></span>
+            <input type="color" id="bar-prop-color" value="#ffffff" title="Textfarbe">
+            <select id="bar-prop-font-family" title="Schriftart">
+              <option value="inherit">Standard</option>
+              <option value="'Georgia', serif">Serif</option>
+              <option value="'Courier New', monospace">Monospace</option>
+              <option value="'Segoe UI', sans-serif">Sans-Serif</option>
+              <option value="'Comic Sans MS', cursive">Verspielt</option>
+            </select>
+          </div>
+        </div>
+
+        <hr class="divider">
+        <h4>⚡ Verbindungsfunktion &amp; Logik</h4>
+        <div class="form-group">
+          <label for="bar-prop-action-type">Aktion beim Klick</label>
+          <select id="bar-prop-action-type">
+            <option value="none">Keine Aktion</option>
+            <option value="scroll-top">Nach ganz oben scrollen ⬆️</option>
+            <option value="scroll-bottom">Nach ganz unten scrollen ⬇️</option>
+            <option value="history-back">Zurück (Browser-Verlauf) ↩️</option>
+            <option value="history-forward">Vorwärts (Browser-Verlauf) ↪️</option>
+            <option value="open-url">Neue Seite / URL öffnen 🌐</option>
+            <option value="cart-add">Produkt in den Warenkorb legen 🛒</option>
+            <option value="open-cart-drawer">Warenkorb Drawer öffnen 🛍️</option>
+            <option value="open-custom-modal">Eigenes Modal öffnen 🪧</option>
+            <option value="alert-msg">Benutzerdefinierte Meldung anzeigen 💬</option>
+          </select>
+        </div>
+        <div class="form-group hidden" id="bar-group-action-url"><label>Ziel-URL / Link</label><input type="url" id="bar-prop-action-url" placeholder="https://beispiel.de"></div>
+        <div class="form-group hidden" id="bar-group-action-msg"><label>Meldungstext</label><input type="text" id="bar-prop-action-msg" placeholder="Aktion erfolgreich!"></div>
+        <div class="form-group hidden" id="bar-group-product"><label>Produkt</label><select id="bar-prop-product"></select></div>
+        <div class="form-actions" style="margin-top:20px;"><button id="btn-delete-bar-item" class="btn btn-danger-outline">Element löschen</button></div>
       </div>
     </aside>
   </div>
