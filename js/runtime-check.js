@@ -6,6 +6,7 @@
     "WebBuilderStorage",
     "WebBuilderHistory",
     "WebBuilderCanvas",
+    "WebBuilderCanvasRuntime",
     "WebBuilderElements",
     "WebBuilderInspector",
     "WebBuilderHeaderFooter",
@@ -19,11 +20,13 @@
     const missing = required.filter(name => !window[name]);
     const bridge = window.WebBuilderLegacyBridge;
     const migration = window.WebBuilderMigration;
+    const canvasRuntime = window.WebBuilderCanvasRuntime;
     const result = {
       ok: missing.length === 0,
       missing,
       legacyAdapterRegistered: !!(bridge && bridge.hasLegacyAdapter && bridge.hasLegacyAdapter()),
       sharedState: !!window.WebBuilderState,
+      canvasRuntime: !!canvasRuntime,
       migrationCoordinator: !!migration,
       migrationStatus: migration && typeof migration.status === "function" ? migration.status() : null,
       hydration: migration ? migration.hydration || null : null
