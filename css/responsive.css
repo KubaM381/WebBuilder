@@ -1,1 +1,5 @@
-/* WebBuilder CSS architecture placeholder: responsive styles will be migrated here in the dedicated CSS migration step. */
+@media (max-width: 1024px) {
+  .app-body { flex-direction: column; overflow-y: auto; }
+  .sidebar, .inspector { width: 100%; min-width: 100%; max-width: 100%; height: auto; }
+  .canvas-container { padding: 10px; }
+}
