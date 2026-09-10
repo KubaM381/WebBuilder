@@ -1,6 +1,7 @@
 // WebBuilder Canvas runtime takeover
 // Owns migrated canvas controls and routes preview clicks through the
-// extracted action runtime. The legacy editor remains as a transition layer.
+// extracted action runtime. The legacy editor remains as a transition layer
+// for non-canvas domains, while the canvas itself is now exclusively owned here.
 (() => {
   const state = window.WebBuilderState;
   const canvas = window.WebBuilderCanvas;
@@ -13,6 +14,8 @@
   }
 
   let renderQueued = false;
+  let rendering = false;
+  let canvasObserver = null;
 
   function isEditorEventTarget(target, id) {
     return target && (target.id === id || target.closest?.(`#${id}`));
@@ -59,22 +62,45 @@
   }
 
   function renderModularCanvas() {
-    renderer.setCallbacks({ onAction: handlePreviewAction });
-    renderer.renderCanvas();
-    canvas.setBackground(state.background);
-    canvas.syncDom();
+    if (rendering) return;
+    const canvasEl = renderer.getCanvas?.();
+    if (!canvasEl) return;
+
+    rendering = true;
+    if (canvasObserver) canvasObserver.disconnect();
+    try {
+      renderer.setCallbacks({ onAction: handlePreviewAction });
+      renderer.renderCanvas();
+      canvas.setBackground(state.background);
+      canvas.syncDom();
+    } finally {
+      rendering = false;
+      if (canvasObserver) canvasObserver.observe(canvasEl, { childList: true });
+    }
   }
 
   function scheduleRender() {
     if (renderQueued) return;
     renderQueued = true;
-    window.requestAnimationFrame?.(() => {
+    const run = () => {
       renderQueued = false;
       renderModularCanvas();
-    }) || window.setTimeout(() => {
-      renderQueued = false;
-      renderModularCanvas();
-    }, 0);
+    };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(run);
+    else window.setTimeout(run, 0);
+  }
+
+  function installCanvasOwnership() {
+    const canvasEl = renderer.getCanvas?.();
+    if (!canvasEl || !window.MutationObserver) return;
+
+    if (canvasObserver) canvasObserver.disconnect();
+    canvasObserver = new MutationObserver(mutations => {
+      if (rendering) return;
+      const hasExternalCanvasMutation = mutations.some(mutation => mutation.type === "childList");
+      if (hasExternalCanvasMutation) scheduleRender();
+    });
+    canvasObserver.observe(canvasEl, { childList: true });
   }
 
   state.subscribe?.(event => {
@@ -94,12 +120,18 @@
   document.addEventListener("click", handleCanvasControls, true);
 
   document.addEventListener("DOMContentLoaded", () => {
-    window.setTimeout(renderModularCanvas, 0);
+    // Legacy initialization still runs for the remaining domains. The canvas
+    // is immediately re-taken over after that initialization completes.
+    window.setTimeout(() => {
+      installCanvasOwnership();
+      renderModularCanvas();
+    }, 0);
   });
 
   window.WebBuilderCanvasRuntime = {
     render: renderModularCanvas,
     resize: delta => canvas.extendCanvas(delta),
-    executeAction: handlePreviewAction
+    executeAction: handlePreviewAction,
+    isCanvasOwned: () => !!canvasObserver
   };
 })();
