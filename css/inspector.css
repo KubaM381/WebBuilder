@@ -1,1 +1,13 @@
-/* WebBuilder CSS architecture placeholder: inspector styles will be migrated here in the dedicated CSS migration step. */
+.inspector { width: 320px; min-width: 320px; max-width: 320px; flex-shrink: 0; background: var(--bg-panel); border-left: 1px solid var(--border-color); padding: 20px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; z-index: 10; }
+.form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.form-group label { font-size: 0.825rem; font-weight: 600; color: var(--text-main); }
+.form-group input, .form-group select { padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.875rem; outline: none; transition: border-color 0.2s; }
+.form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+.empty-inspector { text-align: center; color: var(--text-muted); font-size: 0.875rem; margin-top: 50px; line-height: 1.5; }
+.text-toolbar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 6px; }
+.ttb-btn { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-panel); cursor: pointer; font-size: 0.85rem; display: inline-flex; align-items: center; justify-content: center; color: var(--text-main); }
+.ttb-btn:hover { background: var(--primary-light); }
+.ttb-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.ttb-sep { width: 1px; height: 22px; background: var(--border-color); margin: 0 2px; }
+.text-toolbar input[type="color"] { width: 30px; height: 30px; border: none; padding: 0; cursor: pointer; border-radius: 6px; }
+.text-toolbar select { padding: 5px 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.75rem; max-width: 110px; }
