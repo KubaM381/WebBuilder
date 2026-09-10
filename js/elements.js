@@ -4,7 +4,14 @@
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderElements: WebBuilderState is not available."); return; }
   const clone = value => JSON.parse(JSON.stringify(value));
-  function notify(type = "update") { state.notify?.({ domain: "elements", type }); }
+  // FIX: state.notify(domain, action, payload) expects positional args.
+  // This previously called state.notify({domain:"elements", type}) — a single
+  // object — which made state.notify's own `domain` parameter become that
+  // object instead of the string "elements". Every subscriber that checked
+  // e.g. `["elements","selection"].includes(event.domain)` therefore never
+  // matched, so selection/update events silently never reached listeners
+  // (including the right-hand inspector's own refresh logic).
+  function notify(type = "update") { state.notify?.("elements", type); }
   function createId(prefix = "el") { return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
   function getAll() { return state.elements; } function getById(id) { return state.elements.find(element => element && element.id === id) || null; }
   function create(type, iconName = null, x = 50, y = 50, shapeType = null) { return { id: createId("elem"), type, iconName, x, y, text: type === "button" ? "Klick mich" : (type === "headline" ? "Neue Überschrift" : "Beispieltext..."), color: type === "shape" ? "#4f46e5" : "#1f2937", size: type === "icon" ? 36 : (type === "headline" ? 32 : (type === "image" ? 200 : (type === "shape" ? 100 : 18))), imageUrl: type === "image" ? "https://picsum.photos/300/200" : "", actionType: "none", actionUrl: "", actionMsg: "", productId: null, shapeType: type === "shape" ? (shapeType || "rectangle") : null, shapeStyle: type === "shape" ? "solid" : null, bold: type === "headline", italic: false, underline: false, align: "left", fontFamily: "inherit", iconFrame: false, iconFrameColor: "#111827", modalTitle: "", modalBody: "", messagePosition: "bottom-right" }; }
