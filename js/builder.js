@@ -21,7 +21,6 @@ document.write('<script src="js/cart-config-runtime.js"><\/script>');
 document.write('<script src="js/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
 document.write('<script src="js/action-runtime.js"><\/script>');
-document.write('<script src="js/canvas-runtime.js"><\/script>');
 document.write('<script src="js/migration-coordinator.js"><\/script>');
 document.write('<script src="js/runtime-check.js"><\/script>');
 document.write('<script src="js/builder-core.js"><\/script>');
