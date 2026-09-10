@@ -1686,7 +1686,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   canvas.addEventListener("click", () => {
-    if (!isPreviewMode) { selectedElementId = null; selectElement(null); }
+    if (!isPreviewMode) { WebBuilderElements.setSelected(null); selectedElementId = null; selectElement(null); }
   });
 
   wireHistory(propText);
@@ -1740,7 +1740,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  function getSelected() { return elements.find(el => el.id === selectedElementId); }
+  function getSelected() { return window.WebBuilderElements.getSelected(); }
 
   function toggleActionFields(actionType) {
     groupActionUrl.classList.toggle("hidden", actionType !== "open-url");
