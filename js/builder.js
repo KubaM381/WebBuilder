@@ -8,8 +8,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let isPreviewMode = false;
   let draggedType = null;
   let draggedIcon = null;
+  let draggedShape = null;
 
   let cartItems = []; // { id, name, price, qty }
+  let cartButtonLabel = "Zur Kasse gehen";
 
   let headerEnabled = false;
   let headerSticky = false;
@@ -18,17 +20,20 @@ document.addEventListener("DOMContentLoaded", () => {
   let footerText = "© 2026 WebBuilder Pro";
 
   const CATEGORY_COLOR_PALETTE = ["#6366f1", "#16a34a", "#f59e0b", "#ef4444", "#0ea5e9", "#a855f7"];
+  const STORAGE_KEY = "webbuilder_pro_state";
 
   // ============================================================
   // DOM ELEMENTS (original)
   // ============================================================
+  const canvasColumn = document.getElementById("canvas-column");
   const canvas = document.getElementById("canvas");
   const canvasHint = document.getElementById("canvas-hint");
   const btnModeToggle = document.getElementById("btn-mode-toggle");
   const btnClear = document.getElementById("btn-clear");
   const btnExport = document.getElementById("btn-export");
+  const btnSave = document.getElementById("btn-save");
 
-  // Background Control Elements
+  // Background Control Elements (jetzt in der linken Sidebar)
   const bgType = document.getElementById("bg-type");
   const bgSolidGroup = document.getElementById("bg-solid-group");
   const bgGradientGroup = document.getElementById("bg-gradient-group");
@@ -39,6 +44,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const bgGradDirInput = document.getElementById("bg-grad-dir");
   const bgImageUrlInput = document.getElementById("bg-image-url");
   const bgImageFileInput = document.getElementById("bg-image-file");
+
+  // Header/Footer Controls (linke Sidebar)
+  const headerToggle = document.getElementById("header-toggle");
+  const headerStickyToggle = document.getElementById("header-sticky-toggle");
+  const headerTextInput = document.getElementById("header-text-input");
+  const footerToggle = document.getElementById("footer-toggle");
+  const footerTextInput = document.getElementById("footer-text-input");
+
+  // Warenkorb Controls (linke Sidebar)
+  const btnOpenCart = document.getElementById("btn-open-cart");
+  const cartButtonLabelInput = document.getElementById("cart-button-label");
 
   // Inspector Fields
   const noSelectionUI = document.getElementById("no-selection");
@@ -66,6 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeCartBtn = document.getElementById("close-cart-btn");
   const cartItemsList = document.getElementById("cart-items-list");
   const cartCountBadge = document.getElementById("cart-count-badge");
+  const cartCheckoutBtn = document.querySelector("#cart-drawer .drawer-footer button");
 
   const modalOverlay = document.getElementById("modal-overlay");
   const modalTitle = document.getElementById("modal-title");
@@ -138,13 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const style = document.createElement("style");
     style.id = "builder-dynamic-styles";
     style.textContent = `
-      /* --- Warenkorb Badge Hover --- */
-      #cart-count-badge { display: inline-block; transition: transform 0.25s ease; transform-origin: center; }
-      #cart-count-badge:hover { transform: scale(1.35); }
-
-      /* --- Element Styling Wrapper (Hintergrund/Transparenz/Rahmenfarbe) --- */
-      .placed-element .styled-wrapper { display: inline-block; box-sizing: border-box; }
-
       /* --- Wort-Hervorhebung & Links --- */
       .text-word-link { color: blue; text-decoration: underline; cursor: pointer; }
       .text-word-highlight { font-weight: bold; }
@@ -158,60 +168,10 @@ document.addEventListener("DOMContentLoaded", () => {
         z-index: 50; user-select: none;
       }
       #canvas-resize-handle:after { content: "⋯"; font-size: 14px; color: #888; }
-      #btn-grow-canvas {
-        position: absolute; right: 8px; bottom: 18px; z-index: 51;
-        padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;
-        background: #fff; border: 1px solid #ccc;
-      }
 
-      /* --- Vorschau-Modus: rechten Bereich nicht abschneiden, zentrieren --- */
+      /* --- Vorschau-Modus: zentrieren, kein horizontales Scrollen --- */
       body.preview-mode .canvas-container { justify-content: center; width: 100%; overflow-x: hidden; }
-      body.preview-mode .canvas-area { margin-left: auto; margin-right: auto; }
-
-      /* --- Hover Tooltip / Hover-Description (Position wird per JS gesetzt) --- */
-      .hover-tooltip {
-        position: absolute; z-index: 200; background: #1f2937; color: #fff;
-        padding: 6px 10px; border-radius: 6px; font-size: 12px; max-width: 220px;
-        pointer-events: none; opacity: 0; transition: opacity 0.2s ease;
-      }
-      .hover-tooltip.visible { opacity: 1; }
-
-      /* --- Kategorie Highlight auf dem Canvas --- */
-      .placed-element.category-dimmed { opacity: 0.25; transition: opacity 0.25s ease; }
-      .placed-element.category-highlighted { opacity: 1; transition: opacity 0.25s ease; }
-
-      /* --- Eigenständiges Kategorien-Verwaltungsmenü --- */
-      #category-manager-panel {
-        position: fixed; top: 76px; right: 16px; width: 280px; background: #fff;
-        border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.15));
-        padding: 14px; z-index: 500; display: none;
-      }
-      #category-manager-panel.active { display: block; }
-      #category-manager-panel h3 { margin: 0 0 10px; font-size: 14px; }
-      #category-add-row { display: flex; gap: 6px; margin-bottom: 12px; }
-      #category-add-row input { flex: 1; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.85rem; }
-      .category-manager-item { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-      .category-manager-item input[type="text"] { flex: 1; padding: 5px 7px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.85rem; }
-      .category-manager-item input[type="color"] { width: 28px; height: 28px; border: none; cursor: pointer; background: transparent; }
-      .category-manager-item .category-delete-btn { background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 0.95rem; }
-
-      /* --- Header / Footer --- */
-      #builder-header {
-        width: 100%; padding: 14px 20px; background: #111827; color: #fff;
-        display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;
-      }
-      #builder-header.sticky-header { position: sticky; top: 0; z-index: 300; }
-      #builder-footer {
-        width: 100%; padding: 18px 20px; background: #111827; color: #cbd5e1;
-        text-align: center; box-sizing: border-box; font-size: 13px;
-      }
-
-      /* --- Inspector: neue Styling-Controls --- */
-      .inspector-subsection { margin-top: 14px; padding-top: 10px; border-top: 1px dashed #e5e7eb; }
-      .inspector-subsection h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
-      .inspector-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
-      .inspector-row label { font-size: 12px; min-width: 90px; color: #374151; }
-      .inspector-row input[type="range"] { flex: 1; }
+      body.preview-mode .canvas-column { margin-left: auto; margin-right: auto; }
     `;
     document.head.appendChild(style);
   }
@@ -283,7 +243,6 @@ document.addEventListener("DOMContentLoaded", () => {
       totalRow = document.createElement("div");
       totalRow.id = "cart-total-row";
       totalRow.className = "cart-total-row";
-      totalRow.style.cssText = "margin-top:12px; padding-top:10px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; font-weight:600;";
       cartItemsList.parentElement.appendChild(totalRow);
     }
     totalRow.innerHTML = `<span>Gesamtsumme</span><span>${getCartTotal().toFixed(2)} €</span>`;
@@ -305,23 +264,14 @@ document.addEventListener("DOMContentLoaded", () => {
   closeCartBtn.addEventListener("click", closeCartDrawer);
   cartDrawerBackdrop.addEventListener("click", closeCartDrawer);
 
-  /** Separater Knopf in der Toolbar, um den Warenkorb jederzeit einzusehen/zu bearbeiten
-      (unabhängig von einer "In den Warenkorb"-Aktion auf einem Element). */
-  function ensureCartEditButton() {
-    let btn = document.getElementById("btn-edit-cart");
-    if (!btn) {
-      const host = document.querySelector(".toolbar") || document.body;
-      btn = document.createElement("button");
-      btn.id = "btn-edit-cart";
-      btn.type = "button";
-      btn.className = "btn btn-secondary";
-      btn.innerText = "🛒 Warenkorb bearbeiten";
-      host.appendChild(btn);
-    }
-    btn.addEventListener("click", openCartDrawer);
-    // TODO: Styling der einzelnen Warenkorb-Positionen (Formen etc.) folgt in einem späteren Schritt.
+  // Warenkorb wird jetzt separat über die linke Sidebar geöffnet & konfiguriert.
+  if (btnOpenCart) btnOpenCart.addEventListener("click", openCartDrawer);
+  if (cartButtonLabelInput) {
+    cartButtonLabelInput.addEventListener("input", (e) => {
+      cartButtonLabel = e.target.value || "Zur Kasse gehen";
+      if (cartCheckoutBtn) cartCheckoutBtn.innerText = cartButtonLabel;
+    });
   }
-  ensureCartEditButton();
 
   // ============================================================
   // 2. ELEMENT-STYLING: Hintergrund, Transparenz, Rahmenfarbe
@@ -410,6 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
       item.addEventListener("dragstart", (e) => {
         draggedType = "icon";
         draggedIcon = name;
+        draggedShape = null;
         e.dataTransfer.setData("text/plain", "icon");
       });
       list.appendChild(item);
@@ -487,14 +438,14 @@ document.addEventListener("DOMContentLoaded", () => {
       growBtn = document.createElement("button");
       growBtn.id = "btn-grow-canvas";
       growBtn.type = "button";
-      growBtn.innerText = "+ Höhe";
+      growBtn.innerText = "+ Seite erweitern";
       canvas.appendChild(growBtn);
     }
 
     growBtn.addEventListener("click", () => {
       const current = canvas.offsetHeight;
       canvas.style.minHeight = `${current + 200}px`;
-      showToast("Canvas-Höhe vergrößert", "info");
+      showToast("Seite wurde erweitert", "info");
     });
 
     let isResizing = false;
@@ -522,14 +473,12 @@ document.addEventListener("DOMContentLoaded", () => {
   setupCanvasResize();
 
   function fixCanvasLayout() {
-    canvas.style.marginLeft = "auto";
-    canvas.style.marginRight = "auto";
     canvas.style.boxSizing = "border-box";
   }
   fixCanvasLayout();
 
   // ============================================================
-  // 7. KATEGORIEN: eigenständiges Verwaltungsmenü
+  // 7. KATEGORIEN: Verwaltung fest in der linken Sidebar
   // ============================================================
   function addCategory(name) {
     if (!name) return null;
@@ -574,40 +523,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function ensureCategoryManagerButton() {
-    let btn = document.getElementById("btn-toggle-category-manager");
-    if (!btn) {
-      const host = document.querySelector(".toolbar") || document.body;
-      btn = document.createElement("button");
-      btn.id = "btn-toggle-category-manager";
-      btn.type = "button";
-      btn.className = "btn btn-secondary";
-      btn.innerText = "🏷️ Kategorien";
-      host.appendChild(btn);
-    }
-    btn.addEventListener("click", () => {
-      const panel = document.getElementById("category-manager-panel");
-      if (panel) panel.classList.toggle("active");
-    });
-  }
-
   function renderCategoryManagerPanel() {
-    let panel = document.getElementById("category-manager-panel");
-    if (!panel) {
-      panel = document.createElement("div");
-      panel.id = "category-manager-panel";
-      document.body.appendChild(panel);
-    }
-    panel.innerHTML = `
-      <h3>Kategorien verwalten</h3>
-      <div id="category-add-row">
-        <input type="text" id="category-new-name" placeholder="z. B. Pulver" />
-        <button type="button" class="btn btn-primary" id="category-add-btn">+</button>
-      </div>
-      <div id="category-manager-list"></div>
-    `;
+    const panel = document.getElementById("category-manager-panel");
+    if (!panel) return;
 
-    const list = panel.querySelector("#category-manager-list");
+    const addRow = panel.querySelector("#category-add-row");
+    let list = panel.querySelector("#category-manager-list");
+    if (!list) {
+      list = document.createElement("div");
+      list.id = "category-manager-list";
+      panel.appendChild(list);
+    }
+    list.innerHTML = "";
+
     categories.forEach(cat => {
       const row = document.createElement("div");
       row.className = "category-manager-item";
@@ -619,29 +547,32 @@ document.addEventListener("DOMContentLoaded", () => {
       list.appendChild(row);
     });
 
-    panel.querySelector("#category-add-btn").addEventListener("click", () => {
-      const input = panel.querySelector("#category-new-name");
-      if (input.value.trim()) {
-        addCategory(input.value.trim());
-        input.value = "";
-        renderCategoryManagerPanel();
-        refreshCategorySelectOptions();
-      }
-    });
+    if (addRow && !addRow.dataset.bound) {
+      addRow.dataset.bound = "1";
+      panel.querySelector("#category-add-btn").addEventListener("click", () => {
+        const input = panel.querySelector("#category-new-name");
+        if (input.value.trim()) {
+          addCategory(input.value.trim());
+          input.value = "";
+          renderCategoryManagerPanel();
+          refreshCategorySelectOptions();
+        }
+      });
+    }
 
-    panel.querySelectorAll(".category-name-input").forEach(input => {
+    list.querySelectorAll(".category-name-input").forEach(input => {
       input.addEventListener("change", (e) => {
         renameCategory(e.target.dataset.catId, e.target.value);
         renderCanvas();
         refreshCategorySelectOptions();
       });
     });
-    panel.querySelectorAll(".category-color-input").forEach(input => {
+    list.querySelectorAll(".category-color-input").forEach(input => {
       input.addEventListener("input", (e) => {
         updateCategoryColor(e.target.dataset.catId, e.target.value);
       });
     });
-    panel.querySelectorAll(".category-delete-btn").forEach(btn => {
+    list.querySelectorAll(".category-delete-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         deleteCategory(e.target.dataset.catId);
         renderCategoryManagerPanel();
@@ -649,8 +580,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   }
-
-  ensureCategoryManagerButton();
   renderCategoryManagerPanel();
 
   /** Aktualisiert die Kategorie-Auswahl im Inspector, falls gerade sichtbar. */
@@ -683,22 +612,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ============================================================
   // 9. KOPF- & FUSSZEILE (Header & Footer)
+  //    Liegen jetzt IM canvas-column (vertikal), daher wirklich
+  //    oben/unten und nicht links/rechts von der Vorlage.
   // ============================================================
   function renderHeaderFooter() {
     let header = document.getElementById("builder-header");
     let footer = document.getElementById("builder-footer");
-    const canvasWrapper = canvas.parentElement || document.body;
 
     if (headerEnabled) {
       if (!header) {
         header = document.createElement("div");
         header.id = "builder-header";
-        canvasWrapper.insertBefore(header, canvas);
+        canvasColumn.insertBefore(header, canvas);
       }
       header.classList.toggle("sticky-header", headerSticky);
-      header.innerHTML = `<strong contenteditable="true" id="builder-header-text">${headerText}</strong>`;
-      const headerTextEl = document.getElementById("builder-header-text");
-      headerTextEl.addEventListener("input", () => { headerText = headerTextEl.innerText; });
+      header.innerHTML = `<strong>${headerText}</strong>`;
     } else if (header) {
       header.remove();
     }
@@ -707,47 +635,37 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!footer) {
         footer = document.createElement("div");
         footer.id = "builder-footer";
-        canvasWrapper.appendChild(footer);
+        canvasColumn.appendChild(footer);
       }
-      footer.innerHTML = `<span contenteditable="true" id="builder-footer-text">${footerText}</span>`;
-      const footerTextEl = document.getElementById("builder-footer-text");
-      footerTextEl.addEventListener("input", () => { footerText = footerTextEl.innerText; });
+      footer.innerText = footerText;
     } else if (footer) {
       footer.remove();
     }
   }
 
-  function ensureHeaderFooterControls() {
-    let panel = document.getElementById("header-footer-controls");
-    if (!panel) {
-      const host = document.querySelector(".toolbar") || document.body;
-      panel = document.createElement("div");
-      panel.id = "header-footer-controls";
-      panel.style.cssText = "display:flex; gap:8px; align-items:center;";
-      panel.innerHTML = `
-        <button id="btn-toggle-header" class="btn btn-secondary" type="button">Header</button>
-        <button id="btn-toggle-header-sticky" class="btn btn-secondary" type="button">Sticky</button>
-        <button id="btn-toggle-footer" class="btn btn-secondary" type="button">Footer</button>
-      `;
-      host.appendChild(panel);
-    }
-    document.getElementById("btn-toggle-header").addEventListener("click", () => {
-      headerEnabled = !headerEnabled;
-      renderHeaderFooter();
-      showToast(headerEnabled ? "Header aktiviert" : "Header deaktiviert", "info");
-    });
-    document.getElementById("btn-toggle-header-sticky").addEventListener("click", () => {
-      headerSticky = !headerSticky;
-      renderHeaderFooter();
-      showToast(headerSticky ? "Sticky Header aktiv" : "Sticky Header deaktiviert", "info");
-    });
-    document.getElementById("btn-toggle-footer").addEventListener("click", () => {
-      footerEnabled = !footerEnabled;
-      renderHeaderFooter();
-      showToast(footerEnabled ? "Footer aktiviert" : "Footer deaktiviert", "info");
-    });
-  }
-  ensureHeaderFooterControls();
+  if (headerToggle) headerToggle.addEventListener("change", () => {
+    headerEnabled = headerToggle.checked;
+    renderHeaderFooter();
+    showToast(headerEnabled ? "Header aktiviert" : "Header deaktiviert", "info");
+  });
+  if (headerStickyToggle) headerStickyToggle.addEventListener("change", () => {
+    headerSticky = headerStickyToggle.checked;
+    renderHeaderFooter();
+    showToast(headerSticky ? "Sticky Header aktiv" : "Sticky Header deaktiviert", "info");
+  });
+  if (headerTextInput) headerTextInput.addEventListener("input", () => {
+    headerText = headerTextInput.value;
+    renderHeaderFooter();
+  });
+  if (footerToggle) footerToggle.addEventListener("change", () => {
+    footerEnabled = footerToggle.checked;
+    renderHeaderFooter();
+    showToast(footerEnabled ? "Footer aktiviert" : "Footer deaktiviert", "info");
+  });
+  if (footerTextInput) footerTextInput.addEventListener("input", () => {
+    footerText = footerTextInput.value;
+    renderHeaderFooter();
+  });
 
   // ============================================================
   // INSPECTOR ERWEITERUNGEN
@@ -760,6 +678,23 @@ document.addEventListener("DOMContentLoaded", () => {
       inspectorForm.appendChild(extPanel);
     }
     extPanel.innerHTML = `
+      <div class="inspector-subsection" id="ext-shape-section" style="display:none;">
+        <h4>Form-Optionen (Test-Objekt)</h4>
+        <div class="inspector-row"><label>Form</label>
+          <select id="ext-shape-type">
+            <option value="rectangle">Rechteck</option>
+            <option value="circle">Kreis</option>
+            <option value="triangle">Dreieck</option>
+          </select>
+        </div>
+        <div class="inspector-row"><label>Stil</label>
+          <select id="ext-shape-style">
+            <option value="solid">Ausgefüllt</option>
+            <option value="outline">Nur Rahmen</option>
+          </select>
+        </div>
+      </div>
+
       <div class="inspector-subsection">
         <h4>Styling</h4>
         <div class="inspector-row"><label>Hintergrund</label><input type="color" id="ext-bg-color" /></div>
@@ -801,19 +736,6 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
 
       <div class="inspector-subsection">
-        <h4>Hover-Effekte</h4>
-        <div class="inspector-row"><label>Hover-Bild-URL</label><input type="text" id="ext-hover-image" placeholder="https://..." /></div>
-        <div class="inspector-row"><label>Tooltip-Text</label><input type="text" id="ext-hover-desc" placeholder="Zusätzliche Beschreibung" /></div>
-        <div class="inspector-row"><label>Tooltip-Position</label>
-          <select id="ext-hover-position">
-            <option value="above">Über dem Text</option>
-            <option value="below">Unter dem Text</option>
-          </select>
-        </div>
-        <!-- TODO: Vorgefertigte Hover-Effekte (Presets) folgen in einem späteren Schritt -->
-      </div>
-
-      <div class="inspector-subsection">
         <h4>Kategorie</h4>
         <div class="inspector-row"><label>Zuweisen</label>
           <select id="ext-category-select"><option value="">Keine</option></select>
@@ -851,6 +773,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (item) { item.categoryId = e.target.value || null; renderCanvas(); }
     });
 
+    document.getElementById("ext-shape-type").addEventListener("change", (e) => {
+      const item = getSelected();
+      if (item) { item.shapeType = e.target.value; renderCanvas(); }
+    });
+    document.getElementById("ext-shape-style").addEventListener("change", (e) => {
+      const item = getSelected();
+      if (item) { item.shapeStyle = e.target.value; renderCanvas(); }
+    });
+
     const bindStyleField = (fieldId, prop, parser = (v) => v) => {
       document.getElementById(fieldId).addEventListener("input", (e) => {
         const item = getSelected();
@@ -865,13 +796,17 @@ document.addEventListener("DOMContentLoaded", () => {
     bindStyleField("ext-message-position", "messagePosition");
     bindStyleField("ext-link-scope", "linkScope");
     bindStyleField("ext-link-word", "linkWord");
-    bindStyleField("ext-hover-image", "hoverImage");
-    bindStyleField("ext-hover-desc", "hoverDescription");
-    bindStyleField("ext-hover-position", "hoverPosition");
   }
   ensureExtendedInspector();
 
   function populateExtendedInspector(item) {
+    const isShape = item.type === "shape";
+    document.getElementById("ext-shape-section").style.display = isShape ? "block" : "none";
+    if (isShape) {
+      document.getElementById("ext-shape-type").value = item.shapeType || "rectangle";
+      document.getElementById("ext-shape-style").value = item.shapeStyle || "solid";
+    }
+
     document.getElementById("ext-bg-color").value = item.bgColor && item.bgColor !== "transparent" ? item.bgColor : "#ffffff";
     document.getElementById("ext-transparency").value = item.transparency || 0;
     document.getElementById("ext-border-color").value = item.borderColor && item.borderColor !== "transparent" ? item.borderColor : "#000000";
@@ -889,10 +824,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("ext-text-section").style.display = isTextLike ? "block" : "none";
     document.getElementById("ext-link-scope").value = item.linkScope || "all";
     document.getElementById("ext-link-word").value = item.linkWord || "";
-
-    document.getElementById("ext-hover-image").value = item.hoverImage || "";
-    document.getElementById("ext-hover-desc").value = item.hoverDescription || "";
-    document.getElementById("ext-hover-position").value = item.hoverPosition || "above";
 
     refreshCategorySelectOptions();
   }
@@ -918,7 +849,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ensureGenericModalActionOption();
 
   // ============================================================
-  // CANVAS BACKGROUND CONTROL LOGIC (unverändert)
+  // CANVAS BACKGROUND CONTROL LOGIC (unverändert, jetzt in Sidebar)
   // ============================================================
   bgType.addEventListener("change", () => {
     const mode = bgType.value;
@@ -966,6 +897,7 @@ document.addEventListener("DOMContentLoaded", () => {
     item.addEventListener("dragstart", (e) => {
       draggedType = item.dataset.type;
       draggedIcon = item.dataset.icon || null;
+      draggedShape = item.dataset.shape || null;
       e.dataTransfer.setData("text/plain", draggedType);
     });
   });
@@ -982,13 +914,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const x = e.clientX - rect.left - 40;
     const y = e.clientY - rect.top - 20;
 
-    createElement(draggedType, draggedIcon, Math.max(0, x), Math.max(0, y));
+    createElement(draggedType, draggedIcon, Math.max(0, x), Math.max(0, y), draggedShape);
   });
 
   // ============================================================
   // ELEMENT CREATION & MANAGEMENT
   // ============================================================
-  function createElement(type, iconName = null, x = 50, y = 50) {
+  function createElement(type, iconName = null, x = 50, y = 50, shapeType = null) {
     const id = "elem_" + Date.now();
     const newElement = {
       id,
@@ -997,12 +929,16 @@ document.addEventListener("DOMContentLoaded", () => {
       x,
       y,
       text: type === "button" ? "Klick mich" : (type === "headline" ? "Neue Überschrift" : "Beispieltext..."),
-      color: "#1f2937",
-      size: type === "icon" ? 36 : (type === "headline" ? 32 : (type === "image" ? 200 : 18)),
+      color: type === "shape" ? "#4f46e5" : "#1f2937",
+      size: type === "icon" ? 36 : (type === "headline" ? 32 : (type === "image" ? 200 : (type === "shape" ? 100 : 18))),
       imageUrl: type === "image" ? "https://picsum.photos/300/200" : "",
       actionType: "none",
       actionUrl: "",
       actionMsg: "",
+
+      // --- Test-Objekt / Form ---
+      shapeType: type === "shape" ? (shapeType || "rectangle") : null,
+      shapeStyle: type === "shape" ? "solid" : null,
 
       // --- Styling (reduziert) ---
       bgColor: "transparent",
@@ -1022,11 +958,6 @@ document.addEventListener("DOMContentLoaded", () => {
       linkWord: "",
       highlightedWords: [],
 
-      // --- Hover ---
-      hoverImage: "",
-      hoverDescription: "",
-      hoverPosition: "above",
-
       // --- Kategorie ---
       categoryId: null
     };
@@ -1035,6 +966,27 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCanvas();
     selectElement(id);
     showToast("Neues Element hinzugefügt", "success");
+  }
+
+  function renderShapeInner(item) {
+    const s = item.size || 100;
+    const outline = item.shapeStyle === "outline";
+    if (item.shapeType === "circle") {
+      return `<div style="width:${s}px; height:${s}px; border-radius:50%; ${outline ? `background:transparent; border:3px solid ${item.color};` : `background:${item.color}; border:none;`}"></div>`;
+    }
+    if (item.shapeType === "triangle") {
+      const half = s / 2;
+      if (outline) {
+        return `<div style="position:relative; width:${s}px; height:${s}px;">
+          <div style="position:absolute; inset:0; width:0; height:0; margin:auto; border-left:${half}px solid transparent; border-right:${half}px solid transparent; border-bottom:${s}px solid ${item.color};"></div>
+          <div style="position:absolute; top:3px; left:3px; width:0; height:0; border-left:${half - 3}px solid transparent; border-right:${half - 3}px solid transparent; border-bottom:${s - 6}px solid #ffffff;"></div>
+        </div>`;
+      }
+      return `<div style="width:0; height:0; border-left:${half}px solid transparent; border-right:${half}px solid transparent; border-bottom:${s}px solid ${item.color};"></div>`;
+    }
+    // rectangle (default)
+    const h = Math.round(s * 0.65);
+    return `<div style="width:${s}px; height:${h}px; border-radius:6px; ${outline ? `background:transparent; border:3px solid ${item.color};` : `background:${item.color}; border:none;`}"></div>`;
   }
 
   function renderCanvas() {
@@ -1068,6 +1020,8 @@ document.addEventListener("DOMContentLoaded", () => {
         el.innerHTML = `<h2 style="font-size:${item.size}px; color:${item.color};">${renderTextContent(item)}</h2>`;
       } else if (item.type === "box") {
         el.innerHTML = `<div style="width:140px; height:90px; background:${item.color}; border-radius:8px; box-shadow: var(--shadow-md);"></div>`;
+      } else if (item.type === "shape") {
+        el.innerHTML = renderShapeInner(item);
       } else if (item.type === "image") {
         const src = item.imageUrl || "https://via.placeholder.com/200";
         el.innerHTML = `<img src="${src}" class="canvas-img" style="width:${item.size}px; height:auto;" alt="Bild Element" />`;
@@ -1079,35 +1033,6 @@ document.addEventListener("DOMContentLoaded", () => {
       badge.className = "element-badge";
       badge.innerText = "⚡ Logik";
       el.appendChild(badge);
-
-      // --- Hover: Bildwechsel ---
-      if (item.type === "image" && item.hoverImage) {
-        const imgTag = el.querySelector("img");
-        el.addEventListener("mouseenter", () => { if (imgTag) imgTag.src = item.hoverImage; });
-        el.addEventListener("mouseleave", () => { if (imgTag) imgTag.src = item.imageUrl; });
-      }
-
-      // --- Hover: Tooltip/Description (Position: über/unter) ---
-      if (item.hoverDescription) {
-        el.addEventListener("mouseenter", () => {
-          const tip = ensureEl("hover-tooltip-active", document.body, "div", "hover-tooltip");
-          tip.innerText = item.hoverDescription;
-          const rect = el.getBoundingClientRect();
-          tip.style.left = `${rect.left + rect.width / 2}px`;
-          if (item.hoverPosition === "below") {
-            tip.style.top = `${rect.bottom}px`;
-            tip.style.transform = "translate(-50%, 10px)";
-          } else {
-            tip.style.top = `${rect.top}px`;
-            tip.style.transform = "translate(-50%, -110%)";
-          }
-          tip.classList.add("visible");
-        });
-        el.addEventListener("mouseleave", () => {
-          const tip = document.getElementById("hover-tooltip-active");
-          if (tip) tip.classList.remove("visible");
-        });
-      }
 
       // --- Kategorie-Hover: hebt alle Elemente derselben Kategorie hervor ---
       if (item.categoryId) {
@@ -1139,8 +1064,6 @@ document.addEventListener("DOMContentLoaded", () => {
       makeElementDraggableOnCanvas(el, item);
       canvas.appendChild(el);
     });
-
-    renderHeaderFooter();
   }
 
   function makeElementDraggableOnCanvas(domEl, item) {
@@ -1189,9 +1112,9 @@ document.addEventListener("DOMContentLoaded", () => {
     inspectorForm.classList.remove("hidden");
 
     const isImage = item.type === "image";
-    const isBox = item.type === "box";
+    const isBoxLike = item.type === "box" || item.type === "shape";
 
-    groupText.classList.toggle("hidden", isImage || isBox);
+    groupText.classList.toggle("hidden", isImage || isBoxLike);
     groupColor.classList.toggle("hidden", isImage);
     groupImage.classList.toggle("hidden", !isImage);
 
@@ -1348,12 +1271,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ============================================================
-  // TOOLBAR CONTROLS
+  // TOOLBAR CONTROLS (oben: nur Speichern / Export / Vorschau)
   // ============================================================
   btnModeToggle.addEventListener("click", () => {
     isPreviewMode = !isPreviewMode;
     document.body.classList.toggle("preview-mode", isPreviewMode);
-    btnModeToggle.innerHTML = isPreviewMode ? "✏️ Editor-Modus" : "👁️ Vorschau-Modus";
+    btnModeToggle.innerHTML = isPreviewMode ? "✏️ Editor-Modus" : "👁️ Vorschau";
     fixCanvasLayout();
 
     if (isPreviewMode) {
@@ -1397,6 +1320,8 @@ document.addEventListener("DOMContentLoaded", () => {
         exportedHTML += `    <img src="${item.imageUrl}" style="width:${item.size}px; height:auto; display:block;" alt="Exportiertes Bild" />\n`;
       } else if (item.type === "box") {
         exportedHTML += `    <div style="width:140px; height:90px; background:${item.color}; border-radius:8px;"></div>\n`;
+      } else if (item.type === "shape") {
+        exportedHTML += `    ${renderShapeInner(item)}\n`;
       } else {
         exportedHTML += `    <p style="font-size:${item.size}px; color:${item.color}; margin:0;">${item.text}</p>\n`;
       }
@@ -1411,7 +1336,91 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast("HTML wurde in der Entwickler-Konsole (F12) ausgegeben!", "success");
   });
 
-  // Initiales Rendering
+  // ============================================================
+  // SPEICHERN / LADEN (localStorage) - "💾 Speichern" oben
+  // ============================================================
+  function saveProjectState() {
+    const state = {
+      elements,
+      categories,
+      cartItems,
+      cartButtonLabel,
+      headerEnabled,
+      headerSticky,
+      headerText,
+      footerEnabled,
+      footerText,
+      background: {
+        type: bgType.value,
+        color: bgColorInput.value,
+        grad1: bgGrad1Input.value,
+        grad2: bgGrad2Input.value,
+        gradDir: bgGradDirInput.value,
+        imageUrl: bgImageUrlInput.value
+      }
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      showToast("Projekt gespeichert 💾", "success");
+    } catch (err) {
+      showToast("Speichern fehlgeschlagen", "danger");
+    }
+  }
+
+  function loadProjectState() {
+    let raw;
+    try {
+      raw = localStorage.getItem(STORAGE_KEY);
+    } catch (err) {
+      return;
+    }
+    if (!raw) return;
+
+    try {
+      const state = JSON.parse(raw);
+      elements = state.elements || [];
+      categories = state.categories || [];
+      cartItems = state.cartItems || [];
+      cartButtonLabel = state.cartButtonLabel || "Zur Kasse gehen";
+      headerEnabled = !!state.headerEnabled;
+      headerSticky = !!state.headerSticky;
+      headerText = state.headerText || headerText;
+      footerEnabled = !!state.footerEnabled;
+      footerText = state.footerText || footerText;
+
+      if (headerToggle) headerToggle.checked = headerEnabled;
+      if (headerStickyToggle) headerStickyToggle.checked = headerSticky;
+      if (headerTextInput) headerTextInput.value = headerText;
+      if (footerToggle) footerToggle.checked = footerEnabled;
+      if (footerTextInput) footerTextInput.value = footerText;
+      if (cartButtonLabelInput) cartButtonLabelInput.value = cartButtonLabel;
+      if (cartCheckoutBtn) cartCheckoutBtn.innerText = cartButtonLabel;
+
+      if (state.background) {
+        bgType.value = state.background.type || "solid";
+        bgColorInput.value = state.background.color || "#ffffff";
+        bgGrad1Input.value = state.background.grad1 || "#4f46e5";
+        bgGrad2Input.value = state.background.grad2 || "#06b6d4";
+        bgGradDirInput.value = state.background.gradDir || "to right";
+        bgImageUrlInput.value = state.background.imageUrl || "";
+        bgSolidGroup.classList.toggle("hidden", bgType.value !== "solid");
+        bgGradientGroup.classList.toggle("hidden", bgType.value !== "gradient");
+        bgImageGroup.classList.toggle("hidden", bgType.value !== "image");
+        updateCanvasBackground();
+      }
+    } catch (err) {
+      // Ungültiger Speicherstand wird ignoriert, Builder startet leer.
+    }
+  }
+
+  if (btnSave) btnSave.addEventListener("click", saveProjectState);
+
+  // ============================================================
+  // INITIALISIERUNG
+  // ============================================================
+  loadProjectState();
+  renderCategoryManagerPanel();
   renderCart();
   renderCanvas();
+  renderHeaderFooter();
 });
