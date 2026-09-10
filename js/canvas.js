@@ -66,8 +66,20 @@
     return renderer ? renderer.renderCanvas() : false;
   }
 
-  function setBackground(background) {
+  function render() {
+    if (!renderer) return false;
+    renderer.setBackground(state.background);
+    return renderer.renderCanvas();
+  }
+
+  function setBackground(background = state.background) {
     return renderer ? renderer.setBackground(background) : false;
+  }
+
+  function setRendererCallbacks(callbacks = {}) {
+    return renderer && typeof renderer.setCallbacks === "function"
+      ? renderer.setCallbacks(callbacks)
+      : false;
   }
 
   const constants = viewport ? viewport.constants : {
@@ -93,7 +105,9 @@
     toLocalCoords,
     makeDraggable,
     renderCanvas,
+    render,
     setBackground,
+    setRendererCallbacks,
     constants
   };
 })();
