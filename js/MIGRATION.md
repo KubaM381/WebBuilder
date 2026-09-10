@@ -11,8 +11,7 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 - `canvas-viewport.js` — zoom, coordinate conversion and canvas sizing
 - `canvas-interaction.js` — reusable drag interaction
 - `canvas-renderer.js` — modular rendering of placed canvas elements
-- `canvas-runtime.js` — live canvas controls and reactive render bridge
-- `legacy-canvas-takeover.js` — transitional guard that reasserts modular canvas rendering after legacy DOM mutations
+- `canvas-runtime.js` — authoritative live canvas controls and reactive render bridge
 - `icon-registry.js` — shared built-in/custom icon registry
 - `elements.js` — shared element state + CRUD + legacy compatibility proxy
 - `inspector.js` — selected-element service
@@ -22,38 +21,30 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 - `header-footer.js` — header/footer data operations
 - `products.js` — authoritative product normalization + CRUD
 - `cart.js` — authoritative cart data operations; delegates all product operations to `products.js`
-- `legacy-bridge.js` — controlled connection point to the legacy editor
-- `builder-legacy.js` — still contains the remaining legacy editor implementation
+- `legacy-bridge.js` — controlled connection point to the remaining legacy editor
+- `builder-legacy.js` — remaining legacy editor implementation; canvas is no longer its visual source of truth
 
 ## Migration status
 
-### Step 1 — Cart + products
+### Step 1 — Legacy canvas removal / takeover
 
-**Data layer split complete; live legacy UI is not yet switched.** `products.js` is now the single product data service, including discount-price normalization and product CRUD. `cart.js` owns only cart state and delegates product operations to `products.js`. The migration coordinator registers products separately and hydrates them independently.
+**Complete from the runtime-ownership perspective.** The modular canvas renderer owns the visible canvas, zoom, coordinate conversion, dragging and element selection. The renderer now uses capture-phase click handling so legacy bubble handlers cannot take control of modular elements. `canvas-runtime.js` also watches for external legacy canvas DOM mutations and immediately reasserts the modular render. The old canvas implementation remains physically inside `builder-legacy.js` for now only because the file also contains the still-migrating non-canvas editor domains; those obsolete canvas functions are now dead transitional code and are the next cleanup target.
 
-### Step 2 — Header + footer
+### Step 2 — Remaining UI domains
 
-**Complete.** The legacy editor no longer owns a separate header/footer state container. Its header/footer reads and writes go through `WebBuilderHeaderFooter`, while the service remains responsible for normalization and persistence hydration. Undo/redo snapshots restore the shared header/footer state as well.
+**Partially migrated.** Header/footer, products, cart, preview, modals and inspector runtimes already have modular services. Remaining work is to switch the last legacy DOM event/render ownership for these domains and remove their duplicated local state/functions.
 
-### Step 3 — Elements + inspector
+### Step 3 — Delete legacy implementation
 
-**Core inspector migration complete.** `WebBuilderState.elements` is the authoritative element collection. The inspector now owns selection, text/content, size, color, font family, text formatting, alignment, image URL/local image input and deletion through modular runtimes. Click-action editing and element-specific icon/shape/modal/message controls are also modular and use the shared element service. Legacy compatibility remains only for the not-yet-migrated editor internals.
-
-### Step 4 — Canvas/zoom/drag
-
-**Modular canvas ownership active.** The canvas facade, viewport, interaction and renderer are implemented and loaded before the legacy editor. Canvas state is persisted and hydrated through the migration coordinator. The renderer consumes the shared icon registry and reacts to shared element, selection, preview and canvas/background state changes. `legacy-canvas-takeover.js` now observes legacy canvas DOM mutations and reasserts the modular renderer, so the legacy canvas output is transitional rather than the visual source of truth. The remaining work is to remove the duplicated legacy canvas functions and eventually delete the legacy file.
-
-### Step 5 — Preview + runtime hardening
-
-**In progress.** Preview mode is owned by `preview.js` and publishes mode changes through the shared state event bus. Canvas rendering reacts to those changes. Runtime checks expose the modular inspector, product, cart and special inspector services so missing migration dependencies are visible.
+After Step 2, remove the obsolete legacy functions/domain state, verify save/load, undo/redo and preview, then delete `builder-legacy.js` and make `builder-core.js` a pure modular entry point.
 
 ## Next
 
-6. Migrate remaining product/cart/header/footer/preview DOM event ownership from `builder-legacy.js`
-7. Remove obsolete legacy canvas/zoom/drag/render functions and their local state
-8. Remove remaining duplicated legacy state domain by domain
-9. Verify save/load, undo/redo, preview and all inspector interactions after each removal
-10. Delete `builder-legacy.js` after all domains have been switched and verified
+1. Remove the now-dead canvas/zoom/drag/render code from `builder-legacy.js` when the remaining legacy domains are safely isolated.
+2. Switch remaining product/cart/header/footer/preview DOM event ownership to their modular runtimes.
+3. Remove duplicated legacy state domain by domain.
+4. Verify save/load, undo/redo, preview and all inspector interactions after each removal.
+5. Delete `builder-legacy.js` and simplify `builder-core.js` to the final modular architecture.
 
 ## Integration rule
 
