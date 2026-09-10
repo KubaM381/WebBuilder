@@ -77,18 +77,27 @@
     handle.addEventListener("mousedown",e=>{
       e.preventDefault();e.stopPropagation();
       const isFooter=target==="footer";
-      const startY=e.clientY;
-      const startHeight=isFooter?state.footerHeight:state.headerHeight;
+      const bar=handle.closest(".builder-bar");
+      if(!bar)return;
+      // FIX: the previous implementation computed the new height
+      // incrementally from (startHeight ± mouse delta) since mousedown.
+      // That accumulates drift over the course of a drag and makes the
+      // handle feel like it isn't exactly under the cursor — reported as
+      // "optically wrong" / footer only growing when dragging upward.
+      // We now read the bar's fixed edge (top edge for the header, bottom
+      // edge for the footer) once at drag start and compute the height
+      // directly from the current cursor position relative to that fixed
+      // edge on every mousemove. This makes the handle track the mouse
+      // 1:1 in both directions — dragging down always means "the edge
+      // under my cursor follows my cursor", which is the natural,
+      // Canva/Figma-like feel the header handle already had.
+      const barRect=bar.getBoundingClientRect();
+      const fixedEdgeY=isFooter?barRect.bottom:barRect.top;
       const zoom=Number(state.zoomLevel)||1;
       window.WebBuilderHistory?.arm();
       const onMove=moveEvent=>{
-        const delta=(moveEvent.clientY-startY)/zoom;
-        // Footer handle sits at the TOP edge of the footer: dragging up
-        // (negative delta) grows it, dragging down shrinks it.
-        // Header handle sits at the BOTTOM edge of the header: dragging
-        // down (positive delta) grows it, dragging up shrinks it.
-        const nextHeight=isFooter?startHeight-delta:startHeight+delta;
-        const clamped=Math.max(40,Math.min(400,Math.round(nextHeight)));
+        const rawHeight=isFooter?(fixedEdgeY-moveEvent.clientY)/zoom:(moveEvent.clientY-fixedEdgeY)/zoom;
+        const clamped=Math.max(40,Math.min(400,Math.round(rawHeight)));
         if(isFooter)state.footerHeight=clamped;else state.headerHeight=clamped;
         renderBars();
         const input=byId(isFooter?"footer-height-input":"header-height-input");
