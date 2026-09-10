@@ -4,6 +4,7 @@
 document.write('<script src="js/state.js"><\/script>');
 document.write('<script src="js/storage.js"><\/script>');
 document.write('<script src="js/history.js"><\/script>');
+document.write('<script src="js/icon-registry.js"><\/script>');
 document.write('<script src="js/canvas-viewport.js"><\/script>');
 document.write('<script src="js/canvas-interaction.js"><\/script>');
 document.write('<script src="js/canvas-renderer.js"><\/script>');
