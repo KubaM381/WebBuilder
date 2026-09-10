@@ -6,7 +6,7 @@
 // Runtime, toolbar.js besitzt Zoom/History/Speichern. Export erzeugt einen
 // statischen Snapshot des aktuellen State — ein eigenständiges Feature mit
 // eigenem Wachstumspfad (z.B. später "Als Datei herunterladen" oder
-// Netlify-Deploy), siehe README-Zielstruktur & Projektregel 6/24.
+// Netlify-Deploy), siehe README & Projektregel 5/6.
 (() => {
   const state = window.WebBuilderState;
   const elementsService = window.WebBuilderElements;
@@ -96,24 +96,10 @@
     return html;
   }
 
-  // Minimal-lokaler Toast-Helper, analog zum bereits bestehenden Muster in
-  // supabase.js/toolbar.js (siehe bekannter offener Punkt: kein zentraler
-  // Toast-Helper — wird hier bewusst NICHT zusätzlich vereinheitlicht, um
-  // den Scope dieser Aufgabe nicht zu sprengen).
-  function showToast(message, type = "info") {
-    const container = document.getElementById("toast-container");
-    if (!container) return console[type === "danger" ? "error" : "log"](message);
-    const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span>${type === "success" ? "✅" : type === "danger" ? "⚠️" : "ℹ️"}</span> <span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-  }
-
   function exportProject() {
     const html = buildExportHtml();
     console.log(html);
-    showToast("HTML wurde in der Entwickler-Konsole (F12) ausgegeben!", "success");
+    window.WebBuilderToast?.show?.("HTML wurde in der Entwickler-Konsole (F12) ausgegeben!", "success");
     return html;
   }
 
