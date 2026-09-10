@@ -6,7 +6,8 @@
   const state = window.WebBuilderState;
   const canvas = window.WebBuilderCanvas;
   const history = window.WebBuilderHistory;
-  if (!state || !canvas || !history) {
+  const storage = window.WebBuilderStorage;
+  if (!state || !canvas || !history || !storage) {
     console.error("WebBuilderToolbar: shared services missing.");
     return;
   }
@@ -23,22 +24,24 @@
     return canvas.resetZoom(state.isPreviewMode);
   }
 
+  // canvas.extendCanvas() already owns the history transaction.
   function extendCanvas(delta = 300) {
-    history.push();
     return canvas.extendCanvas(delta);
   }
 
   function undo() {
     const snapshot = history.undoSnapshot();
     if (!snapshot) return false;
-    window.WebBuilderStorage.applySnapshot(snapshot, state);
+    storage.applySnapshot(snapshot, state);
+    if (window.WebBuilderCanvasRuntime?.render) window.WebBuilderCanvasRuntime.render();
     return true;
   }
 
   function redo() {
     const snapshot = history.redoSnapshot();
     if (!snapshot) return false;
-    window.WebBuilderStorage.applySnapshot(snapshot, state);
+    storage.applySnapshot(snapshot, state);
+    if (window.WebBuilderCanvasRuntime?.render) window.WebBuilderCanvasRuntime.render();
     return true;
   }
 
