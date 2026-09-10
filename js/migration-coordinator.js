@@ -4,6 +4,7 @@
 (() => {
   const state = window.WebBuilderState;
   const bridge = window.WebBuilderLegacyBridge;
+  const elementsService = window.WebBuilderElements;
   const cartService = window.WebBuilderCart;
   const headerFooterService = window.WebBuilderHeaderFooter;
 
@@ -24,9 +25,7 @@
     return true;
   }
 
-  function get(name) {
-    return domains[name] || null;
-  }
+  function get(name) { return domains[name] || null; }
 
   function status() {
     return Object.keys(domains).reduce((result, name) => {
@@ -75,6 +74,12 @@
       return { ok: false, reason: "no-persisted-project" };
     }
 
+    if (Array.isArray(persisted.elements)) {
+      if (elementsService && typeof elementsService.replaceAll === "function") elementsService.replaceAll(persisted.elements);
+      else state.elements = persisted.elements;
+      domains.elements.hydrated = true;
+    }
+
     if (Array.isArray(persisted.cartItems)) {
       state.cartItems = persisted.cartItems;
       domains.cart.hydrated = true;
@@ -106,16 +111,10 @@
       domains.headerFooter.hydrated = true;
     }
 
-    // Step 1: normalize old cart/product records before the legacy editor reads them.
-    if (cartService && typeof cartService.normalizeState === "function") {
-      cartService.normalizeState();
-    }
+    if (cartService && typeof cartService.normalizeState === "function") cartService.normalizeState();
+    if (headerFooterService && typeof headerFooterService.normalizeState === "function") headerFooterService.normalizeState();
 
-    // Step 2: normalize persisted header/footer records before the legacy editor reads them.
-    if (headerFooterService && typeof headerFooterService.normalizeState === "function") {
-      headerFooterService.normalizeState();
-    }
-
+    persisted.elements = state.elements;
     persisted.cartItems = state.cartItems;
     persisted.products = state.products;
     persisted.headerEnabled = state.headerEnabled;
@@ -131,6 +130,7 @@
 
     return {
       ok: true,
+      elements: state.elements.length,
       cartItems: state.cartItems.length,
       products: state.products.length,
       headerItems: state.headerItems.length,
@@ -146,6 +146,18 @@
     const value = adapter.read();
     return { ok: Array.isArray(value), count: Array.isArray(value) ? value.length : 0 };
   }
+
+  register("elements", {
+    connected: true,
+    hydrated: false,
+    read: () => elementsService ? elementsService.getAll() : state.elements,
+    write: value => {
+      if (!Array.isArray(value)) return false;
+      if (elementsService && typeof elementsService.replaceAll === "function") elementsService.replaceAll(value);
+      else state.elements = value;
+      return true;
+    }
+  });
 
   register("cart", {
     connected: false,
@@ -169,8 +181,6 @@
     }
   });
 
-  // Step 2 is now fully connected: builder-legacy.js reads/writes header/footer
-  // exclusively through WebBuilderHeaderFooter's shared state service.
   register("headerFooter", {
     connected: true,
     hydrated: false,
@@ -189,15 +199,7 @@
   const hydration = hydrateSharedStateFromStorage();
 
   window.WebBuilderMigration = {
-    register,
-    get,
-    status,
-    read,
-    write,
-    validateArrayDomain,
-    hydrateSharedStateFromStorage,
-    readPersistedProject,
-    domains,
-    hydration
+    register, get, status, read, write, validateArrayDomain,
+    hydrateSharedStateFromStorage, readPersistedProject, domains, hydration
   };
 })();
