@@ -1,5 +1,5 @@
-// WebBuilder runtime / migration health check
-// Keeps the staged migration observable without touching legacy lexical state.
+// WebBuilder runtime health check
+// Verifies the modular runtime after the legacy editor removal.
 (() => {
   const required = [
     "WebBuilderState",
@@ -22,26 +22,23 @@
     "WebBuilderCartConfigRuntime",
     "WebBuilderModals",
     "WebBuilderPreview",
-    "WebBuilderLegacyBridge"
+    "WebBuilderMigration"
   ];
 
   function check() {
     const missing = required.filter(name => !window[name]);
-    const bridge = window.WebBuilderLegacyBridge;
     const migration = window.WebBuilderMigration;
-    const canvasRuntime = window.WebBuilderCanvasRuntime;
-    const headerFooterRuntime = window.WebBuilderHeaderFooterRuntime;
     const result = {
       ok: missing.length === 0,
       missing,
-      legacyAdapterRegistered: !!(bridge && bridge.hasLegacyAdapter && bridge.hasLegacyAdapter()),
+      legacyEditor: false,
       sharedState: !!window.WebBuilderState,
-      canvasRuntime: !!canvasRuntime,
+      canvasRuntime: !!window.WebBuilderCanvasRuntime,
       actionRuntime: !!window.WebBuilderActionRuntime,
       inspectorActionsRuntime: !!window.WebBuilderInspectorActionsRuntime,
       inspectorPropertiesRuntime: !!window.WebBuilderInspectorPropertiesRuntime,
       inspectorSpecialRuntime: !!window.WebBuilderInspectorSpecialRuntime,
-      headerFooterRuntime: !!headerFooterRuntime,
+      headerFooterRuntime: !!window.WebBuilderHeaderFooterRuntime,
       productsService: !!window.WebBuilderProducts,
       productsRuntime: !!window.WebBuilderProductsRuntime,
       cartService: !!window.WebBuilderCart,
@@ -54,7 +51,7 @@
 
     window.WebBuilderRuntime = result;
     if (result.ok) {
-      console.info("WebBuilder runtime ready. Legacy adapter:", result.legacyAdapterRegistered ? "connected" : "not connected (migration pending)");
+      console.info("WebBuilder runtime ready. Modular-only architecture active.");
     } else {
       console.error("WebBuilder runtime incomplete. Missing services:", missing);
     }
