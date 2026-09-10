@@ -1,6 +1,5 @@
 // WebBuilder preview service
-// Centralises editor/preview mode state and DOM class handling.
-// The legacy toolbar remains the caller until the final integration step.
+// Owns editor/preview mode state, DOM class handling and the mode-toggle UI.
 
 (() => {
   const state = window.WebBuilderState;
@@ -16,29 +15,35 @@
   function apply(mode = state.isPreviewMode) {
     state.isPreviewMode = !!mode;
     document.body.classList.toggle("preview-mode", state.isPreviewMode);
+
     const button = document.getElementById("btn-mode-toggle");
     if (button) button.innerHTML = state.isPreviewMode ? "✏️ Editor-Modus" : "👁️ Vorschau";
+
     if (window.WebBuilderCanvas) window.WebBuilderCanvas.applyZoom(state.isPreviewMode);
+    if (window.WebBuilderCanvasRuntime?.render) window.WebBuilderCanvasRuntime.render();
+
     return state.isPreviewMode;
   }
 
-  function enter() {
-    return apply(true);
+  function enter() { return apply(true); }
+  function exit() { return apply(false); }
+  function toggle() { return apply(!state.isPreviewMode); }
+
+  function bindToggle() {
+    const button = document.getElementById("btn-mode-toggle");
+    if (!button || button.dataset.webBuilderPreviewBound === "true") return;
+    button.dataset.webBuilderPreviewBound = "true";
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      toggle();
+    });
   }
 
-  function exit() {
-    return apply(false);
-  }
+  window.WebBuilderPreview = { isPreview, apply, enter, exit, toggle, bindToggle };
 
-  function toggle() {
-    return apply(!state.isPreviewMode);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindToggle, { once: true });
+  } else {
+    bindToggle();
   }
-
-  window.WebBuilderPreview = {
-    isPreview,
-    apply,
-    enter,
-    exit,
-    toggle
-  };
 })();
