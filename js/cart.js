@@ -1,34 +1,17 @@
 // WebBuilder cart service
-// Owns cart/product data operations during the staged migration.
-// DOM rendering remains in builder-legacy.js until the renderer is switched.
+// Owns cart data operations during the staged migration.
+// Product CRUD lives in products.js; DOM rendering remains in builder-legacy.js.
 
 (() => {
   const state = window.WebBuilderState;
-  if (!state) {
-    console.error("WebBuilderCart: shared state missing.");
+  const products = window.WebBuilderProducts;
+  if (!state || !products) {
+    console.error("WebBuilderCart: shared state/products service missing.");
     return;
   }
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
-  }
-
-  function normalizeProduct(product = {}) {
-    const price = Number(product.price) || 0;
-    const discountPrice = product.discountPrice != null && product.discountPrice !== ""
-      ? Number(product.discountPrice) || 0
-      : null;
-    return {
-      id: product.id || `prod_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      name: product.name || "Neues Produkt",
-      price,
-      discountPrice: discountPrice != null && discountPrice > 0 && discountPrice < price ? discountPrice : null,
-      icon: product.icon || "📦",
-      description: product.description || "",
-      compareAtPrice: product.compareAtPrice != null && product.compareAtPrice !== ""
-        ? Number(product.compareAtPrice) || 0
-        : null
-    };
   }
 
   function normalizeCartItem(item = {}) {
@@ -57,13 +40,13 @@
   }
 
   function normalizeState() {
-    state.products = Array.isArray(state.products) ? state.products.map(normalizeProduct) : [];
+    products.normalizeState();
     state.cartItems = Array.isArray(state.cartItems) ? state.cartItems.map(normalizeCartItem) : [];
     return state;
   }
 
   function getItems() { return state.cartItems; }
-  function getProducts() { return state.products; }
+  function getProducts() { return products.getAll(); }
   function getConfig() { return state.cartConfig; }
   function getCount() { return state.cartItems.reduce((sum, item) => sum + (Number(item.qty) || 0), 0); }
   function getSubtotal() { return state.cartItems.reduce((sum, item) => sum + getEffectivePrice(item) * (Number(item.qty) || 0), 0); }
@@ -141,35 +124,6 @@
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
   }
 
-  function addProduct(product = {}, recordHistory = true) {
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    const item = normalizeProduct(product);
-    state.products.push(item);
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return item;
-  }
-
-  function updateProduct(id, patch, recordHistory = true) {
-    const product = state.products.find(item => item && item.id === id);
-    if (!product) return null;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    Object.assign(product, clone(patch || {}));
-    const normalized = normalizeProduct(product);
-    Object.keys(product).forEach(key => delete product[key]);
-    Object.assign(product, normalized);
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return product;
-  }
-
-  function removeProduct(id, recordHistory = true) {
-    const index = state.products.findIndex(item => item && item.id === id);
-    if (index < 0) return false;
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
-    state.products.splice(index, 1);
-    if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.commit();
-    return true;
-  }
-
   function setConfig(patch = {}, recordHistory = true) {
     if (recordHistory && window.WebBuilderHistory) window.WebBuilderHistory.arm();
     Object.assign(state.cartConfig, clone(patch));
@@ -193,11 +147,11 @@
     updateDiscountPrice,
     removeItem,
     clear,
-    addProduct,
-    updateProduct,
-    removeProduct,
+    addProduct: products.add,
+    updateProduct: products.update,
+    removeProduct: products.remove,
     setConfig,
-    normalizeProduct,
+    normalizeProduct: products.normalize,
     normalizeCartItem,
     normalizeState
   };
