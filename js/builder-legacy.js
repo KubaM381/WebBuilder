@@ -110,18 +110,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Kopfzeile
   const headerToggle = document.getElementById("header-toggle");
-  const headerStickyToggle = document.getElementById("header-sticky-toggle");
-  const headerHeightInput = document.getElementById("header-height-input");
+  const headerState.stickyToggle = document.getElementById("header-sticky-toggle");
+  const headerState.heightInput = document.getElementById("header-height-input");
   const headerBgInput = document.getElementById("header-bg-input");
-  const headerItemsListEl = document.getElementById("header-items-list");
+  const headerState.itemsListEl = document.getElementById("header-items-list");
   const btnAddHeaderText = document.getElementById("btn-add-header-text");
   const btnAddHeaderIcon = document.getElementById("btn-add-header-icon");
 
   // Fußzeile
   const footerToggle = document.getElementById("footer-toggle");
-  const footerHeightInput = document.getElementById("footer-height-input");
+  const footerState.heightInput = document.getElementById("footer-height-input");
   const footerBgInput = document.getElementById("footer-bg-input");
-  const footerItemsListEl = document.getElementById("footer-items-list");
+  const footerState.itemsListEl = document.getElementById("footer-items-list");
   const btnAddFooterText = document.getElementById("btn-add-footer-text");
   const btnAddFooterIcon = document.getElementById("btn-add-footer-icon");
 
@@ -275,8 +275,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function snapshotState() {
     return JSON.parse(JSON.stringify({
       elements, cartItems, cartConfig, cartButtonLabel, products, canvasHeight,
-      headerEnabled, headerSticky, headerHeight, headerBgColor, headerItems,
-      footerEnabled, footerHeight, footerBgColor, footerItems
+      headerState.enabled, headerState.sticky, headerState.height, headerState.bgColor, headerState.items,
+      footerState.enabled, footerState.height, footerState.bgColor, footerState.items
     }));
   }
 
@@ -310,15 +310,15 @@ document.addEventListener("DOMContentLoaded", () => {
     cartButtonLabel = prev.cartButtonLabel;
     products = prev.products || [];
     canvasHeight = prev.canvasHeight || 1100;
-    headerEnabled = prev.headerEnabled;
-    headerSticky = prev.headerSticky;
-    headerHeight = prev.headerHeight;
-    headerBgColor = prev.headerBgColor;
-    headerItems = prev.headerItems;
-    footerEnabled = prev.footerEnabled;
-    footerHeight = prev.footerHeight;
-    footerBgColor = prev.footerBgColor;
-    footerItems = prev.footerItems;
+    headerState.enabled = prev.headerState.enabled;
+    headerState.sticky = prev.headerState.sticky;
+    headerState.height = prev.headerState.height;
+    headerState.bgColor = prev.headerState.bgColor;
+    headerState.items = prev.headerState.items;
+    footerState.enabled = prev.footerState.enabled;
+    footerState.height = prev.footerState.height;
+    footerState.bgColor = prev.footerState.bgColor;
+    footerState.items = prev.footerState.items;
 
     selectedElementId = null;
     selectedBarItemRef = null;
@@ -328,18 +328,18 @@ document.addEventListener("DOMContentLoaded", () => {
     renderRecommendList();
     renderMilestoneList();
     renderProductList();
-    if (headerToggle) headerToggle.checked = headerEnabled;
-    if (headerStickyToggle) headerStickyToggle.checked = headerSticky;
-    if (headerHeightInput) headerHeightInput.value = headerHeight;
-    if (headerBgInput) headerBgInput.value = headerBgColor;
-    if (footerToggle) footerToggle.checked = footerEnabled;
-    if (footerHeightInput) footerHeightInput.value = footerHeight;
-    if (footerBgInput) footerBgInput.value = footerBgColor;
+    if (headerToggle) headerToggle.checked = headerState.enabled;
+    if (headerState.stickyToggle) headerState.stickyToggle.checked = headerState.sticky;
+    if (headerState.heightInput) headerState.heightInput.value = headerState.height;
+    if (headerBgInput) headerBgInput.value = headerState.bgColor;
+    if (footerToggle) footerToggle.checked = footerState.enabled;
+    if (footerState.heightInput) footerState.heightInput.value = footerState.height;
+    if (footerBgInput) footerBgInput.value = footerState.bgColor;
     if (cartButtonLabelInput) cartButtonLabelInput.value = cartButtonLabel;
     if (cartCheckoutBtn) cartCheckoutBtn.innerText = cartButtonLabel;
     setCanvasHeight(canvasHeight);
-    renderBarItemsList(headerItems, headerItemsListEl);
-    renderBarItemsList(footerItems, footerItemsListEl);
+    renderBarItemsList(headerState.items, headerState.itemsListEl);
+    renderBarItemsList(footerState.items, footerState.itemsListEl);
     renderCanvas();
     renderHeaderFooter();
     renderCart();
@@ -1101,7 +1101,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (item.type === "text") {
       barItemTextGroup.classList.remove("hidden");
       barPropText.value = item.text || "";
-      renderTextToolbarInto(barItemTextToolbar, item, () => { renderHeaderFooter(); renderBarItemsList(items, listType === "header" ? headerItemsListEl : footerItemsListEl); });
+      renderTextToolbarInto(barItemTextToolbar, item, () => { renderHeaderFooter(); renderBarItemsList(items, listType === "header" ? headerState.itemsListEl : footerState.itemsListEl); });
     } else {
       barItemTextGroup.classList.add("hidden");
       barItemTextToolbar.classList.add("hidden");
@@ -1113,7 +1113,7 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleBarActionFields(item.actionType || "none");
     if ((item.actionType || "none") === "cart-add") populateProductSelect(barPropProduct, item.productId);
 
-    renderBarItemsList(items, listType === "header" ? headerItemsListEl : footerItemsListEl);
+    renderBarItemsList(items, listType === "header" ? headerState.itemsListEl : footerState.itemsListEl);
     renderHeaderFooter();
   }
 
@@ -1158,7 +1158,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (isPreviewMode) {
         executeAction(it, el);
       } else {
-        selectBarItem(listType === "header" ? headerItems : footerItems, it.id, listType);
+        selectBarItem(listType === "header" ? headerState.items : footerState.items, it.id, listType);
       }
     });
     return el;
@@ -1168,7 +1168,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let header = document.getElementById("builder-header");
     let footer = document.getElementById("builder-footer");
 
-    if (headerEnabled) {
+    if (headerState.enabled) {
       if (!header) {
         header = document.createElement("div");
         header.id = "builder-header";
@@ -1176,24 +1176,24 @@ document.addEventListener("DOMContentLoaded", () => {
         canvasColumn.insertBefore(header, canvas);
         header.addEventListener("click", () => { if (!isPreviewMode) { deselectBarItem(); renderHeaderFooter(); } });
       }
-      header.classList.toggle("sticky-header", headerSticky);
-      header.style.height = headerHeight + "px";
-      header.style.background = headerBgColor;
+      header.classList.toggle("sticky-header", headerState.sticky);
+      header.style.height = headerState.height + "px";
+      header.style.background = headerState.bgColor;
       header.innerHTML = "";
-      headerItems.forEach(it => header.appendChild(renderBarItem(it, header, headerHeight, "header")));
+      headerState.items.forEach(it => header.appendChild(renderBarItem(it, header, headerState.height, "header")));
       const handle = document.createElement("div");
       handle.className = "bar-resize-handle bottom";
       header.appendChild(handle);
-      setupBarResize(handle, () => headerHeight, (h) => {
-        headerHeight = h;
+      setupBarResize(handle, () => headerState.height, (h) => {
+        headerState.height = h;
         header.style.height = h + "px";
-        if (headerHeightInput) headerHeightInput.value = h;
+        if (headerState.heightInput) headerState.heightInput.value = h;
       }, "down");
     } else if (header) {
       header.remove();
     }
 
-    if (footerEnabled) {
+    if (footerState.enabled) {
       if (!footer) {
         footer = document.createElement("div");
         footer.id = "builder-footer";
@@ -1201,17 +1201,17 @@ document.addEventListener("DOMContentLoaded", () => {
         canvasColumn.appendChild(footer);
         footer.addEventListener("click", () => { if (!isPreviewMode) { deselectBarItem(); renderHeaderFooter(); } });
       }
-      footer.style.height = footerHeight + "px";
-      footer.style.background = footerBgColor;
+      footer.style.height = footerState.height + "px";
+      footer.style.background = footerState.bgColor;
       footer.innerHTML = "";
       const handle = document.createElement("div");
       handle.className = "bar-resize-handle top";
       footer.appendChild(handle);
-      footerItems.forEach(it => footer.appendChild(renderBarItem(it, footer, footerHeight, "footer")));
-      setupBarResize(handle, () => footerHeight, (h) => {
-        footerHeight = h;
+      footerState.items.forEach(it => footer.appendChild(renderBarItem(it, footer, footerState.height, "footer")));
+      setupBarResize(handle, () => footerState.height, (h) => {
+        footerState.height = h;
         footer.style.height = h + "px";
-        if (footerHeightInput) footerHeightInput.value = h;
+        if (footerState.heightInput) footerState.heightInput.value = h;
       }, "up");
     } else if (footer) {
       footer.remove();
@@ -1220,7 +1220,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderBarItemsList(items, listEl) {
     if (!listEl) return;
-    const listType = listEl === headerItemsListEl ? "header" : "footer";
+    const listType = listEl === headerState.itemsListEl ? "header" : "footer";
     listEl.innerHTML = "";
     items.forEach(it => {
       const row = document.createElement("div");
@@ -1282,64 +1282,64 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (headerToggle) headerToggle.addEventListener("change", () => {
     pushHistory();
-    headerEnabled = headerToggle.checked;
-    if (headerEnabled && headerItems.length === 0) {
-      headerItems.push({ id: "hitem_" + Date.now(), type: "text", text: "Meine Website", x: 20, y: Math.max(0, (headerHeight - 24) / 2), color: "#ffffff", size: 20, bold: true, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
-      renderBarItemsList(headerItems, headerItemsListEl);
+    headerState.enabled = headerToggle.checked;
+    if (headerState.enabled && headerState.items.length === 0) {
+      headerState.items.push({ id: "hitem_" + Date.now(), type: "text", text: "Meine Website", x: 20, y: Math.max(0, (headerState.height - 24) / 2), color: "#ffffff", size: 20, bold: true, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
+      renderBarItemsList(headerState.items, headerState.itemsListEl);
     }
     renderHeaderFooter();
-    showToast(headerEnabled ? "Header aktiviert" : "Header deaktiviert", "info");
+    showToast(headerState.enabled ? "Header aktiviert" : "Header deaktiviert", "info");
   });
-  if (headerStickyToggle) headerStickyToggle.addEventListener("change", () => { pushHistory(); headerSticky = headerStickyToggle.checked; renderHeaderFooter(); });
-  if (headerHeightInput) {
-    wireHistory(headerHeightInput);
-    headerHeightInput.addEventListener("input", () => { headerHeight = parseInt(headerHeightInput.value) || 64; renderHeaderFooter(); });
+  if (headerState.stickyToggle) headerState.stickyToggle.addEventListener("change", () => { pushHistory(); headerState.sticky = headerState.stickyToggle.checked; renderHeaderFooter(); });
+  if (headerState.heightInput) {
+    wireHistory(headerState.heightInput);
+    headerState.heightInput.addEventListener("input", () => { headerState.height = parseInt(headerState.heightInput.value) || 64; renderHeaderFooter(); });
   }
   if (headerBgInput) {
     wireHistory(headerBgInput);
-    headerBgInput.addEventListener("input", () => { headerBgColor = headerBgInput.value; renderHeaderFooter(); });
+    headerBgInput.addEventListener("input", () => { headerState.bgColor = headerBgInput.value; renderHeaderFooter(); });
   }
   if (btnAddHeaderText) btnAddHeaderText.addEventListener("click", () => {
     pushHistory();
-    headerItems.push({ id: "hitem_" + Date.now(), type: "text", text: "Text", x: 20, y: Math.max(0, (headerHeight - 24) / 2), color: "#ffffff", size: 16, bold: false, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
-    renderBarItemsList(headerItems, headerItemsListEl);
+    headerState.items.push({ id: "hitem_" + Date.now(), type: "text", text: "Text", x: 20, y: Math.max(0, (headerState.height - 24) / 2), color: "#ffffff", size: 16, bold: false, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
+    renderBarItemsList(headerState.items, headerState.itemsListEl);
     renderHeaderFooter();
   });
   if (btnAddHeaderIcon) btnAddHeaderIcon.addEventListener("click", () => {
     pushHistory();
-    headerItems.push({ id: "hitem_" + Date.now(), type: "icon", iconName: "settings", x: 20, y: Math.max(0, (headerHeight - 28) / 2), color: "#ffffff", size: 24, actionType: "none", actionUrl: "", actionMsg: "", productId: null });
-    renderBarItemsList(headerItems, headerItemsListEl);
+    headerState.items.push({ id: "hitem_" + Date.now(), type: "icon", iconName: "settings", x: 20, y: Math.max(0, (headerState.height - 28) / 2), color: "#ffffff", size: 24, actionType: "none", actionUrl: "", actionMsg: "", productId: null });
+    renderBarItemsList(headerState.items, headerState.itemsListEl);
     renderHeaderFooter();
   });
 
   if (footerToggle) footerToggle.addEventListener("change", () => {
     pushHistory();
-    footerEnabled = footerToggle.checked;
-    if (footerEnabled && footerItems.length === 0) {
-      footerItems.push({ id: "fitem_" + Date.now(), type: "text", text: "© 2026 WebBuilder Pro", x: 20, y: Math.max(0, (footerHeight - 20) / 2), color: "#cbd5e1", size: 14, bold: false, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
-      renderBarItemsList(footerItems, footerItemsListEl);
+    footerState.enabled = footerToggle.checked;
+    if (footerState.enabled && footerState.items.length === 0) {
+      footerState.items.push({ id: "fitem_" + Date.now(), type: "text", text: "© 2026 WebBuilder Pro", x: 20, y: Math.max(0, (footerState.height - 20) / 2), color: "#cbd5e1", size: 14, bold: false, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
+      renderBarItemsList(footerState.items, footerState.itemsListEl);
     }
     renderHeaderFooter();
-    showToast(footerEnabled ? "Footer aktiviert" : "Footer deaktiviert", "info");
+    showToast(footerState.enabled ? "Footer aktiviert" : "Footer deaktiviert", "info");
   });
-  if (footerHeightInput) {
-    wireHistory(footerHeightInput);
-    footerHeightInput.addEventListener("input", () => { footerHeight = parseInt(footerHeightInput.value) || 70; renderHeaderFooter(); });
+  if (footerState.heightInput) {
+    wireHistory(footerState.heightInput);
+    footerState.heightInput.addEventListener("input", () => { footerState.height = parseInt(footerState.heightInput.value) || 70; renderHeaderFooter(); });
   }
   if (footerBgInput) {
     wireHistory(footerBgInput);
-    footerBgInput.addEventListener("input", () => { footerBgColor = footerBgInput.value; renderHeaderFooter(); });
+    footerBgInput.addEventListener("input", () => { footerState.bgColor = footerBgInput.value; renderHeaderFooter(); });
   }
   if (btnAddFooterText) btnAddFooterText.addEventListener("click", () => {
     pushHistory();
-    footerItems.push({ id: "fitem_" + Date.now(), type: "text", text: "Text", x: 20, y: Math.max(0, (footerHeight - 20) / 2), color: "#cbd5e1", size: 14, bold: false, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
-    renderBarItemsList(footerItems, footerItemsListEl);
+    footerState.items.push({ id: "fitem_" + Date.now(), type: "text", text: "Text", x: 20, y: Math.max(0, (footerState.height - 20) / 2), color: "#cbd5e1", size: 14, bold: false, italic: false, underline: false, align: "left", fontFamily: "inherit", actionType: "none", actionUrl: "", actionMsg: "", productId: null });
+    renderBarItemsList(footerState.items, footerState.itemsListEl);
     renderHeaderFooter();
   });
   if (btnAddFooterIcon) btnAddFooterIcon.addEventListener("click", () => {
     pushHistory();
-    footerItems.push({ id: "fitem_" + Date.now(), type: "icon", iconName: "arrow-up", x: 20, y: Math.max(0, (footerHeight - 24) / 2), color: "#cbd5e1", size: 20, actionType: "none", actionUrl: "", actionMsg: "", productId: null });
-    renderBarItemsList(footerItems, footerItemsListEl);
+    footerState.items.push({ id: "fitem_" + Date.now(), type: "icon", iconName: "arrow-up", x: 20, y: Math.max(0, (footerState.height - 24) / 2), color: "#cbd5e1", size: 20, actionType: "none", actionUrl: "", actionMsg: "", productId: null });
+    renderBarItemsList(footerState.items, footerState.itemsListEl);
     renderHeaderFooter();
   });
 
@@ -1840,9 +1840,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   btnExport.addEventListener("click", () => {
     let exportedHTML = `<!-- WebBuilder Pro Export -->\n<!-- Hinweis: Dies ist ein visueller Export. Klick-Aktionen (z.B. Zurück/Vorwärts, In den Warenkorb) sind Platzhalter und müssten für eine echte Website noch mit echtem JavaScript verknüpft werden. -->\n`;
-    if (headerEnabled) {
-      exportedHTML += `<div style="position:relative; width:100%; height:${headerHeight}px; background:${headerBgColor};${headerSticky ? " position:sticky; top:0; z-index:300;" : ""}">\n`;
-      headerItems.forEach(it => { exportedHTML += `  ${renderBarItemExport(it)}\n`; });
+    if (headerState.enabled) {
+      exportedHTML += `<div style="position:relative; width:100%; height:${headerState.height}px; background:${headerState.bgColor};${headerState.sticky ? " position:sticky; top:0; z-index:300;" : ""}">\n`;
+      headerState.items.forEach(it => { exportedHTML += `  ${renderBarItemExport(it)}\n`; });
       exportedHTML += `</div>\n`;
     }
     exportedHTML += `<div style="position:relative; width:100%; min-height:${canvasHeight}px; background:${canvas.style.background};">\n`;
@@ -1869,9 +1869,9 @@ document.addEventListener("DOMContentLoaded", () => {
       exportedHTML += `  </div>\n`;
     });
     exportedHTML += `</div>\n`;
-    if (footerEnabled) {
-      exportedHTML += `<div style="position:relative; width:100%; height:${footerHeight}px; background:${footerBgColor};">\n`;
-      footerItems.forEach(it => { exportedHTML += `  ${renderBarItemExport(it)}\n`; });
+    if (footerState.enabled) {
+      exportedHTML += `<div style="position:relative; width:100%; height:${footerState.height}px; background:${footerState.bgColor};">\n`;
+      footerState.items.forEach(it => { exportedHTML += `  ${renderBarItemExport(it)}\n`; });
       exportedHTML += `</div>\n`;
     }
     console.log(exportedHTML);
@@ -1884,8 +1884,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveProjectState() {
     const state = {
       elements, cartItems, cartButtonLabel, cartConfig, products, canvasHeight,
-      headerEnabled, headerSticky, headerHeight, headerBgColor, headerItems,
-      footerEnabled, footerHeight, footerBgColor, footerItems,
+      headerState.enabled, headerState.sticky, headerState.height, headerState.bgColor, headerState.items,
+      footerState.enabled, footerState.height, footerState.bgColor, footerState.items,
       background: {
         type: bgType.value, color: bgColorInput.value, grad1: bgGrad1Input.value,
         grad2: bgGrad2Input.value, gradDir: bgGradDirInput.value, imageUrl: bgImageUrlInput.value
@@ -1919,24 +1919,24 @@ document.addEventListener("DOMContentLoaded", () => {
       }, state.cartConfig || {});
       cartConfig.itemDisplay = Object.assign({}, defaultItemDisplay, (state.cartConfig && state.cartConfig.itemDisplay) || {});
 
-      headerEnabled = !!state.headerEnabled;
-      headerSticky = !!state.headerSticky;
-      headerHeight = state.headerHeight || 64;
-      headerBgColor = state.headerBgColor || "#111827";
-      headerItems = state.headerItems || [];
+      headerState.enabled = !!state.headerState.enabled;
+      headerState.sticky = !!state.headerState.sticky;
+      headerState.height = state.headerState.height || 64;
+      headerState.bgColor = state.headerState.bgColor || "#111827";
+      headerState.items = state.headerState.items || [];
 
-      footerEnabled = !!state.footerEnabled;
-      footerHeight = state.footerHeight || 70;
-      footerBgColor = state.footerBgColor || "#111827";
-      footerItems = state.footerItems || [];
+      footerState.enabled = !!state.footerState.enabled;
+      footerState.height = state.footerState.height || 70;
+      footerState.bgColor = state.footerState.bgColor || "#111827";
+      footerState.items = state.footerState.items || [];
 
-      if (headerToggle) headerToggle.checked = headerEnabled;
-      if (headerStickyToggle) headerStickyToggle.checked = headerSticky;
-      if (headerHeightInput) headerHeightInput.value = headerHeight;
-      if (headerBgInput) headerBgInput.value = headerBgColor;
-      if (footerToggle) footerToggle.checked = footerEnabled;
-      if (footerHeightInput) footerHeightInput.value = footerHeight;
-      if (footerBgInput) footerBgInput.value = footerBgColor;
+      if (headerToggle) headerToggle.checked = headerState.enabled;
+      if (headerState.stickyToggle) headerState.stickyToggle.checked = headerState.sticky;
+      if (headerState.heightInput) headerState.heightInput.value = headerState.height;
+      if (headerBgInput) headerBgInput.value = headerState.bgColor;
+      if (footerToggle) footerToggle.checked = footerState.enabled;
+      if (footerState.heightInput) footerState.heightInput.value = footerState.height;
+      if (footerBgInput) footerBgInput.value = footerState.bgColor;
       if (cartButtonLabelInput) cartButtonLabelInput.value = cartButtonLabel;
       if (cartCheckoutBtn) cartCheckoutBtn.innerText = cartButtonLabel;
 
@@ -1969,8 +1969,8 @@ document.addEventListener("DOMContentLoaded", () => {
   renderRecommendList();
   renderMilestoneList();
   renderProductList();
-  renderBarItemsList(headerItems, headerItemsListEl);
-  renderBarItemsList(footerItems, footerItemsListEl);
+  renderBarItemsList(headerState.items, headerState.itemsListEl);
+  renderBarItemsList(footerState.items, footerState.itemsListEl);
   renderCart();
   renderCartItemDemo();
   renderCanvas();
