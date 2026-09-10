@@ -15,7 +15,8 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 - `elements.js` — shared element state + CRUD + legacy compatibility proxy
 - `inspector.js` — selected-element service
 - `header-footer.js` — header/footer data operations
-- `cart.js` — cart/product data operations
+- `products.js` — authoritative product normalization + CRUD
+- `cart.js` — authoritative cart data operations; delegates all product operations to `products.js`
 - `legacy-bridge.js` — controlled connection point to the legacy editor
 - `builder-legacy.js` — still the live DOM/editor implementation for the remaining domains
 
@@ -23,7 +24,7 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 
 ### Step 1 — Cart + products
 
-**Data service prepared; live legacy renderer is not yet switched.** Discount-price normalization is supported by `cart.js`.
+**Data layer split complete; live legacy UI is not yet switched.** `products.js` is now the single product data service, including discount-price normalization and product CRUD. `cart.js` owns only cart state and delegates product operations to `WebBuilderProducts`. The migration coordinator registers products separately and hydrates them independently.
 
 ### Step 2 — Header + footer
 
@@ -37,11 +38,16 @@ The editor is being migrated from `builder-legacy.js` to modular services withou
 
 **Module split complete; live legacy ownership remains.** The canvas facade, viewport, interaction and renderer modules are implemented and loaded before the legacy editor. Canvas state is persisted and hydrated through the migration coordinator. The renderer also consumes the shared icon registry. The remaining work is to switch the live legacy DOM rendering/event wiring to these services and then remove the duplicated legacy canvas implementation.
 
+### Step 5 — Runtime hardening
+
+**In progress.** Runtime checks now require and expose the products service separately from the cart service. This makes accidental re-coupling visible before the remaining legacy UI is migrated.
+
 ### Next
 
-5. Preview/modals
-6. Switch remaining legacy DOM implementations to modular services
-7. Remove obsolete legacy state and eventually delete `builder-legacy.js`
+6. Migrate the live product/cart UI and DOM event ownership from `builder-legacy.js`
+7. Migrate remaining preview/modal/editor UI behaviour
+8. Remove obsolete legacy state and duplicated functions
+9. Delete `builder-legacy.js` after all domains have been switched and verified
 
 ## Integration rule
 
