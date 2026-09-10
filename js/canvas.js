@@ -243,6 +243,50 @@
     return actions.execute(item);
   }
 
+  // FIX: this was completely missing after the module split. The old
+  // monolith wired dragstart on every ".draggable-item" in the sidebar and
+  // dragover/drop on "#canvas" to actually create the dropped element —
+  // without it, nothing in the palette can be placed on the canvas at all,
+  // which is the single most basic thing the builder needs to do.
+  function bindPaletteDragAndDrop() {
+    document.querySelectorAll(".draggable-item").forEach(item => {
+      if (item.dataset.webBuilderDragBound === "true") return;
+      item.dataset.webBuilderDragBound = "true";
+      item.addEventListener("dragstart", event => {
+        state.draggedType = item.dataset.type || null;
+        state.draggedIcon = item.dataset.icon || null;
+        state.draggedShape = item.dataset.shape || null;
+        if (event.dataTransfer) event.dataTransfer.setData("text/plain", state.draggedType || "");
+      });
+    });
+
+    const canvasEl = getCanvas();
+    if (!canvasEl || canvasEl.dataset.webBuilderDropBound === "true") return;
+    canvasEl.dataset.webBuilderDropBound = "true";
+
+    canvasEl.addEventListener("dragover", event => event.preventDefault());
+
+    canvasEl.addEventListener("drop", event => {
+      event.preventDefault();
+      if (state.isPreviewMode || !state.draggedType) return;
+      const point = toLocalCoords(canvasEl, event.clientX, event.clientY);
+      const created = elementsService.addNew(
+        state.draggedType,
+        state.draggedIcon,
+        Math.max(0, point.x - 40),
+        Math.max(0, point.y - 20),
+        state.draggedShape
+      );
+      if (created) {
+        if (window.WebBuilderInspector && typeof window.WebBuilderInspector.select === "function") window.WebBuilderInspector.select(created.id);
+        else elementsService.setSelected(created.id);
+      }
+      state.draggedType = null;
+      state.draggedIcon = null;
+      state.draggedShape = null;
+    });
+  }
+
   function renderOwnedCanvas() {
     if (rendering) return;
     const canvasEl = getCanvas();
@@ -291,14 +335,14 @@
   document.addEventListener("click", handleCanvasControls, true);
 
   document.addEventListener("DOMContentLoaded", () => {
-    window.setTimeout(() => { installCanvasOwnership(); renderOwnedCanvas(); }, 0);
+    window.setTimeout(() => { installCanvasOwnership(); bindPaletteDragAndDrop(); renderOwnedCanvas(); }, 0);
   });
 
   window.WebBuilderCanvas = {
     getCanvas, getCanvasColumn, normalizeState, applyZoom, setZoom, zoomIn, zoomOut,
     resetZoom, setCanvasHeight, extendCanvas, syncDom, toLocalCoords, makeDraggable,
     renderCanvas, render: () => { setBackground(state.background); return renderCanvas(); },
-    setBackground, setRendererCallbacks,
+    setBackground, setRendererCallbacks, bindPaletteDragAndDrop,
     constants: { ZOOM_MIN, ZOOM_MAX, CANVAS_MIN_HEIGHT, DEFAULT_ZOOM, DEFAULT_CANVAS_HEIGHT },
     render: renderOwnedCanvas
   };
