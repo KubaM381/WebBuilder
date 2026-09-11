@@ -11,6 +11,15 @@ window.WebBuilderState = window.WebBuilderState || {
   draggedShape: null,
   zoomLevel: 0.85,
   canvasHeight: 1100,
+  // NEU: geteiltes Laufzeit-Flag für die Klick/Drag-Vereinheitlichung
+  // (siehe canvas.js attachInteraction()). Wird true, sobald sich ein
+  // beliebiges Element (Canvas oder Header/Footer) tatsächlich in Bewegung
+  // befindet, und verhindert, dass ein währenddessen angestoßenes
+  // Re-Rendering den gerade gezogenen DOM-Knoten ersetzt und damit die
+  // Bewegung/Pointer-Capture abbricht. Bewusst NICHT Teil des
+  // Speicherstands (storage.js createSnapshot() übernimmt nur explizit
+  // aufgeführte Felder) — reiner Laufzeitzustand, keine Projektdaten.
+  dragLock: false,
   products: [],
   cartItems: [],
   cartButtonLabel: "Zur Kasse gehen",
