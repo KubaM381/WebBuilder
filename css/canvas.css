@@ -10,9 +10,17 @@
 #zoom-level { font-size: 0.75rem; color: var(--text-muted); min-width: 38px; text-align: center; }
 .builder-bar { position: relative; box-sizing: border-box; width: 100%; }
 .builder-bar.sticky-header { position: sticky; top: 0; z-index: 300; }
-.bar-item { position: absolute; cursor: move; user-select: none; white-space: nowrap; padding: 2px 4px; border-radius: 4px; border: 2px dashed transparent; transition: border-color 0.15s ease; }
+.bar-item { position: absolute; cursor: move; user-select: none; white-space: nowrap; padding: 2px 4px; border-radius: 4px; border: 2px dashed transparent; transition: border-color 0.15s ease; touch-action: none; }
 .bar-item:hover { border-color: rgba(255,255,255,0.5); }
 .bar-item.bar-item-selected { border-color: var(--selection-color) !important; box-shadow: 0 0 0 3px rgba(99,102,241,0.25); }
+/* NEU (Fix "Logik-Pfeil fehlt"): analog zu .placed-element .element-badge
+   in elements.css — Bar-Items (Header-/Footer-Elemente) bekommen dasselbe
+   "⚡ Logik"-Badge, sobald ihnen im Inspector eine Aktion (actionType !=
+   "none") zugewiesen wurde. Die "has-action"-Klasse wird bereits von
+   header-footer.js gesetzt; hier fehlte bisher nur die passende
+   CSS-Sichtbarkeitsregel für den ".bar-item"-Kontext. */
+.bar-item .element-badge { position: absolute; top: -10px; right: -10px; background: var(--primary); color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; display: none; box-shadow: var(--shadow-sm); z-index: 20; pointer-events: none; }
+.bar-item.has-action .element-badge { display: block; }
 .bar-resize-handle { position: absolute; left: 0; right: 0; height: 12px; cursor: ns-resize; background: rgba(255, 255, 255, 0.12); z-index: 5; display: flex; align-items: center; justify-content: center; }
 .bar-resize-handle:hover { background: rgba(255, 255, 255, 0.3); }
 .bar-resize-handle::after { content: ""; width: 40px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.6); }
