@@ -6,7 +6,16 @@
   const state=window.WebBuilderState;if(!state){console.error("WebBuilderHeaderFooter: shared state missing.");return;}
   const clone=v=>JSON.parse(JSON.stringify(v));
   function emitChange(target,detail){try{window.dispatchEvent(new CustomEvent("webbuilder:header-footer-change",{detail:{target,...clone(detail||{})}}));}catch(e){console.warn("WebBuilderHeaderFooter: change event failed",e);}}
-  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:Number(item.x)||20,y:Number(item.y)||18,color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||"none",actionUrl:item.actionUrl||"",actionMsg:item.actionMsg||"",productId:item.productId||null};}
+  // FIX (Punkt 1: Aktion nicht konfigurierbar): normalizeItem() kannte
+  // bisher nur actionType/actionUrl/actionMsg/productId. Für die Aktionen
+  // "Eigenes Modal öffnen" (modalTitle/modalBody/modalFooter) und
+  // "Benutzerdefinierte Meldung" (messagePosition) — die preview.js beim
+  // Ausführen bereits erwartet (siehe execute() in preview.js) — gab es
+  // hier keine Felder. Jeder updateItem()-Aufruf normalisiert das Item neu
+  // (siehe updateItem weiter unten) und hat diese Werte dadurch sofort
+  // wieder verworfen, selbst wenn irgendwo im UI ein Wert gesetzt worden
+  // wäre. Jetzt Teil des kanonischen Bar-Item-Schemas.
+  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:Number(item.x)||20,y:Number(item.y)||18,color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||"none",actionUrl:item.actionUrl||"",actionMsg:item.actionMsg||"",productId:item.productId||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
   function normalizeState(){
     state.headerEnabled=!!state.headerEnabled;
     state.headerSticky=!!state.headerSticky;
@@ -29,15 +38,6 @@
   function updateFooter(p={},h=true){if(h)window.WebBuilderHistory?.arm();if(p.enabled!=null)state.footerEnabled=!!p.enabled;if(p.height!=null)state.footerHeight=Math.max(40,Number(p.height)||70);if(p.bgType!=null)state.footerBgType=p.bgType==="image"?"image":"solid";if(p.bgColor!=null)state.footerBgColor=String(p.bgColor);if(p.bgImage!=null)state.footerBgImage=String(p.bgImage);if(Array.isArray(p.items))state.footerItems=p.items.map(normalizeItem);if(h)window.WebBuilderHistory?.commit();const r=getFooter();emitChange("footer",r);return r;}
   function addItem(type,target="header",patch={},h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=normalizeItem({...patch,type,text:patch.text||(type==="icon"?"":"Neuer Text")});if(h)window.WebBuilderHistory?.arm();items.push(item);if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
   function removeItem(id,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,i=items.findIndex(x=>x?.id===id);if(i<0)return false;if(h)window.WebBuilderHistory?.arm();items.splice(i,1);if(state.selectedBarItemRef?.id===id)state.selectedBarItemRef=null;if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return true;}
-  // FIX (Kern-Bug dieser Runde): Object.assign(item, clone(patch), normalizeItem(item))
-  // wertet ALLE Argumente aus, BEVOR irgendetwas zugewiesen wird. normalizeItem(item)
-  // bekam also immer noch das alte, unveränderte Item zu sehen und lieferte den alten
-  // Zustand zurück — der wurde als letzte Quelle über den frisch zugewiesenen Patch
-  // geschrieben und hat ihn dadurch sofort wieder verworfen. Ergebnis: JEDE Änderung im
-  // Kopf/Fuß-Inspector (Icon, Größe, Text, Farbe, Ausrichtung, Aktion, Produkt) wurde
-  // berechnet, aber im selben Moment wieder rückgängig gemacht — der Inspector wirkte
-  // komplett "nicht verbunden". Fix: erst Patch mit dem bestehenden Item zusammenführen,
-  // danach normalisieren, und erst DANACH auf das echte Item-Objekt schreiben.
   function updateItem(id,patch,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=items.find(x=>x?.id===id);if(!item)return null;if(h)window.WebBuilderHistory?.arm();const merged=normalizeItem(Object.assign({},item,clone(patch||{})));Object.assign(item,merged);if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
   normalizeState();
   window.WebBuilderHeaderFooter={normalizeState,normalizeItem,getHeader,getFooter,updateHeader,updateFooter,addItem,removeItem,updateItem,onChange(cb){if(typeof cb!=="function")return()=>{};const h=e=>cb(e.detail);window.addEventListener("webbuilder:header-footer-change",h);return()=>window.removeEventListener("webbuilder:header-footer-change",h);}};
@@ -110,6 +110,74 @@
       document.addEventListener("mouseup",onUp);
     });
   }
+
+  // FIX (Punkt 3: Ziehen von Header-/Footer-Elementen unzuverlässig/tot):
+  // Bar-Items nutzten bisher WebBuilderCanvas.makeDraggable() — dieselbe
+  // reine mousedown/mousemove/mouseup-Logik auf `document`, die auch
+  // normale Canvas-Elemente verwenden. In Kombination mit dem separaten,
+  // capture-basierten Klick-Listener zur Selektion auf demselben Element
+  // gab es keine Bewegungsschwelle zwischen "Klick" und "Ziehen" und keine
+  // Pointer-Capture (der Cursor konnte das Element bei schneller Bewegung
+  // verlassen, wodurch mousemove/mouseup auf `document` zwar weiterliefen,
+  // die Interaktion sich für den Nutzer aber "kaputt" anfühlte).
+  //
+  // Eigene, robuste Pointer-Events-Implementierung:
+  // - setPointerCapture bindet alle folgenden Pointer-Events fest an
+  //   dieses Element, unabhängig davon, wohin sich der Cursor bewegt.
+  // - Eine kleine Bewegungsschwelle (4px) unterscheidet einen reinen Klick
+  //   (nur Selektion) von einem echten Ziehvorgang (Positionsänderung +
+  //   History-Transaktion).
+  // - Nutzt WebBuilderCanvas.toLocalCoords() wieder, statt die
+  //   Zoom-Umrechnung ein zweites Mal zu implementieren (Projektregel 12).
+  function bindBarItemDrag(domEl,item,barEl,target,cfg){
+    domEl.addEventListener("pointerdown",event=>{
+      if(state.isPreviewMode)return;
+      if(event.button!=null&&event.button!==0)return;
+      event.preventDefault();
+      event.stopPropagation();
+      try{domEl.setPointerCapture(event.pointerId);}catch(e){/* ignore */}
+
+      const canvasHelper=window.WebBuilderCanvas;
+      const start=canvasHelper?.toLocalCoords?canvasHelper.toLocalCoords(barEl,event.clientX,event.clientY):{x:0,y:0};
+      const offsetX=start.x-(Number(item.x)||0);
+      const offsetY=start.y-(Number(item.y)||0);
+      const startClientX=event.clientX,startClientY=event.clientY;
+      const maxX=4000,maxY=Math.max(0,(Number(cfg.height)||0)-10);
+      const DRAG_THRESHOLD=4;
+      let moved=false;
+
+      function onMove(moveEvent){
+        const dx=moveEvent.clientX-startClientX,dy=moveEvent.clientY-startClientY;
+        if(!moved&&Math.hypot(dx,dy)<DRAG_THRESHOLD)return;
+        if(!moved){moved=true;window.WebBuilderHistory?.arm();}
+        const point=canvasHelper?.toLocalCoords?canvasHelper.toLocalCoords(barEl,moveEvent.clientX,moveEvent.clientY):{x:0,y:0};
+        item.x=Math.min(maxX,Math.max(0,point.x-offsetX));
+        item.y=Math.min(maxY,Math.max(0,point.y-offsetY));
+        domEl.style.left=item.x+"px";
+        domEl.style.top=item.y+"px";
+      }
+
+      function onUp(){
+        domEl.removeEventListener("pointermove",onMove);
+        domEl.removeEventListener("pointerup",onUp);
+        domEl.removeEventListener("pointercancel",onUp);
+        try{domEl.releasePointerCapture(event.pointerId);}catch(e){/* ignore */}
+        if(moved){
+          window.WebBuilderHistory?.commit();
+          emitChange(target,target==="footer"?getFooter():getHeader());
+        }
+        // Sowohl ein reiner Klick als auch das Ende eines Ziehvorgangs
+        // sollen das Element selektieren — genau wie zuvor der separate
+        // Klick-Listener es tat.
+        selectItem(target,item.id);
+      }
+
+      domEl.addEventListener("pointermove",onMove);
+      domEl.addEventListener("pointerup",onUp);
+      domEl.addEventListener("pointercancel",onUp);
+    });
+  }
+
   function buildBarElement(target){
     const isFooter=target==="footer";
     const cfg=isFooter?getFooter():getHeader();
@@ -132,13 +200,28 @@
       el.style.top=(Number(item.y)||0)+"px";
       el.dataset.id=item.id;
       el.innerHTML=itemInnerHtml(item);
+
+      // FIX (Punkt 2: Logik-Pfeil/Badge fehlt): analog zu canvas.js für
+      // normale Canvas-Elemente wird hier jetzt ebenfalls ein
+      // "⚡ Logik"-Badge angehängt. Die Sichtbarkeit läuft rein über CSS
+      // (".bar-item.has-action .element-badge", siehe canvas.css) — die
+      // "has-action"-Klasse wurde oben bereits korrekt gesetzt, nur das
+      // Badge-Element selbst und die passende CSS-Regel fehlten bisher.
+      const badge=document.createElement("span");
+      badge.className="element-badge";
+      badge.innerText="⚡ Logik";
+      el.appendChild(badge);
+
       el.addEventListener("click",e=>{
         e.stopPropagation();
-        if(state.isPreviewMode){window.WebBuilderActionRuntime?.execute?.(item);return;}
-        selectItem(target,item.id);
+        // Im Editor-Modus übernimmt bindBarItemDrag() unten die Selektion
+        // (sowohl für reinen Klick als auch nach einem Ziehvorgang) —
+        // hier nur noch die Preview-Klick-Aktion ausführen.
+        if(state.isPreviewMode){window.WebBuilderActionRuntime?.execute?.(item);}
       },true);
-      if(!state.isPreviewMode&&window.WebBuilderCanvas?.makeDraggable){
-        window.WebBuilderCanvas.makeDraggable(el,item,bar,{minX:0,minY:0,maxX:4000,maxY:Math.max(0,cfg.height-10)});
+
+      if(!state.isPreviewMode){
+        bindBarItemDrag(el,item,bar,target,cfg);
       }
       bar.appendChild(el);
     });
@@ -233,6 +316,22 @@
     byId("bar-group-action-url")?.classList.toggle("hidden",item.actionType!=="open-url");
     byId("bar-group-action-msg")?.classList.toggle("hidden",!["alert-msg","open-custom-modal"].includes(item.actionType));
     byId("bar-group-product")?.classList.toggle("hidden",item.actionType!=="cart-add");
+
+    // NEU (Punkt 1): Modal-Titel/-Inhalt/-Fußbereich für "Eigenes Modal
+    // öffnen" sowie Meldungsposition für "Benutzerdefinierte Meldung
+    // anzeigen" — spiegelt exakt das Verhalten des normalen
+    // Element-Inspectors (siehe inspector.js renderSpecial()).
+    const isModal=item.actionType==="open-custom-modal";
+    const isAlert=item.actionType==="alert-msg";
+    if(byId("bar-prop-modal-title")&&document.activeElement!==byId("bar-prop-modal-title"))byId("bar-prop-modal-title").value=item.modalTitle||"";
+    if(byId("bar-prop-modal-body")&&document.activeElement!==byId("bar-prop-modal-body"))byId("bar-prop-modal-body").value=item.modalBody||"";
+    if(byId("bar-prop-modal-footer")&&document.activeElement!==byId("bar-prop-modal-footer"))byId("bar-prop-modal-footer").value=item.modalFooter||"";
+    if(byId("bar-prop-message-position"))byId("bar-prop-message-position").value=item.messagePosition||"bottom-right";
+    byId("bar-group-modal-title")?.classList.toggle("hidden",!isModal);
+    byId("bar-group-modal-body")?.classList.toggle("hidden",!isModal);
+    byId("bar-group-modal-footer")?.classList.toggle("hidden",!isModal);
+    byId("bar-group-message-position")?.classList.toggle("hidden",!isAlert);
+
     const productSel=byId("bar-prop-product");
     if(productSel){
       const list=window.WebBuilderProducts?.getAll?.()||[];
@@ -281,7 +380,7 @@
       if(d){e.preventDefault();e.stopImmediatePropagation();const l=d.closest("[id$='items-list']"),t=l?.id==="footer-items-list"?"footer":"header";transact(()=>removeItem(d.dataset.id,t,false));}
     },true);
 
-    [["bar-prop-text","text"],["bar-prop-color","color"],["bar-prop-font-family","fontFamily"],["bar-prop-action-url","actionUrl"],["bar-prop-action-msg","actionMsg"],["bar-prop-product","productId"]].forEach(([id,f])=>byId(id)?.addEventListener("change",e=>updateSelected({[f]:e.target.value}),true));
+    [["bar-prop-text","text"],["bar-prop-color","color"],["bar-prop-font-family","fontFamily"],["bar-prop-action-url","actionUrl"],["bar-prop-action-msg","actionMsg"],["bar-prop-product","productId"],["bar-prop-modal-title","modalTitle"],["bar-prop-modal-body","modalBody"],["bar-prop-modal-footer","modalFooter"],["bar-prop-message-position","messagePosition"]].forEach(([id,f])=>byId(id)?.addEventListener("change",e=>updateSelected({[f]:e.target.value}),true));
     byId("bar-prop-icon")?.addEventListener("change",e=>updateSelected({iconName:e.target.value}),true);
     byId("bar-prop-size")?.addEventListener("change",e=>updateSelected({size:Math.max(8,Math.min(300,Number(e.target.value)||16))}),true);
     byId("bar-prop-action-type")?.addEventListener("change",e=>updateSelected({actionType:e.target.value}),true);
