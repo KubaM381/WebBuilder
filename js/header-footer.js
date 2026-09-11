@@ -29,7 +29,16 @@
   function updateFooter(p={},h=true){if(h)window.WebBuilderHistory?.arm();if(p.enabled!=null)state.footerEnabled=!!p.enabled;if(p.height!=null)state.footerHeight=Math.max(40,Number(p.height)||70);if(p.bgType!=null)state.footerBgType=p.bgType==="image"?"image":"solid";if(p.bgColor!=null)state.footerBgColor=String(p.bgColor);if(p.bgImage!=null)state.footerBgImage=String(p.bgImage);if(Array.isArray(p.items))state.footerItems=p.items.map(normalizeItem);if(h)window.WebBuilderHistory?.commit();const r=getFooter();emitChange("footer",r);return r;}
   function addItem(type,target="header",patch={},h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=normalizeItem({...patch,type,text:patch.text||(type==="icon"?"":"Neuer Text")});if(h)window.WebBuilderHistory?.arm();items.push(item);if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
   function removeItem(id,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,i=items.findIndex(x=>x?.id===id);if(i<0)return false;if(h)window.WebBuilderHistory?.arm();items.splice(i,1);if(state.selectedBarItemRef?.id===id)state.selectedBarItemRef=null;if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return true;}
-  function updateItem(id,patch,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=items.find(x=>x?.id===id);if(!item)return null;if(h)window.WebBuilderHistory?.arm();Object.assign(item,clone(patch||{}),normalizeItem(item));if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
+  // FIX (Kern-Bug dieser Runde): Object.assign(item, clone(patch), normalizeItem(item))
+  // wertet ALLE Argumente aus, BEVOR irgendetwas zugewiesen wird. normalizeItem(item)
+  // bekam also immer noch das alte, unveränderte Item zu sehen und lieferte den alten
+  // Zustand zurück — der wurde als letzte Quelle über den frisch zugewiesenen Patch
+  // geschrieben und hat ihn dadurch sofort wieder verworfen. Ergebnis: JEDE Änderung im
+  // Kopf/Fuß-Inspector (Icon, Größe, Text, Farbe, Ausrichtung, Aktion, Produkt) wurde
+  // berechnet, aber im selben Moment wieder rückgängig gemacht — der Inspector wirkte
+  // komplett "nicht verbunden". Fix: erst Patch mit dem bestehenden Item zusammenführen,
+  // danach normalisieren, und erst DANACH auf das echte Item-Objekt schreiben.
+  function updateItem(id,patch,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=items.find(x=>x?.id===id);if(!item)return null;if(h)window.WebBuilderHistory?.arm();const merged=normalizeItem(Object.assign({},item,clone(patch||{})));Object.assign(item,merged);if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
   normalizeState();
   window.WebBuilderHeaderFooter={normalizeState,normalizeItem,getHeader,getFooter,updateHeader,updateFooter,addItem,removeItem,updateItem,onChange(cb){if(typeof cb!=="function")return()=>{};const h=e=>cb(e.detail);window.addEventListener("webbuilder:header-footer-change",h);return()=>window.removeEventListener("webbuilder:header-footer-change",h);}};
 
@@ -79,18 +88,6 @@
       const isFooter=target==="footer";
       const bar=handle.closest(".builder-bar");
       if(!bar)return;
-      // FIX: the previous implementation computed the new height
-      // incrementally from (startHeight ± mouse delta) since mousedown.
-      // That accumulates drift over the course of a drag and makes the
-      // handle feel like it isn't exactly under the cursor — reported as
-      // "optically wrong" / footer only growing when dragging upward.
-      // We now read the bar's fixed edge (top edge for the header, bottom
-      // edge for the footer) once at drag start and compute the height
-      // directly from the current cursor position relative to that fixed
-      // edge on every mousemove. This makes the handle track the mouse
-      // 1:1 in both directions — dragging down always means "the edge
-      // under my cursor follows my cursor", which is the natural,
-      // Canva/Figma-like feel the header handle already had.
       const barRect=bar.getBoundingClientRect();
       const fixedEdgeY=isFooter?barRect.bottom:barRect.top;
       const zoom=Number(state.zoomLevel)||1;
@@ -194,13 +191,6 @@
   }
 
   // ---------- right inspector: the selected bar item's own panel ----------
-  // NEU (README Offener Punkt #2 "Bar-Item-Inspector vervollständigen"):
-  // befüllt das Icon-Auswahl-<select> für Kopf-/Fußzeilen-Icon-Elemente aus
-  // derselben Icon-Registry, die auch die normale Element-Palette
-  // (elements.js/canvas.js) verwendet — inkl. zur Laufzeit hinzugefügter
-  // eigener Icons (siehe "Eigene Icons"). Bisher blieb ein per "+ Icon"
-  // erzeugtes Bar-Item fest auf dem beim Erstellen hartcodierten Icon
-  // ("arrow-right") stehen.
   function populateBarIconSelect(selectEl, selectedName) {
     if (!selectEl) return;
     const registry = window.WebBuilderIconRegistry;
@@ -229,8 +219,6 @@
     const{item}=sel;
     const isIcon=item.type==="icon";
     byId("bar-item-text-group")?.classList.toggle("hidden",isIcon);
-    // NEU: Icon-Auswahl nur für Icon-Elemente sichtbar, analog zum
-    // Text-Feld, das nur für Text-Elemente sichtbar ist.
     byId("bar-group-icon")?.classList.toggle("hidden",!isIcon);
     if(isIcon)populateBarIconSelect(byId("bar-prop-icon"),item.iconName);
     if(byId("bar-prop-text")&&document.activeElement!==byId("bar-prop-text"))byId("bar-prop-text").value=item.text||"";
@@ -294,7 +282,6 @@
     },true);
 
     [["bar-prop-text","text"],["bar-prop-color","color"],["bar-prop-font-family","fontFamily"],["bar-prop-action-url","actionUrl"],["bar-prop-action-msg","actionMsg"],["bar-prop-product","productId"]].forEach(([id,f])=>byId(id)?.addEventListener("change",e=>updateSelected({[f]:e.target.value}),true));
-    // NEU: Icon-Auswahl-<select> für Bar-Icon-Elemente wirklich verdrahtet.
     byId("bar-prop-icon")?.addEventListener("change",e=>updateSelected({iconName:e.target.value}),true);
     byId("bar-prop-size")?.addEventListener("change",e=>updateSelected({size:Math.max(8,Math.min(300,Number(e.target.value)||16))}),true);
     byId("bar-prop-action-type")?.addEventListener("change",e=>updateSelected({actionType:e.target.value}),true);
