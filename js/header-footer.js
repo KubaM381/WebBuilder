@@ -6,16 +6,16 @@
   const state=window.WebBuilderState;if(!state){console.error("WebBuilderHeaderFooter: shared state missing.");return;}
   const clone=v=>JSON.parse(JSON.stringify(v));
   function emitChange(target,detail){try{window.dispatchEvent(new CustomEvent("webbuilder:header-footer-change",{detail:{target,...clone(detail||{})}}));}catch(e){console.warn("WebBuilderHeaderFooter: change event failed",e);}}
-  // FIX (Punkt 1: Aktion nicht konfigurierbar): normalizeItem() kannte
-  // bisher nur actionType/actionUrl/actionMsg/productId. Für die Aktionen
-  // "Eigenes Modal öffnen" (modalTitle/modalBody/modalFooter) und
-  // "Benutzerdefinierte Meldung" (messagePosition) — die preview.js beim
-  // Ausführen bereits erwartet (siehe execute() in preview.js) — gab es
-  // hier keine Felder. Jeder updateItem()-Aufruf normalisiert das Item neu
-  // (siehe updateItem weiter unten) und hat diese Werte dadurch sofort
-  // wieder verworfen, selbst wenn irgendwo im UI ein Wert gesetzt worden
-  // wäre. Jetzt Teil des kanonischen Bar-Item-Schemas.
-  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:Number(item.x)||20,y:Number(item.y)||18,color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||"none",actionUrl:item.actionUrl||"",actionMsg:item.actionMsg||"",productId:item.productId||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
+
+  // FIX (echter Datenfehler): `Number(item.x) || 20` behandelt 0 als
+  // falsy — ein Element, das exakt auf x=0 oder y=0 gezogen wurde, wurde
+  // bei JEDER späteren Normalisierung (z. B. nach einer völlig anderen
+  // Inspector-Änderung, nach Undo/Redo oder Neuladen) unbemerkt auf den
+  // Default zurückgesetzt. numOr() prüft stattdessen explizit auf
+  // null/leer/NaN statt auf Falsy-Werte.
+  function numOr(v,fallback){const n=Number(v);return(v!=null&&v!==""&&Number.isFinite(n))?n:fallback;}
+
+  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||"none",actionUrl:item.actionUrl||"",actionMsg:item.actionMsg||"",productId:item.productId||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
   function normalizeState(){
     state.headerEnabled=!!state.headerEnabled;
     state.headerSticky=!!state.headerSticky;
@@ -54,8 +54,6 @@
   }
   function selectItem(target,id){
     state.selectedBarItemRef={target,id};
-    // Selecting a bar item must deselect any canvas element so the two
-    // inspector panels never compete for the same space.
     if(window.WebBuilderInspector?.select) window.WebBuilderInspector.select(null);
     else if(window.WebBuilderElements) window.WebBuilderElements.setSelected(null);
     render();
@@ -111,70 +109,35 @@
     });
   }
 
-  // FIX (Punkt 3: Ziehen von Header-/Footer-Elementen unzuverlässig/tot):
-  // Bar-Items nutzten bisher WebBuilderCanvas.makeDraggable() — dieselbe
-  // reine mousedown/mousemove/mouseup-Logik auf `document`, die auch
-  // normale Canvas-Elemente verwenden. In Kombination mit dem separaten,
-  // capture-basierten Klick-Listener zur Selektion auf demselben Element
-  // gab es keine Bewegungsschwelle zwischen "Klick" und "Ziehen" und keine
-  // Pointer-Capture (der Cursor konnte das Element bei schneller Bewegung
-  // verlassen, wodurch mousemove/mouseup auf `document` zwar weiterliefen,
-  // die Interaktion sich für den Nutzer aber "kaputt" anfühlte).
+  // FIX (Architektur-Vereinheitlichung): Bar-Items nutzen jetzt denselben
+  // Interaktions-Controller wie normale Canvas-Elemente
+  // (WebBuilderCanvas.attachInteraction, siehe dortiger Kommentar für
+  // Details zu Klick/Drag-Erkennung, Pointer-Capture und dem
+  // state.dragLock-Mechanismus, der Re-Renderings während einer aktiven
+  // Bewegung zurückstellt). Vorher gab es hier eine eigene, unabhängige
+  // Pointer-Events-Implementierung — zwei parallele Systeme, die sich
+  // gegenseitig ins Gehege kommen konnten.
   //
-  // Eigene, robuste Pointer-Events-Implementierung:
-  // - setPointerCapture bindet alle folgenden Pointer-Events fest an
-  //   dieses Element, unabhängig davon, wohin sich der Cursor bewegt.
-  // - Eine kleine Bewegungsschwelle (4px) unterscheidet einen reinen Klick
-  //   (nur Selektion) von einem echten Ziehvorgang (Positionsänderung +
-  //   History-Transaktion).
-  // - Nutzt WebBuilderCanvas.toLocalCoords() wieder, statt die
-  //   Zoom-Umrechnung ein zweites Mal zu implementieren (Projektregel 12).
-  function bindBarItemDrag(domEl,item,barEl,target,cfg){
-    domEl.addEventListener("pointerdown",event=>{
-      if(state.isPreviewMode)return;
-      if(event.button!=null&&event.button!==0)return;
-      event.preventDefault();
-      event.stopPropagation();
-      try{domEl.setPointerCapture(event.pointerId);}catch(e){/* ignore */}
-
-      const canvasHelper=window.WebBuilderCanvas;
-      const start=canvasHelper?.toLocalCoords?canvasHelper.toLocalCoords(barEl,event.clientX,event.clientY):{x:0,y:0};
-      const offsetX=start.x-(Number(item.x)||0);
-      const offsetY=start.y-(Number(item.y)||0);
-      const startClientX=event.clientX,startClientY=event.clientY;
-      const maxX=4000,maxY=Math.max(0,(Number(cfg.height)||0)-10);
-      const DRAG_THRESHOLD=4;
-      let moved=false;
-
-      function onMove(moveEvent){
-        const dx=moveEvent.clientX-startClientX,dy=moveEvent.clientY-startClientY;
-        if(!moved&&Math.hypot(dx,dy)<DRAG_THRESHOLD)return;
-        if(!moved){moved=true;window.WebBuilderHistory?.arm();}
-        const point=canvasHelper?.toLocalCoords?canvasHelper.toLocalCoords(barEl,moveEvent.clientX,moveEvent.clientY):{x:0,y:0};
-        item.x=Math.min(maxX,Math.max(0,point.x-offsetX));
-        item.y=Math.min(maxY,Math.max(0,point.y-offsetY));
-        domEl.style.left=item.x+"px";
-        domEl.style.top=item.y+"px";
-      }
-
-      function onUp(){
-        domEl.removeEventListener("pointermove",onMove);
-        domEl.removeEventListener("pointerup",onUp);
-        domEl.removeEventListener("pointercancel",onUp);
-        try{domEl.releasePointerCapture(event.pointerId);}catch(e){/* ignore */}
-        if(moved){
-          window.WebBuilderHistory?.commit();
-          emitChange(target,target==="footer"?getFooter():getHeader());
-        }
-        // Sowohl ein reiner Klick als auch das Ende eines Ziehvorgangs
-        // sollen das Element selektieren — genau wie zuvor der separate
-        // Klick-Listener es tat.
+  // FIX (Bewegungsgrenzen): maxX war vorher hart auf 4000px gesetzt statt
+  // auf die tatsächliche Leistenbreite — Elemente konnten dadurch optisch
+  // aus Header/Footer heraus wandern. getBounds() berechnet jetzt bei
+  // jedem Drag-Start die reale, aktuelle Breite/Höhe der Leiste (in
+  // logischen, unskalierten Koordinaten) und begrenzt die Bewegung darauf.
+  function bindBarItemInteraction(domEl,item,barEl,target,cfg){
+    const canvasHelper=window.WebBuilderCanvas;
+    if(!canvasHelper?.attachInteraction){console.error("WebBuilderHeaderFooter: WebBuilderCanvas.attachInteraction fehlt.");return;}
+    canvasHelper.attachInteraction(domEl,item,barEl,{
+      getBounds(){
+        const zoom=Number(state.zoomLevel)||1;
+        const rect=barEl.getBoundingClientRect();
+        const width=rect.width/zoom;
+        return{minX:0,minY:0,maxX:Math.max(0,width-10),maxY:Math.max(0,(Number(cfg.height)||0)-10)};
+      },
+      onDragEnd(){emitChange(target,target==="footer"?getFooter():getHeader());},
+      onClick(){
+        if(state.isPreviewMode){window.WebBuilderActionRuntime?.execute?.(item);return;}
         selectItem(target,item.id);
       }
-
-      domEl.addEventListener("pointermove",onMove);
-      domEl.addEventListener("pointerup",onUp);
-      domEl.addEventListener("pointercancel",onUp);
     });
   }
 
@@ -201,28 +164,17 @@
       el.dataset.id=item.id;
       el.innerHTML=itemInnerHtml(item);
 
-      // FIX (Punkt 2: Logik-Pfeil/Badge fehlt): analog zu canvas.js für
-      // normale Canvas-Elemente wird hier jetzt ebenfalls ein
-      // "⚡ Logik"-Badge angehängt. Die Sichtbarkeit läuft rein über CSS
-      // (".bar-item.has-action .element-badge", siehe canvas.css) — die
-      // "has-action"-Klasse wurde oben bereits korrekt gesetzt, nur das
-      // Badge-Element selbst und die passende CSS-Regel fehlten bisher.
       const badge=document.createElement("span");
       badge.className="element-badge";
       badge.innerText="⚡ Logik";
       el.appendChild(badge);
 
-      el.addEventListener("click",e=>{
-        e.stopPropagation();
-        // Im Editor-Modus übernimmt bindBarItemDrag() unten die Selektion
-        // (sowohl für reinen Klick als auch nach einem Ziehvorgang) —
-        // hier nur noch die Preview-Klick-Aktion ausführen.
-        if(state.isPreviewMode){window.WebBuilderActionRuntime?.execute?.(item);}
-      },true);
+      // Einziger Interaktionspfad für Klick UND Drag — sowohl im Editor-
+      // als auch im Vorschau-Modus (attachInteraction unterdrückt die
+      // Bewegung intern selbst, wenn state.isPreviewMode true ist, ruft
+      // aber onClick trotzdem zuverlässig auf).
+      bindBarItemInteraction(el,item,bar,target,cfg);
 
-      if(!state.isPreviewMode){
-        bindBarItemDrag(el,item,bar,target,cfg);
-      }
       bar.appendChild(el);
     });
 
@@ -317,10 +269,6 @@
     byId("bar-group-action-msg")?.classList.toggle("hidden",!["alert-msg","open-custom-modal"].includes(item.actionType));
     byId("bar-group-product")?.classList.toggle("hidden",item.actionType!=="cart-add");
 
-    // NEU (Punkt 1): Modal-Titel/-Inhalt/-Fußbereich für "Eigenes Modal
-    // öffnen" sowie Meldungsposition für "Benutzerdefinierte Meldung
-    // anzeigen" — spiegelt exakt das Verhalten des normalen
-    // Element-Inspectors (siehe inspector.js renderSpecial()).
     const isModal=item.actionType==="open-custom-modal";
     const isAlert=item.actionType==="alert-msg";
     if(byId("bar-prop-modal-title")&&document.activeElement!==byId("bar-prop-modal-title"))byId("bar-prop-modal-title").value=item.modalTitle||"";
