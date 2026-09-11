@@ -225,7 +225,30 @@
     byId(`${target}-bg-image-group`)?.classList.toggle("hidden",type!=="image");
   }
 
+  // FIX (Icon/Element springt nach Loslassen zurück): render() reißt in
+  // renderBars() sämtliche .bar-item-DOM-Knoten ab und baut sie komplett
+  // neu auf. Wird render() mitten in einem aktiven Drag ausgelöst — z. B.
+  // durch ein state.subscribe()-Event aus einer völlig anderen Domäne wie
+  // "products" oder "preview", das zufällig während der Bewegung feuert —
+  // verliert der gerade gezogene Knoten seine Pointer-Capture UND seine
+  // dynamisch gebundenen pointermove/pointerup-Listener (die werden erst
+  // beim jeweiligen pointerdown neu gesetzt, siehe attachInteraction() in
+  // canvas.js). Die Maus "zieht" danach nur noch optisch weiter, ohne dass
+  // item.x/item.y sich noch ändern, und finish() (Commit + echtes
+  // Re-Render mit der finalen Position) läuft nie sauber durch. Ergebnis:
+  // das Element wirkt beim Ziehen bewegt, springt beim Loslassen aber auf
+  // die alte Position zurück.
+  //
+  // canvas.js löst genau dieses Problem für normale Canvas-Elemente
+  // bereits über state.dragLock (siehe dortige scheduleRender()) — dieser
+  // Schutz fehlte bisher hier. render() verschiebt sich jetzt einfach auf
+  // den nächsten Frame, solange ein Drag aktiv ist, statt das DOM
+  // währenddessen umzubauen.
   function render(){
+    if(state.dragLock){
+      if(window.requestAnimationFrame)window.requestAnimationFrame(render);else window.setTimeout(render,16);
+      return;
+    }
     const h=getHeader(),f=getFooter();
     if(byId("header-toggle"))byId("header-toggle").checked=h.enabled;
     if(byId("header-sticky-toggle"))byId("header-sticky-toggle").checked=h.sticky;
