@@ -194,6 +194,24 @@
   }
 
   // ---------- right inspector: the selected bar item's own panel ----------
+  // NEU (README Offener Punkt #2 "Bar-Item-Inspector vervollständigen"):
+  // befüllt das Icon-Auswahl-<select> für Kopf-/Fußzeilen-Icon-Elemente aus
+  // derselben Icon-Registry, die auch die normale Element-Palette
+  // (elements.js/canvas.js) verwendet — inkl. zur Laufzeit hinzugefügter
+  // eigener Icons (siehe "Eigene Icons"). Bisher blieb ein per "+ Icon"
+  // erzeugtes Bar-Item fest auf dem beim Erstellen hartcodierten Icon
+  // ("arrow-right") stehen.
+  function populateBarIconSelect(selectEl, selectedName) {
+    if (!selectEl) return;
+    const registry = window.WebBuilderIconRegistry;
+    const allIcons = registry && typeof registry.getAll === "function" ? registry.getAll() : {};
+    const names = Object.keys(allIcons);
+    selectEl.innerHTML = names.length
+      ? names.map(name => `<option value="${esc(name)}">${esc(name)}</option>`).join("")
+      : '<option value="">— Kein Icon verfügbar —</option>';
+    if (selectedName && names.includes(selectedName)) selectEl.value = selectedName;
+  }
+
   function renderEditor(){
     const panel=byId("bar-inspector-form");
     const emptyMsg=byId("no-selection");
@@ -209,7 +227,12 @@
     }
     if(!sel)return;
     const{item}=sel;
-    byId("bar-item-text-group")?.classList.toggle("hidden",item.type==="icon");
+    const isIcon=item.type==="icon";
+    byId("bar-item-text-group")?.classList.toggle("hidden",isIcon);
+    // NEU: Icon-Auswahl nur für Icon-Elemente sichtbar, analog zum
+    // Text-Feld, das nur für Text-Elemente sichtbar ist.
+    byId("bar-group-icon")?.classList.toggle("hidden",!isIcon);
+    if(isIcon)populateBarIconSelect(byId("bar-prop-icon"),item.iconName);
     if(byId("bar-prop-text")&&document.activeElement!==byId("bar-prop-text"))byId("bar-prop-text").value=item.text||"";
     if(byId("bar-prop-size")&&document.activeElement!==byId("bar-prop-size"))byId("bar-prop-size").value=Number(item.size)||16;
     if(byId("bar-prop-color"))byId("bar-prop-color").value=item.color||"#ffffff";
@@ -271,6 +294,8 @@
     },true);
 
     [["bar-prop-text","text"],["bar-prop-color","color"],["bar-prop-font-family","fontFamily"],["bar-prop-action-url","actionUrl"],["bar-prop-action-msg","actionMsg"],["bar-prop-product","productId"]].forEach(([id,f])=>byId(id)?.addEventListener("change",e=>updateSelected({[f]:e.target.value}),true));
+    // NEU: Icon-Auswahl-<select> für Bar-Icon-Elemente wirklich verdrahtet.
+    byId("bar-prop-icon")?.addEventListener("change",e=>updateSelected({iconName:e.target.value}),true);
     byId("bar-prop-size")?.addEventListener("change",e=>updateSelected({size:Math.max(8,Math.min(300,Number(e.target.value)||16))}),true);
     byId("bar-prop-action-type")?.addEventListener("change",e=>updateSelected({actionType:e.target.value}),true);
     ["bold","italic","underline"].forEach(f=>byId(`bar-ttb-${f}`)?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();const sel=currentSelection();if(sel)updateSelected({[f]:!sel.item[f]});},true));
