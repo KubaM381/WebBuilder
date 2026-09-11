@@ -29,11 +29,42 @@
     if(el)return el;
     return document.scrollingElement||document.documentElement;
   }
-  // requestAnimationFrame ensures layout (scrollHeight etc.) is up to date
-  // before we scroll — avoids the "nothing happens" symptom right after a
-  // DOM change (e.g. entering preview mode) triggers this in the same tick.
-  function scrollToTop(){requestAnimationFrame(()=>{getScrollContainer().scrollTo({top:0,behavior:"smooth"});});return true;}
-  function scrollToBottom(){requestAnimationFrame(()=>{const c=getScrollContainer();c.scrollTo({top:c.scrollHeight,behavior:"smooth"});});return true;}
+
+  // FIX (Regression, README Roadmap #1): "Nach oben/unten scrollen"
+  // reagierte teils überhaupt nicht mehr. Ursache: .canvas-column wird per
+  // CSS transform:scale(zoom) skaliert (siehe canvas.js applyZoom()).
+  // Direkt nach einem Zoom- oder sonstigen Render-Wechsel kann das Layout
+  // (scrollHeight etc.) noch nicht final stabilisiert sein — ein einzelner
+  // requestAnimationFrame konnte dann noch einen veralteten Wert lesen,
+  // wodurch scrollTo() faktisch ins Leere lief. Zusätzlich gab es keinerlei
+  // Fallback, falls scrollTo({behavior:"smooth"}) in einer bestimmten
+  // Zoom-/Browser-Konstellation nicht reagierte.
+  //
+  // Jetzt: zwei verschachtelte requestAnimationFrame-Zyklen, damit das
+  // Layout garantiert aktuell ist, bevor die Zielposition berechnet wird,
+  // plus ein direkter scrollTop-Fallback, falls scrollTo() aus irgendeinem
+  // Grund nicht greift.
+  function performScroll(getTarget){
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const container = getScrollContainer();
+        if (!container) return;
+        const target = Math.max(0, getTarget(container));
+        if (typeof container.scrollTo === "function") {
+          try {
+            container.scrollTo({ top: target, behavior: "smooth" });
+          } catch (error) {
+            container.scrollTop = target;
+          }
+        } else {
+          container.scrollTop = target;
+        }
+      });
+    });
+    return true;
+  }
+  function scrollToTop(){return performScroll(() => 0);}
+  function scrollToBottom(){return performScroll(container => container.scrollHeight);}
 
   function getActionType(item={}){return item.actionType||item.action||item.action_type||"none";}
   function execute(item={}){const type=getActionType(item),url=item.actionUrl||item.action_url||item.url||"",message=item.actionMsg||item.actionMessage||item.message||"Aktion ausgeführt!";switch(type){case"scroll-top":return scrollToTop();case"scroll-bottom":return scrollToBottom();case"history-back":window.history.back();return true;case"history-forward":window.history.forward();return true;case"open-url":if(!url)return false;window.open(url,"_blank","noopener,noreferrer");return true;case"cart-add":{const productId=item.productId||item.product_id||item.product,product=window.WebBuilderProducts?.getById?.(productId);if(!product||!window.WebBuilderCart)return false;window.WebBuilderCart.addItem(product);return true;}case"open-cart-drawer":return !!window.WebBuilderCartRuntime?.open?.();case"open-custom-modal":return !!window.WebBuilderModals?.open?.(item.modalTitle||"Information",item.modalBody||message,item.modalFooter||"");
