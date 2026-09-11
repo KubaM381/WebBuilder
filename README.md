@@ -86,31 +86,19 @@ Die CSS-Dateien bilden die geplante fachliche Struktur. `styles.css` bleibt aktu
 
 Diese Liste wird von KI zu KI weitergeführt und nach jedem Schritt aktualisiert. Bereits erledigte Punkte werden hier NICHT mehr aufgeführt (siehe Git-/Chatverlauf für die Historie) — nur was noch offen ist. Kleine, thematisch/dateilich zusammenhängende Punkte sind bewusst zu einer gemeinsamen Aufgabe gebündelt (siehe Regel 14).
 
-1. **Supabase-Erweiterungen (Bündel — betrifft primär `supabase.js` + das Cloud-Modal in `web.html`):**
-   - Passwort-Reset / "Passwort vergessen"
-   - Projekte löschen/umbenennen
-   - Mehrseiten-Verwaltung in der UI (`getProjectPages()` existiert bereits als Grundlage, aktuell aber ungenutzt — feste Page `slug: "startseite"` pro Projekt)
-   - E-Mail-Bestätigungs-Hinweistext dynamisch an das tatsächliche Supabase-Auth-Setting anpassen statt generisch
-   
-   Da alle vier Punkte im Kern dieselbe Cloud-Modal-UI und denselben Auth-/Projekt-Code in `supabase.js` betreffen, sollen sie zusammen in einer Runde umgesetzt werden statt einzeln.
+## Offene Punkte (Stand aktuelle Runde)
 
-2. **Bar-Item-Inspector vervollständigen (Bündel — betrifft `header-footer.js` + `web.html`):**
-   - Icon-Auswahl für Kopf-/Fußzeilen-Icon-Elemente nachrüsten: aktuell bleibt ein per "+ Icon" erzeugtes Bar-Item fest auf dem beim Erstellen hartcodierten Icon (`arrow-right`) stehen, es gibt kein `<select>` zum Ändern (im Gegensatz zu normalen Canvas-Icon-Elementen, die über die Palette per Drag&Drop jedes Icon bekommen können).
+Diese Liste wird von KI zu KI weitergeführt und nach jedem Schritt aktualisiert. Bereits erledigte Punkte werden hier NICHT mehr aufgeführt (siehe Git-/Chatverlauf für die Historie) — nur was noch offen ist. Kleine, thematisch/dateilich zusammenhängende Punkte sind bewusst zu einer gemeinsamen Aufgabe gebündelt (siehe Regel 14).
 
-3. **Aktion "Benutzerdefinierte Meldung" vervollständigen (Bündel — betrifft `preview.js` + `modals.js`):**
-   - Inspector-Feld "Meldungsposition" (`messagePosition`) hat aktuell KEINE Wirkung. `preview.js` ruft bei der Aktion `alert-msg` immer `WebBuilderModals.openMessage()` auf (zentrales Modal) und ignoriert `item.messagePosition` komplett. Muss entweder als echte positionierte Meldung (oben/unten, links/rechts, zentriert) umgesetzt werden, oder das Inspector-Feld muss entfernt werden, falls positionierte Meldungen nicht mehr gewollt sind.
+Aktuell keine offenen Bündel-Punkte. Die vier zuletzt offenen Bündel (Supabase-Erweiterungen, Bar-Item-Icon-Auswahl, "Benutzerdefinierte Meldung", `compareAtPrice`) sind abgeschlossen.
 
-4. **`cart.js`: `compareAtPrice`-Feld bereinigen:**
-   - Produkt-/Warenkorb-Datenmodell führt weiterhin ein Feld `compareAtPrice` (`normalizeProduct`/`normalizeCartItem`), ohne dass es irgendwo in der UI gesetzt/angezeigt wird — die tatsächliche Rabattlogik läuft komplett über `discountPrice`. Sollte entweder entfernt oder bewusst mit eigener UI ausgestattet werden.
+Nur Beobachtungen/bewusste Design-Entscheidungen (keine Aktion nötig):
 
-5. Rabattcode ist Demo-only (`DEMO10`) — entspricht aktuell dem Sollzustand, keine Änderung nötig.
+1. Rabattcode ist Demo-only (`DEMO10`) — entspricht dem Sollzustand.
+2. `cart.js`-Größe im Auge behalten — ggf. spätere Aufteilung in kleinere Module, aktuell noch nicht zwingend nötig (siehe Regel 13).
+3. Eigene Icons (Palette-Feature) werden bewusst nicht im Projekt-Speicherstand persistiert und gehen beim Neuladen/Projekt-Laden verloren. Kein Bug, sondern bewusste Design-Entscheidung — nur nachrüsten, falls der Nutzer das ausdrücklich wünscht (Größenlimits bei Supabase/`localStorage` durch potenziell große SVG-Strings beachten, falls doch persistiert werden soll).
 
-6. `cart.js`-Größe im Auge behalten — ggf. spätere Aufteilung in kleinere Module, aktuell noch nicht zwingend nötig (siehe Regel 13).
-
-7. Eigene Icons (Palette-Feature) werden bewusst nicht im Projekt-Speicherstand persistiert und gehen beim Neuladen/Projekt-Laden verloren. Kein Bug, sondern bewusste Design-Entscheidung — nur nachrüsten, falls der Nutzer das ausdrücklich wünscht (Größenlimits bei Supabase/`localStorage` durch potenziell große SVG-Strings beachten, falls doch persistiert werden soll).
-
-Wichtig: Immer zuerst betroffene Datei(en) + direkte Abhängigkeiten lesen (Regel 1/11), nicht das ganze Projekt neu schreiben. Bei mehreren offenen, kleinen und dateilich überlappenden Punkten: siehe Regel 14 (bündeln).
-
+Wichtig: Immer zuerst betroffene Datei(en) + direkte Abhängigkeiten lesen (Regel 1/11), nicht das ganze Projekt neu schreiben.
 ## Supabase
 
 Supabase wird für Backend-/Datenbankfunktionen des Projekts verwendet. Datenbankstruktur, Policies und Sicherheitskonfiguration werden separat gepflegt.
