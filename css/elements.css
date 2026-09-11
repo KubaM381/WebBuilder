@@ -3,7 +3,14 @@
 .draggable-item:hover { border-color: var(--primary); background: var(--primary-light); transform: translateY(-2px); color: var(--primary); }
 .icon-svg { width: 28px; height: 28px; }
 .item-icon { font-size: 1.5rem; line-height: 1; }
-.placed-element { position: absolute; cursor: move; user-select: none; padding: 6px; border: 2px transparent dashed; border-radius: 6px; transition: border-color 0.15s ease, box-shadow 0.15s ease; display: inline-block; max-width: 100%; }
+/* FIX: z-index explizit gesetzt (statt implizit "auto"), damit die
+   Stapelreihenfolge gegenüber .builder-bar (z-index: 300/250, siehe
+   canvas.css / header-footer.js) unabhängig von Browser-Details und DOM-
+   Reihenfolge immer eindeutig UNTER den Header-/Footer-Leisten bleibt.
+   touch-action:none ergänzt, analog zu .bar-item in canvas.css, damit
+   Pointer-Events auf Touch-Geräten nicht vom nativen Scroll-Gesture
+   abgefangen werden (siehe attachInteraction() in canvas.js). */
+.placed-element { position: absolute; cursor: move; user-select: none; padding: 6px; border: 2px transparent dashed; border-radius: 6px; transition: border-color 0.15s ease, box-shadow 0.15s ease; display: inline-block; max-width: 100%; z-index: 1; touch-action: none; }
 .placed-element:hover { border-color: #a5b4fc; }
 .placed-element.selected { border-color: var(--selection-color) !important; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25); }
 .placed-element .element-badge { position: absolute; top: -10px; right: -10px; background: var(--primary); color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; display: none; box-shadow: var(--shadow-sm); z-index: 5; }
