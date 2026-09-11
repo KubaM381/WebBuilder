@@ -47,7 +47,7 @@ Ein neues Modul (wie `export.js` oder `toast.js`) darf angelegt werden, wenn es 
 
 - `builder.js` — zentraler Bootstrap und Builder-Kern. In dieser Phase bewusst nicht weiter aufteilen.
 - `state.js` — zentraler Zustand, State-Änderungen und gemeinsame Builder-Daten.
-- `toast.js` — einziger Ort für Toast-Benachrichtigungen (`window.WebBuilderToast.show(message, type)`); wird von `toolbar.js`, `export.js`, `supabase.js` und `canvas.js` (Eigene-Icons-Feedback) verwendet.
+- `toast.js` — einziger Ort für Toast-Benachrichtigungen (`window.WebBuilderToast.show(message, type)`); wird von `toolbar.js`, `export.js`, `supabase.js` und `canvas.js` verwendet.
 - `canvas.js` — Canvas-Rendering, Drag & Drop, Zoom, Canvas-Steuerung. Besitzt zusätzlich die Palette-UI für benutzerdefinierte Icons (`renderCustomIconPalette()`, `bindCustomIconForm()`), da diese UI direkt auf der bestehenden Palette-Drag&Drop-Logik (`bindPaletteDragAndDrop()`) aufbaut.
 - `elements.js` — Elementtypen, Elementdaten und Icon-Registry (`window.WebBuilderIconRegistry`: `register`, `get`, `getAll`, `addCustom`, `getCustomNames`). Reine Daten-/Registry-Logik, kein DOM-Zugriff.
 - `inspector.js` — Auswahl, Eigenschaften, Aktionen, Duplizieren/Löschen und spezielle Element-Einstellungen.
@@ -56,7 +56,7 @@ Ein neues Modul (wie `export.js` oder `toast.js`) darf angelegt werden, wenn es 
 - `cart.js` — Produktdaten, Produktnormalisierung, Warenkorb und Warenkorb-Konfiguration.
 - `export.js` — erzeugt aus dem aktuellen State einen statischen HTML-Export (Header/Canvas-Elemente/Footer); besitzt keine eigene Persistenz, keine Warenkorb-/Produktlogik.
 - `modals.js` — Modal- und Dialogfunktionen.
-- `storage.js` — Speicherung, Projektzustand und History-Funktionen. `createSnapshot()`/`applySnapshot()` sind die kanonische Serialisierungsform des gesamten Builder-Zustands und werden von lokalem Speichern, Undo/Redo **und** dem Supabase-Cloud-Speichern/-Laden gemeinsam genutzt. Eigene Icons (siehe unten) sind bewusst NICHT Teil des Snapshots.
+- `storage.js` — Speicherung, Projektzustand und History-Funktionen. `createSnapshot()`/`applySnapshot()` sind die kanonische Serialisierungsform des gesamten Builder-Zustands und werden von lokalem Speichern, Undo/Redo **und** dem Supabase-Cloud-Speichern/-Laden gemeinsam genutzt. Eigene Icons sind bewusst NICHT Teil des Snapshots (siehe Icon-Registry in `elements.js`).
 - `preview.js` — Preview-Modus und Action-/Link-Runtime.
 - `supabase.js` — Supabase-Anbindung: Auth (Login/Registrierung/Logout), Projekt-Verwaltung (erstellen/auflisten) und die zugehörige Konto-/Cloud-UI (Modal über `#btn-cloud`). Nutzt zum Speichern/Laden ausschließlich `WebBuilderStorage.createSnapshot()`/`applySnapshot()`, damit Cloud-Daten strukturell nie vom lokalen Format abweichen.
 - `supabase-config.js` — Supabase-Konfiguration.
@@ -76,6 +76,7 @@ Ein neues Modul (wie `export.js` oder `toast.js`) darf angelegt werden, wenn es 
 11. Bei größeren Umbauten zuerst die betroffenen Module und Abhängigkeiten verstehen, dann gezielt ändern.
 12. Wenn eine Funktion aus einem bestehenden Modul in einem neuen Modul wiederverwendet werden muss (z. B. Rendering-Logik oder Snapshot-Erzeugung), diese nach Möglichkeit additiv im Ursprungsmodul über dessen bestehende `window.WebBuilder...`-Schnittstelle exponieren, statt sie zu duplizieren.
 13. **Priorität aktuell: Stabilität vor Struktur.** Solange offene Punkte/Bugs bestehen (siehe Abschnitt "Offene Punkte"), keine Modularisierung oder Umstrukturierung von bestehendem, funktionierendem Code ohne expliziten Auftrag durchführen — erst den Code korrekt und vollständig fertigstellen, danach kann strukturell weiter aufgeräumt werden.
+14. **Kleine Aufgaben bündeln statt einzeln abarbeiten.** Wenn mehrere offene Punkte in der Liste unten klein/einfach sind UND dieselbe(n) Datei(en) betreffen (oder sich stark überschneidende Abhängigkeiten haben), sollen sie in einer Runde gemeinsam als eine mittelgroße Änderung umgesetzt werden, statt sie nacheinander in getrennten, sehr kleinen Schritten zu bearbeiten. Das vermeidet unnötig viele Einzel-Durchläufe durch dieselbe Datei. Größere, eigenständige Punkte (eigene Datei(en), eigene fachliche Domäne) bleiben trotzdem eigene Schritte.
 
 ## CSS-Architektur
 
@@ -83,47 +84,32 @@ Die CSS-Dateien bilden die geplante fachliche Struktur. `styles.css` bleibt aktu
 
 ## Offene Punkte (Stand aktuelle Runde)
 
-Diese Liste wird von KI zu KI weitergeführt und nach jedem Schritt aktualisiert. Grundlage für diese Runde war ein Abgleich mit einer alten (vor-modularen) Fassung von `builder.js`, die der Nutzer zur Verfügung gestellt hat — daraus wurden mehrere Lücken/Regressionen der Modularisierung identifiziert.
+Diese Liste wird von KI zu KI weitergeführt und nach jedem Schritt aktualisiert. Bereits erledigte Punkte werden hier NICHT mehr aufgeführt (siehe Git-/Chatverlauf für die Historie) — nur was noch offen ist. Kleine, thematisch/dateilich zusammenhängende Punkte sind bewusst zu einer gemeinsamen Aufgabe gebündelt (siehe Regel 14).
 
-1. Supabase-UI ist funktional (Login/Registrierung/Logout, Projekt
-   erstellen/wählen, Speichern/Laden über `#btn-cloud`-Modal). Noch NICHT
-   vorhanden:
+1. **Supabase-Erweiterungen (Bündel — betrifft primär `supabase.js` + das Cloud-Modal in `web.html`):**
    - Passwort-Reset / "Passwort vergessen"
-   - Mehrseiten-Verwaltung (`getProjectPages()` existiert als Grundlage,
-     keine UI dafür)
    - Projekte löschen/umbenennen
-   - E-Mail-Bestätigungs-Hinweistext ist generisch, nicht an das tatsächliche
-     Supabase-Auth-Setting angepasst
-2. Rabattcode ist Demo-only (`DEMO10`) — entspricht aktuell dem Sollzustand,
-   keine Änderung nötig.
-3. `cart.js`-Größe im Auge behalten — ggf. spätere Aufteilung in kleinere
-   Module, aktuell noch nicht zwingend nötig (siehe Regel 13).
-6. [OFFEN] Inspector-Feld "Meldungsposition" (`messagePosition`) bei Aktion
-   "alert-msg" hat aktuell KEINE Wirkung. `preview.js` ruft bei `alert-msg`
-   immer `WebBuilderModals.openMessage()` auf (zentrales Modal) und ignoriert
-   `item.messagePosition`. Der alte Code hatte dafür eine echte
-   `showPositionedMessage()`-Funktion (Meldung an fester Bildschirmposition,
-   z. B. unten rechts). Muss entweder in `preview.js`/`modals.js`
-   nachgebaut, oder das Inspector-Feld entfernt werden, falls positionierte
-   Meldungen nicht mehr gewollt sind.
-7. [OFFEN] Kopf-/Fußzeilen-Icon-Elemente haben keine UI, um das Icon
-   nachträglich zu ändern (im alten Code gab es ein `<select>` mit allen
-   Icon-Namen in der Items-Liste). Aktuell bleibt ein per "+ Icon" erzeugtes
-   Bar-Item fest auf dem beim Erstellen hartcodierten Icon (`arrow-right`).
-8. [OFFEN] `cart.js`: Produkt-/Warenkorb-Datenmodell führt weiterhin ein
-   ungenutztes Feld `compareAtPrice` (`normalizeProduct`/`normalizeCartItem`),
-   ohne dass es irgendwo in der UI gesetzt/angezeigt wird (die tatsächliche
-   Rabattlogik läuft komplett über `discountPrice`). Sollte bereinigt
-   (Feld entfernen) oder bewusst mit eigener UI ausgestattet werden.
-9. [OFFEN, neu] Eigene Icons (Punkt 5) gehen beim Neuladen der Seite bzw.
-   nach Projekt-Laden verloren, da sie bewusst nicht im Snapshot enthalten
-   sind (siehe Punkt 5). Falls das künftig stören sollte: Persistenz als
-   eigenes Feature nachrüsten, nicht einfach in `createSnapshot()`
-   reinmischen ohne Rücksprache (Größenlimits bei Supabase/`localStorage`
-   durch potenziell große SVG-Strings beachten).
+   - Mehrseiten-Verwaltung in der UI (`getProjectPages()` existiert bereits als Grundlage, aktuell aber ungenutzt — feste Page `slug: "startseite"` pro Projekt)
+   - E-Mail-Bestätigungs-Hinweistext dynamisch an das tatsächliche Supabase-Auth-Setting anpassen statt generisch
+   
+   Da alle vier Punkte im Kern dieselbe Cloud-Modal-UI und denselben Auth-/Projekt-Code in `supabase.js` betreffen, sollen sie zusammen in einer Runde umgesetzt werden statt einzeln.
 
-Wichtig: Immer zuerst betroffene Datei + direkte Abhängigkeiten lesen
-(Regel 1/11), nicht das ganze Projekt neu schreiben.
+2. **Bar-Item-Inspector vervollständigen (Bündel — betrifft `header-footer.js` + `web.html`):**
+   - Icon-Auswahl für Kopf-/Fußzeilen-Icon-Elemente nachrüsten: aktuell bleibt ein per "+ Icon" erzeugtes Bar-Item fest auf dem beim Erstellen hartcodierten Icon (`arrow-right`) stehen, es gibt kein `<select>` zum Ändern (im Gegensatz zu normalen Canvas-Icon-Elementen, die über die Palette per Drag&Drop jedes Icon bekommen können).
+
+3. **Aktion "Benutzerdefinierte Meldung" vervollständigen (Bündel — betrifft `preview.js` + `modals.js`):**
+   - Inspector-Feld "Meldungsposition" (`messagePosition`) hat aktuell KEINE Wirkung. `preview.js` ruft bei der Aktion `alert-msg` immer `WebBuilderModals.openMessage()` auf (zentrales Modal) und ignoriert `item.messagePosition` komplett. Muss entweder als echte positionierte Meldung (oben/unten, links/rechts, zentriert) umgesetzt werden, oder das Inspector-Feld muss entfernt werden, falls positionierte Meldungen nicht mehr gewollt sind.
+
+4. **`cart.js`: `compareAtPrice`-Feld bereinigen:**
+   - Produkt-/Warenkorb-Datenmodell führt weiterhin ein Feld `compareAtPrice` (`normalizeProduct`/`normalizeCartItem`), ohne dass es irgendwo in der UI gesetzt/angezeigt wird — die tatsächliche Rabattlogik läuft komplett über `discountPrice`. Sollte entweder entfernt oder bewusst mit eigener UI ausgestattet werden.
+
+5. Rabattcode ist Demo-only (`DEMO10`) — entspricht aktuell dem Sollzustand, keine Änderung nötig.
+
+6. `cart.js`-Größe im Auge behalten — ggf. spätere Aufteilung in kleinere Module, aktuell noch nicht zwingend nötig (siehe Regel 13).
+
+7. Eigene Icons (Palette-Feature) werden bewusst nicht im Projekt-Speicherstand persistiert und gehen beim Neuladen/Projekt-Laden verloren. Kein Bug, sondern bewusste Design-Entscheidung — nur nachrüsten, falls der Nutzer das ausdrücklich wünscht (Größenlimits bei Supabase/`localStorage` durch potenziell große SVG-Strings beachten, falls doch persistiert werden soll).
+
+Wichtig: Immer zuerst betroffene Datei(en) + direkte Abhängigkeiten lesen (Regel 1/11), nicht das ganze Projekt neu schreiben. Bei mehreren offenen, kleinen und dateilich überlappenden Punkten: siehe Regel 14 (bündeln).
 
 ## Supabase
 
