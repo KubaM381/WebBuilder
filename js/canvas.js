@@ -19,7 +19,6 @@
   let callbacks = { onSelect: null, onAction: null };
   let renderQueued = false;
   let rendering = false;
-  let canvasObserver = null;
 
   const getCanvas = () => document.getElementById("canvas");
   const getCanvasColumn = () => document.getElementById("canvas-column");
@@ -88,33 +87,108 @@
     return { zoomLevel: state.zoomLevel, canvasHeight: state.canvasHeight };
   }
 
-  function makeDraggable(domEl, item, containerEl, opts = {}) {
+  // ------------------------------------------------------------------
+  // Vereinheitlichter Interaktions-Controller (Klick + Drag)
+  // ------------------------------------------------------------------
+  // FIX (Architektur-Vereinheitlichung, siehe README/Chatverlauf): Vorher
+  // liefen zwei komplett unabhängige Interaktionssysteme parallel:
+  //   - normale Canvas-Elemente: mousedown-basiertes makeDraggable() PLUS
+  //     ein separater "click"-Listener zur Selektion (verließ sich auf das
+  //     native Klick-Event nach mouseup).
+  //   - Header-/Footer-Elemente: eigene, unabhängige Pointer-Events-Logik.
+  // Diese unterschiedlichen Mechanismen kollidierten miteinander und
+  // hatten keine Koordination mit dem Re-Rendering. Jetzt nutzen BEIDE
+  // Domänen exakt diese eine Funktion.
+  //
+  // - EIN pointerdown startet die Interaktion mit Pointer-Capture (das
+  //   Element bekommt garantiert alle folgenden Events, unabhängig davon,
+  //   wohin sich der Cursor bewegt).
+  // - Erst wenn die Bewegung einen kleinen Schwellwert überschreitet, gilt
+  //   die Interaktion als "Drag" (verhindert, dass Handzittern beim
+  //   Klicken versehentlich als Verschieben gewertet wird).
+  // - opts.onClick(event, wasDragging) wird IMMER beim Loslassen
+  //   aufgerufen (reine Selektion — wie zuvor das native Klick-Event bei
+  //   jedem mouseup, ob mit oder ohne vorherige Bewegung).
+  // - opts.onDragStart()/onDragEnd() laufen nur bei echter Bewegung; die
+  //   History-Transaktion (arm/commit) läuft ebenfalls nur dann, damit ein
+  //   reiner Klick keinen unnötigen Undo-Schritt erzeugt.
+  // - FIX (Kern-Bug, Render-vs-Interaktion-Race): Während einer aktiven
+  //   Bewegung wird state.dragLock gesetzt. scheduleRender() weiter unten
+  //   UND header-footer.js respektieren dieses Flag und verschieben ein
+  //   anstehendes Re-Rendering, bis die Bewegung beendet ist. Vorher konnte
+  //   ein durch requestAnimationFrame verzögertes Rendering (z. B. nach
+  //   einer Selektion einen Frame zuvor) genau den DOM-Knoten wegreißen,
+  //   den man gerade zu ziehen begonnen hatte — Pointer-Capture ging
+  //   verloren, der Drag brach mitten in der Bewegung ab. Das erklärte
+  //   sowohl "Elemente lassen sich teilweise verschieben, aber nicht
+  //   zuverlässig anklicken" als auch das entsprechende Verhalten bei
+  //   Header/Footer.
+  // - opts.minX/minY/maxX/maxY (oder eine opts.getBounds()-Funktion, die
+  //   bei Bewegungsstart ausgewertet wird) begrenzen die Bewegung — damit
+  //   z. B. Header-/Footer-Elemente ihre Leiste nicht verlassen können,
+  //   während normale Canvas-Elemente unbegrenzt bleiben (Standard:
+  //   0/0/Infinity/Infinity, wie zuvor bei makeDraggable).
+  const DRAG_THRESHOLD = 4;
+
+  function attachInteraction(domEl, item, containerEl, opts = {}) {
     if (!domEl || !item || !containerEl) return;
-    domEl.addEventListener("mousedown", event => {
-      if (state.isPreviewMode) return;
+    const recordHistory = opts.recordHistory !== false;
+
+    domEl.addEventListener("pointerdown", event => {
+      if (event.button != null && event.button !== 0) return;
+      event.preventDefault();
       event.stopPropagation();
+      try { domEl.setPointerCapture(event.pointerId); } catch (e) { /* ignore */ }
+
+      const allowDrag = !state.isPreviewMode;
+      const bounds = typeof opts.getBounds === "function" ? (opts.getBounds() || {}) : opts;
+      const minX = bounds.minX != null ? bounds.minX : 0;
+      const minY = bounds.minY != null ? bounds.minY : 0;
+      const maxX = bounds.maxX != null ? bounds.maxX : Infinity;
+      const maxY = bounds.maxY != null ? bounds.maxY : Infinity;
+
       const start = toLocalCoords(containerEl, event.clientX, event.clientY);
       const offsetX = start.x - (Number(item.x) || 0);
       const offsetY = start.y - (Number(item.y) || 0);
-      const minX = opts.minX != null ? opts.minX : 0;
-      const minY = opts.minY != null ? opts.minY : 0;
-      const maxX = opts.maxX != null ? opts.maxX : Infinity;
-      const maxY = opts.maxY != null ? opts.maxY : Infinity;
-      if (window.WebBuilderHistory) window.WebBuilderHistory.arm();
-      const onMove = moveEvent => {
+      const startClientX = event.clientX, startClientY = event.clientY;
+      let dragging = false;
+
+      function onMove(moveEvent) {
+        if (!allowDrag) return;
+        const dx = moveEvent.clientX - startClientX, dy = moveEvent.clientY - startClientY;
+        if (!dragging) {
+          if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+          dragging = true;
+          state.dragLock = true;
+          if (recordHistory) window.WebBuilderHistory?.arm();
+          opts.onDragStart?.();
+        }
         const point = toLocalCoords(containerEl, moveEvent.clientX, moveEvent.clientY);
         item.x = Math.min(maxX, Math.max(minX, point.x - offsetX));
         item.y = Math.min(maxY, Math.max(minY, point.y - offsetY));
         domEl.style.left = item.x + "px";
         domEl.style.top = item.y + "px";
-      };
-      const onUp = () => {
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-        if (window.WebBuilderHistory) window.WebBuilderHistory.commit();
-      };
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
+      }
+
+      function finish(upEvent) {
+        domEl.removeEventListener("pointermove", onMove);
+        domEl.removeEventListener("pointerup", finish);
+        domEl.removeEventListener("pointercancel", finish);
+        try { domEl.releasePointerCapture(event.pointerId); } catch (e) { /* ignore */ }
+        if (dragging) {
+          state.dragLock = false;
+          if (recordHistory) window.WebBuilderHistory?.commit();
+          opts.onDragEnd?.();
+        }
+        // Sowohl ein reiner Klick als auch das Ende eines Ziehvorgangs
+        // sollen das Element auswählen bzw. die Klick-Aktion ausführen —
+        // genau wie zuvor das native "click"-Event bei jedem mouseup.
+        opts.onClick?.(upEvent, dragging);
+      }
+
+      domEl.addEventListener("pointermove", onMove);
+      domEl.addEventListener("pointerup", finish);
+      domEl.addEventListener("pointercancel", finish);
     });
   }
 
@@ -124,8 +198,6 @@
     }[c]));
   }
 
-  // "settings" ergänzt (siehe elements.js) — web.html bietet dieses Icon
-  // in der Palette an, es fehlte hier in den Fallback-Icons.
   const FALLBACK_ICONS = {
     cart: '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1z"/></svg>',
     'arrow-up': '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>',
@@ -187,7 +259,7 @@
         el.innerHTML = renderShapeInner(item);
       } else if (item.type === "image") {
         const src = item.imageUrl || "https://via.placeholder.com/200";
-        el.innerHTML = `<img src="${escapeHtml(src)}" class="canvas-img" style="width:${item.size}px; height:auto;" alt="Bild Element" />`;
+        el.innerHTML = `<img src="${escapeHtml(src)}" class="canvas-img" style="width:${item.size}px; height:auto;" alt="Bild Element" draggable="false" />`;
       } else {
         el.innerHTML = `<p style="font-size:${item.size}px; color:${item.color}; font-weight:${item.bold ? "bold" : "normal"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam}; text-align:${align};">${escapeHtml(item.text)}</p>`;
       }
@@ -195,26 +267,25 @@
       badge.className = "element-badge";
       badge.innerText = "⚡ Logik";
       el.appendChild(badge);
-      el.addEventListener("click", e => {
-        e.stopPropagation();
-        if (state.isPreviewMode) {
-          if (typeof callbacks.onAction === "function") callbacks.onAction(item, el);
-        } else if (typeof callbacks.onSelect === "function") callbacks.onSelect(item.id);
-        else if (window.WebBuilderInspector && typeof window.WebBuilderInspector.select === "function") window.WebBuilderInspector.select(item.id);
-        else elementsService.setSelected(item.id);
-      }, true);
-      makeDraggable(el, item, canvas);
+
+      // FIX: einziger Interaktionspfad für Klick UND Drag (siehe
+      // attachInteraction() weiter oben) statt vorher getrennter
+      // click-Listener + makeDraggable()-mousedown-Logik.
+      attachInteraction(el, item, canvas, {
+        onClick: () => {
+          if (state.isPreviewMode) {
+            if (typeof callbacks.onAction === "function") callbacks.onAction(item, el);
+          } else if (typeof callbacks.onSelect === "function") callbacks.onSelect(item.id);
+          else if (window.WebBuilderInspector && typeof window.WebBuilderInspector.select === "function") window.WebBuilderInspector.select(item.id);
+          else elementsService.setSelected(item.id);
+        }
+      });
+
       canvas.appendChild(el);
     });
     return true;
   }
 
-  // NEU: reine Berechnungsfunktion für den Canvas-Hintergrund als CSS-String
-  // (ohne DOM-Zugriff). Rein additiv — setBackground() unten bleibt
-  // unverändert und nutzt diese Funktion NICHT, um bestehendes, funktionierendes
-  // Verhalten nicht anzufassen. Wird vom neuen export.js verwendet, damit die
-  // Export-Logik nicht dieselbe Hintergrund-Berechnung ein zweites Mal
-  // implementieren muss (siehe Projektregel 23: wenig Duplikation).
   function computeBackgroundCss(background = state.background) {
     if (!background) return "background:#ffffff;";
     if (background.type === "gradient") {
@@ -241,10 +312,6 @@
     return true;
   }
 
-  // FIX: the sidebar background controls (#bg-type, #bg-color-input,
-  // #bg-grad-1/2/dir, #bg-image-url, #bg-image-file) existed in web.html
-  // but nothing ever bound them to state.background — changing them had
-  // zero effect on the canvas.
   function bindBackgroundEditor() {
     const typeSel = document.getElementById("bg-type");
     if (!typeSel || typeSel.dataset.webBuilderBgBound === "true") return;
@@ -304,8 +371,6 @@
     });
 
     syncControls();
-    // Exposed so builder.js can re-sync these controls right after a
-    // storage.loadIntoState() call, since that doesn't fire state.notify().
     window.WebBuilderCanvas.refreshBackgroundEditor = syncControls;
   }
 
@@ -332,11 +397,6 @@
     return actions.execute(item);
   }
 
-  // FIX: this was completely missing after the module split. The old
-  // monolith wired dragstart on every ".draggable-item" in the sidebar and
-  // dragover/drop on "#canvas" to actually create the dropped element —
-  // without it, nothing in the palette can be placed on the canvas at all,
-  // which is the single most basic thing the builder needs to do.
   function bindPaletteDragAndDrop() {
     document.querySelectorAll(".draggable-item").forEach(item => {
       if (item.dataset.webBuilderDragBound === "true") return;
@@ -376,11 +436,6 @@
     });
   }
 
-  // NEU (Offene Punkte #5 "Eigene Icons"): rendert die Palette-Kacheln für
-  // alle bisher per Formular hinzugefügten eigenen Icons und hängt sie ans
-  // bestehende Drag&Drop (bindPaletteDragAndDrop) an. Nutzt die reine
-  // Registry-Logik aus elements.js (WebBuilderIconRegistry) — hier lebt
-  // ausschließlich das Rendering/DOM.
   function renderCustomIconPalette() {
     const container = document.getElementById("custom-icon-palette");
     if (!container) return;
@@ -399,18 +454,9 @@
       item.innerHTML = `<span class="item-icon" style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;">${markup}</span><span>${escapeHtml(name)}</span>`;
       container.appendChild(item);
     });
-    // Neu hinzugekommene Palette-Kacheln müssen noch ans Drag&Drop gebunden
-    // werden — bindPaletteDragAndDrop() überspringt bereits gebundene
-    // Elemente (dataset.webBuilderDragBound), ist also sicher erneut
-    // aufzurufen, statt eine zweite Bind-Funktion zu duplizieren.
     bindPaletteDragAndDrop();
   }
 
-  // NEU (Offene Punkte #5 "Eigene Icons"): verdrahtet das Formular
-  // (#custom-icon-name, #custom-icon-source, #btn-add-custom-icon) aus
-  // web.html. Eigene Icons gelten nur für die aktuelle Sitzung (siehe
-  // elements.js / README "Offene Punkte") und werden bewusst nicht in
-  // storage.js persistiert.
   function bindCustomIconForm() {
     const btn = document.getElementById("btn-add-custom-icon");
     if (!btn || btn.dataset.webBuilderCustomIconBound === "true") return;
@@ -443,7 +489,6 @@
     const canvasEl = getCanvas();
     if (!canvasEl) return;
     rendering = true;
-    if (canvasObserver) canvasObserver.disconnect();
     try {
       setRendererCallbacks({ onAction: handlePreviewAction });
       renderCanvas();
@@ -451,56 +496,45 @@
       syncDom();
     } finally {
       rendering = false;
-      if (canvasObserver) canvasObserver.observe(canvasEl, { childList: true });
     }
   }
 
+  // FIX (Kern-Bug): scheduleRender() lief bisher IMMER nach genau einem
+  // requestAnimationFrame, unabhängig davon, ob der Nutzer inzwischen
+  // begonnen hat, das gerade selektierte/gerenderte Element zu ziehen.
+  // Ein Rendering mitten in einer aktiven Bewegung ersetzt den DOM-Knoten
+  // unter dem Cursor und bricht Pointer-Capture/Drag ab. Jetzt wird ein
+  // anstehendes Rendering so lange verschoben (nächster Frame), bis
+  // state.dragLock (siehe attachInteraction oben) wieder false ist —
+  // nichts geht dabei verloren, es läuft nur etwas später.
   function scheduleRender() {
     if (renderQueued) return;
     renderQueued = true;
-    const run = () => { renderQueued = false; renderOwnedCanvas(); };
+    const run = () => {
+      if (state.dragLock) {
+        if (window.requestAnimationFrame) window.requestAnimationFrame(run); else window.setTimeout(run, 16);
+        return;
+      }
+      renderQueued = false;
+      renderOwnedCanvas();
+    };
     if (window.requestAnimationFrame) window.requestAnimationFrame(run); else window.setTimeout(run, 0);
   }
 
-  // NEU (Fix: Header/Footer-Icons ohne Reaktion auf Klick/Drag/Inspector):
-  // header-footer.js rendert Header/Footer direkt in #canvas (renderBars()),
-  // denselben Container, den dieser MutationObserver überwacht. Jede
-  // Header-/Footer-Interaktion (Auswahl, Drag-Ende, Farbe/Text/Aktion
-  // ändern) ersetzt die .builder-bar-Knoten und feuerte damit bisher immer
-  // auch einen kompletten Canvas-Re-Render (renderCanvas() hängt alle
-  // .placed-element-Knoten per appendChild ans Ende von #canvas an —
-  // also NACH der Footer-Bar). Da .placed-element ohne festen z-index rein
-  // über die DOM-Reihenfolge stapelt, lagen normale Canvas-Elemente danach
-  // unsichtbar über den Header-/Footer-Icons und fingen deren
-  // mousedown/click-Events ab, bevor sie header-footer.js erreichten —
-  // Drag und Selektion an Header-/Footer-Icons wirkten dadurch komplett
-  // "tot".
-  //
-  // Fix: Mutationen, die AUSSCHLIESSLICH .builder-bar-Knoten betreffen
-  // (Hinzufügen/Entfernen), lösen keinen Re-Render mehr aus — header-footer.js
-  // rendert seinen eigenen Bereich bereits vollständig selbst
-  // (renderBars()) und braucht dafür keine Hilfe von canvas.js. Ein echter
-  // .placed-element-Wechsel (Hinzufügen/Löschen/Duplizieren eines
-  // Canvas-Elements) enthält weiterhin mindestens einen Knoten ohne die
-  // Klasse "builder-bar" und löst wie bisher scheduleRender() aus.
-  function isBarOnlyMutation(mutation) {
-    const nodes = [...(mutation.addedNodes || []), ...(mutation.removedNodes || [])];
-    if (!nodes.length) return false;
-    return nodes.every(node => node.nodeType === 1 && node.classList && node.classList.contains("builder-bar"));
-  }
-
-  function installCanvasOwnership() {
-    const canvasEl = getCanvas();
-    if (!canvasEl || !window.MutationObserver) return;
-    if (canvasObserver) canvasObserver.disconnect();
-    canvasObserver = new MutationObserver(mutations => {
-      if (rendering) return;
-      const relevant = mutations.filter(mutation => mutation.type === "childList" && !isBarOnlyMutation(mutation));
-      if (relevant.length) scheduleRender();
-    });
-    canvasObserver.observe(canvasEl, { childList: true });
-  }
-
+  // FIX (MutationObserver entfernt): Der bisherige MutationObserver auf
+  // #canvas versuchte, "reine Bar-Mutationen" von echten Element-Änderungen
+  // zu unterscheiden, um kein unnötiges Re-Rendering auszulösen — ein
+  // fragiler Mechanismus, der eine weitere Quelle für Timing-Probleme war.
+  // Das ist unnötig: .builder-bar hat bereits explizites z-index:300/250
+  // (siehe header-footer.js buildBarElement), während .placed-element
+  // z-index:auto hat. Für positionierte Geschwisterelemente stapeln
+  // Elemente mit explizitem, positivem z-index PER CSS-SPEZIFIKATION immer
+  // über z-index:auto-Elementen — unabhängig von der DOM-Reihenfolge. Die
+  // visuelle Stapelung UND das Hit-Testing (welches Element Klicks
+  // empfängt) sind dadurch bereits robust und deterministisch über CSS
+  // gelöst; ein DOM-Mutationen beobachtender Re-Render-Trigger ist dafür
+  // nicht mehr nötig. Alle für Canvas-Elemente relevanten Zustandsänderungen
+  // laufen weiterhin zuverlässig über state.subscribe()/state-change unten.
   state.subscribe?.(event => {
     const domain = event?.domain;
     if (["elements", "selection", "preview", "canvas", "background"].includes(domain)) scheduleRender();
@@ -515,7 +549,6 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     window.setTimeout(() => {
-      installCanvasOwnership();
       bindPaletteDragAndDrop();
       bindBackgroundEditor();
       bindCustomIconForm();
@@ -526,15 +559,16 @@
 
   window.WebBuilderCanvas = {
     getCanvas, getCanvasColumn, normalizeState, applyZoom, setZoom, zoomIn, zoomOut,
-    resetZoom, setCanvasHeight, extendCanvas, syncDom, toLocalCoords, makeDraggable,
-    renderCanvas, render: () => { setBackground(state.background); return renderCanvas(); },
+    resetZoom, setCanvasHeight, extendCanvas, syncDom, toLocalCoords,
+    // NEU: gemeinsamer Interaktions-Controller, auch von header-footer.js
+    // genutzt (siehe dort bindBarItemInteraction). makeDraggable bleibt als
+    // rückwärtskompatibler Alias erhalten, falls andere Stellen ihn noch
+    // referenzieren.
+    attachInteraction, makeDraggable: attachInteraction,
+    renderCanvas, render: renderOwnedCanvas,
     setBackground, setRendererCallbacks, bindPaletteDragAndDrop, bindBackgroundEditor,
     constants: { ZOOM_MIN, ZOOM_MAX, CANVAS_MIN_HEIGHT, DEFAULT_ZOOM, DEFAULT_CANVAS_HEIGHT },
-    render: renderOwnedCanvas,
-    // NEU: additiv exponiert für js/export.js — kein bestehendes Verhalten geändert.
     renderShapeInner, computeBackgroundCss,
-    // NEU (Offene Punkte #5): Eigene-Icons-Palette additiv exponiert, falls
-    // andere Module (z. B. nach Undo/Redo o. Ä.) sie neu rendern müssen.
     renderCustomIconPalette, bindCustomIconForm
   };
 })();
