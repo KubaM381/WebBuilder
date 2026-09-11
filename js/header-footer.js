@@ -7,15 +7,50 @@
   const clone=v=>JSON.parse(JSON.stringify(v));
   function emitChange(target,detail){try{window.dispatchEvent(new CustomEvent("webbuilder:header-footer-change",{detail:{target,...clone(detail||{})}}));}catch(e){console.warn("WebBuilderHeaderFooter: change event failed",e);}}
 
-  // FIX (echter Datenfehler): `Number(item.x) || 20` behandelt 0 als
-  // falsy — ein Element, das exakt auf x=0 oder y=0 gezogen wurde, wurde
-  // bei JEDER späteren Normalisierung (z. B. nach einer völlig anderen
-  // Inspector-Änderung, nach Undo/Redo oder Neuladen) unbemerkt auf den
-  // Default zurückgesetzt. numOr() prüft stattdessen explizit auf
-  // null/leer/NaN statt auf Falsy-Werte.
   function numOr(v,fallback){const n=Number(v);return(v!=null&&v!==""&&Number.isFinite(n))?n:fallback;}
 
   function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||"none",actionUrl:item.actionUrl||"",actionMsg:item.actionMsg||"",productId:item.productId||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
+
+  // FIX (Kern-Bug: Bar-Item springt nach Drag zurück): normalizeState()
+  // wird u. a. von storage.js -> normalizeRuntimeState() aufgerufen, und
+  // DAS wiederum von window.WebBuilderHistory.arm() bei JEDEM Drag-Start
+  // (sobald die Bewegungsschwelle in attachInteraction() überschritten
+  // wird — siehe canvas.js). Vorher schrieb normalizeState() das komplette
+  // Array per `.map(normalizeItem)` neu — normalizeItem() erzeugt dabei
+  // IMMER ein brandneues Objekt. Der Drag-Closure hatte zu diesem
+  // Zeitpunkt aber bereits eine Referenz auf das ALTE Item-Objekt erhalten
+  // (aus dem Render-Durchlauf vor dem Klick) und schrieb alle folgenden
+  // item.x/item.y-Änderungen während der Bewegung auf dieses jetzt aus dem
+  // Array "ausgehängte" alte Objekt. Die eigentlichen Daten in
+  // state.headerItems/footerItems (die frischen Kopien) blieben dadurch
+  // während des gesamten Drags komplett unverändert an ihrer
+  // ursprünglichen Position — nach dem Loslassen wurde aus genau diesen
+  // unveränderten Daten neu gerendert, wodurch das Element sichtbar auf
+  // seine alte Position zurücksprang.
+  //
+  // Fix: normalizeItemsInPlace() erzeugt für bereits bestehende,
+  // valide Items KEIN neues Objekt mehr, sondern schreibt die
+  // normalisierten Werte per Object.assign() in dasselbe Objekt zurück.
+  // Die Objektreferenz bleibt dadurch über beliebig viele
+  // normalizeState()-Aufrufe hinweg stabil — exakt wie es bei
+  // state.elements (WebBuilderElements) schon immer der Fall war, da
+  // dessen Domäne in storage.js' normalizeRuntimeState() gar nicht erst
+  // renormalisiert wird. Nur für tatsächlich neue/ungültige Einträge (kein
+  // Objekt oder ohne id, z. B. direkt nach dem Laden eines alten
+  // Speicherstands) wird weiterhin ein frisches Objekt über normalizeItem()
+  // erzeugt — dort existiert ohnehin noch keine aktive Referenz, die
+  // brechen könnte.
+  function normalizeItemsInPlace(list){
+    if(!Array.isArray(list))return[];
+    return list.map(item=>{
+      if(item&&typeof item==="object"&&item.id){
+        Object.assign(item,normalizeItem(item));
+        return item;
+      }
+      return normalizeItem(item);
+    });
+  }
+
   function normalizeState(){
     state.headerEnabled=!!state.headerEnabled;
     state.headerSticky=!!state.headerSticky;
@@ -23,13 +58,13 @@
     state.headerBgType=state.headerBgType==="image"?"image":"solid";
     state.headerBgColor=String(state.headerBgColor||"#111827");
     state.headerBgImage=String(state.headerBgImage||"");
-    state.headerItems=Array.isArray(state.headerItems)?state.headerItems.map(normalizeItem):[];
+    state.headerItems=normalizeItemsInPlace(state.headerItems);
     state.footerEnabled=!!state.footerEnabled;
     state.footerHeight=Math.max(40,Number(state.footerHeight)||70);
     state.footerBgType=state.footerBgType==="image"?"image":"solid";
     state.footerBgColor=String(state.footerBgColor||"#111827");
     state.footerBgImage=String(state.footerBgImage||"");
-    state.footerItems=Array.isArray(state.footerItems)?state.footerItems.map(normalizeItem):[];
+    state.footerItems=normalizeItemsInPlace(state.footerItems);
     return state;
   }
   const getHeader=()=>({enabled:state.headerEnabled,sticky:state.headerSticky,height:state.headerHeight,bgType:state.headerBgType,bgColor:state.headerBgColor,bgImage:state.headerBgImage,items:state.headerItems});
@@ -44,7 +79,6 @@
 
   const byId=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#39;"}[c]));
 
-  // ---------- selection (shared with canvas clicks + left sidebar list) ----------
   function currentSelection(){
     const ref=state.selectedBarItemRef;
     if(!ref)return null;
@@ -64,7 +98,6 @@
     render();
   }
 
-  // ---------- canvas rendering: the actual header/footer bars ----------
   function iconMarkup(name){const registry=window.WebBuilderIconRegistry;const m=registry&&typeof registry.get==="function"?registry.get(name):null;return m||"";}
   function itemInnerHtml(item){
     const textDeco=item.underline?"underline":"none",fontFam=item.fontFamily||"inherit",align=item.align||"left";
@@ -109,20 +142,6 @@
     });
   }
 
-  // FIX (Architektur-Vereinheitlichung): Bar-Items nutzen jetzt denselben
-  // Interaktions-Controller wie normale Canvas-Elemente
-  // (WebBuilderCanvas.attachInteraction, siehe dortiger Kommentar für
-  // Details zu Klick/Drag-Erkennung, Pointer-Capture und dem
-  // state.dragLock-Mechanismus, der Re-Renderings während einer aktiven
-  // Bewegung zurückstellt). Vorher gab es hier eine eigene, unabhängige
-  // Pointer-Events-Implementierung — zwei parallele Systeme, die sich
-  // gegenseitig ins Gehege kommen konnten.
-  //
-  // FIX (Bewegungsgrenzen): maxX war vorher hart auf 4000px gesetzt statt
-  // auf die tatsächliche Leistenbreite — Elemente konnten dadurch optisch
-  // aus Header/Footer heraus wandern. getBounds() berechnet jetzt bei
-  // jedem Drag-Start die reale, aktuelle Breite/Höhe der Leiste (in
-  // logischen, unskalierten Koordinaten) und begrenzt die Bewegung darauf.
   function bindBarItemInteraction(domEl,item,barEl,target,cfg){
     const canvasHelper=window.WebBuilderCanvas;
     if(!canvasHelper?.attachInteraction){console.error("WebBuilderHeaderFooter: WebBuilderCanvas.attachInteraction fehlt.");return;}
@@ -169,10 +188,6 @@
       badge.innerText="⚡ Logik";
       el.appendChild(badge);
 
-      // Einziger Interaktionspfad für Klick UND Drag — sowohl im Editor-
-      // als auch im Vorschau-Modus (attachInteraction unterdrückt die
-      // Bewegung intern selbst, wenn state.isPreviewMode true ist, ruft
-      // aber onClick trotzdem zuverlässig auf).
       bindBarItemInteraction(el,item,bar,target,cfg);
 
       bar.appendChild(el);
@@ -196,7 +211,6 @@
     if(state.footerEnabled)canvasEl.appendChild(buildBarElement("footer"));
   }
 
-  // ---------- left sidebar: enable/height/background + items list ----------
   function renderList(target){const list=byId(target==="footer"?"footer-items-list":"header-items-list");if(!list)return;const items=target==="footer"?state.footerItems:state.headerItems;list.innerHTML=items.length?"":'<p class="help-text">Noch keine Elemente.</p>';items.forEach(item=>{const isSel=state.selectedBarItemRef&&state.selectedBarItemRef.target===target&&state.selectedBarItemRef.id===item.id;const row=document.createElement("div");row.className="item-row"+(isSel?" active-item-row":"");row.innerHTML=`<button type="button" class="bar-item-select" data-id="${esc(item.id)}" style="flex:1;text-align:left;">${item.type==="icon"?esc(item.iconName||"Icon"):esc(item.text||"Text")}</button><button type="button" class="item-delete bar-item-delete" data-id="${esc(item.id)}">✕</button>`;list.appendChild(row);});}
 
   function syncBgControls(target){
@@ -225,7 +239,6 @@
     renderBars();
   }
 
-  // ---------- right inspector: the selected bar item's own panel ----------
   function populateBarIconSelect(selectEl, selectedName) {
     if (!selectEl) return;
     const registry = window.WebBuilderIconRegistry;
