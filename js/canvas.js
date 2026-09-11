@@ -1,7 +1,7 @@
 // WebBuilder canvas module
 // Canvas remains a single domain module. Viewport, drag/drop interaction,
-// rendering, background-editor binding and canvas controls are kept
-// together here.
+// rendering, background-editor binding, canvas controls and the "Eigene
+// Icons"-palette UI are kept together here.
 (() => {
   const state = window.WebBuilderState;
   const elementsService = window.WebBuilderElements;
@@ -124,10 +124,8 @@
     }[c]));
   }
 
-  // FIX (Offene Punkte #4): "settings" ergänzt — web.html bietet dieses
-  // Icon in der Palette an (data-icon="settings"), aber es fehlte hier und
-  // in elements.js. Ohne Eintrag fand renderCanvas() kein SVG und zeigte
-  // das Element fälschlich als Text-Platzhalter statt als Icon an.
+  // "settings" ergänzt (siehe elements.js) — web.html bietet dieses Icon
+  // in der Palette an, es fehlte hier in den Fallback-Icons.
   const FALLBACK_ICONS = {
     cart: '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1z"/></svg>',
     'arrow-up': '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>',
@@ -378,6 +376,68 @@
     });
   }
 
+  // NEU (Offene Punkte #5 "Eigene Icons"): rendert die Palette-Kacheln für
+  // alle bisher per Formular hinzugefügten eigenen Icons und hängt sie ans
+  // bestehende Drag&Drop (bindPaletteDragAndDrop) an. Nutzt die reine
+  // Registry-Logik aus elements.js (WebBuilderIconRegistry) — hier lebt
+  // ausschließlich das Rendering/DOM.
+  function renderCustomIconPalette() {
+    const container = document.getElementById("custom-icon-palette");
+    if (!container) return;
+    const registry = window.WebBuilderIconRegistry;
+    const names = registry && typeof registry.getCustomNames === "function" ? registry.getCustomNames() : [];
+    const allIcons = registry && typeof registry.getAll === "function" ? registry.getAll() : {};
+    container.innerHTML = "";
+    names.forEach(name => {
+      const markup = allIcons[name];
+      if (!markup) return;
+      const item = document.createElement("div");
+      item.className = "draggable-item";
+      item.draggable = true;
+      item.dataset.type = "icon";
+      item.dataset.icon = name;
+      item.innerHTML = `<span class="item-icon" style="width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;">${markup}</span><span>${escapeHtml(name)}</span>`;
+      container.appendChild(item);
+    });
+    // Neu hinzugekommene Palette-Kacheln müssen noch ans Drag&Drop gebunden
+    // werden — bindPaletteDragAndDrop() überspringt bereits gebundene
+    // Elemente (dataset.webBuilderDragBound), ist also sicher erneut
+    // aufzurufen, statt eine zweite Bind-Funktion zu duplizieren.
+    bindPaletteDragAndDrop();
+  }
+
+  // NEU (Offene Punkte #5 "Eigene Icons"): verdrahtet das Formular
+  // (#custom-icon-name, #custom-icon-source, #btn-add-custom-icon) aus
+  // web.html. Eigene Icons gelten nur für die aktuelle Sitzung (siehe
+  // elements.js / README "Offene Punkte") und werden bewusst nicht in
+  // storage.js persistiert.
+  function bindCustomIconForm() {
+    const btn = document.getElementById("btn-add-custom-icon");
+    if (!btn || btn.dataset.webBuilderCustomIconBound === "true") return;
+    btn.dataset.webBuilderCustomIconBound = "true";
+    btn.addEventListener("click", e => {
+      e.preventDefault();
+      const nameInput = document.getElementById("custom-icon-name");
+      const sourceInput = document.getElementById("custom-icon-source");
+      const name = (nameInput?.value || "").trim();
+      const source = (sourceInput?.value || "").trim();
+      const registry = window.WebBuilderIconRegistry;
+      if (!name || !source || !registry || typeof registry.addCustom !== "function") {
+        window.WebBuilderToast?.show?.("Bitte Name und SVG-Code/Bild-URL angeben.", "danger");
+        return;
+      }
+      const ok = registry.addCustom(name, source);
+      if (!ok) {
+        window.WebBuilderToast?.show?.("Icon konnte nicht hinzugefügt werden.", "danger");
+        return;
+      }
+      if (nameInput) nameInput.value = "";
+      if (sourceInput) sourceInput.value = "";
+      renderCustomIconPalette();
+      window.WebBuilderToast?.show?.(`Icon "${name}" hinzugefügt ⚡`, "success");
+    });
+  }
+
   function renderOwnedCanvas() {
     if (rendering) return;
     const canvasEl = getCanvas();
@@ -430,6 +490,8 @@
       installCanvasOwnership();
       bindPaletteDragAndDrop();
       bindBackgroundEditor();
+      bindCustomIconForm();
+      renderCustomIconPalette();
       renderOwnedCanvas();
     }, 0);
   });
@@ -442,6 +504,9 @@
     constants: { ZOOM_MIN, ZOOM_MAX, CANVAS_MIN_HEIGHT, DEFAULT_ZOOM, DEFAULT_CANVAS_HEIGHT },
     render: renderOwnedCanvas,
     // NEU: additiv exponiert für js/export.js — kein bestehendes Verhalten geändert.
-    renderShapeInner, computeBackgroundCss
+    renderShapeInner, computeBackgroundCss,
+    // NEU (Offene Punkte #5): Eigene-Icons-Palette additiv exponiert, falls
+    // andere Module (z. B. nach Undo/Redo o. Ä.) sie neu rendern müssen.
+    renderCustomIconPalette, bindCustomIconForm
   };
 })();
