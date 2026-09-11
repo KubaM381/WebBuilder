@@ -5,6 +5,10 @@ document.write('<script src="js/state.js"><\/script>');
 document.write('<script src="js/toast.js"><\/script>');
 document.write('<script src="js/storage.js"><\/script>');
 document.write('<script src="js/elements.js"><\/script>');
+// FIX: products.js muss vor cart.js geladen werden (Abhängigkeitsreihenfolge,
+// Projektregel 8) — cart.js referenziert Produkte ausschließlich über
+// window.WebBuilderProducts, das erst durch products.js entsteht.
+document.write('<script src="js/products.js"><\/script>');
 document.write('<script src="js/cart.js"><\/script>');
 document.write('<script src="js/canvas.js"><\/script>');
 document.write('<script src="js/inspector.js"><\/script>');
