@@ -1,38 +1,26 @@
 // WebBuilder header/footer domain
-// Owns header/footer data, canvas rendering (bar + items + resize handle),
-// and the editor UI (left sidebar list/background controls + right
-// inspector panel for the selected bar item).
 (() => {
   const state = window.WebBuilderState;
 
   if (!state) {
-    console.error(
-      "WebBuilderHeaderFooter: shared state missing."
-    );
+    console.error("WebBuilderHeaderFooter: shared state missing.");
     return;
   }
 
-  const clone = v =>
-    JSON.parse(JSON.stringify(v));
+  const clone = v => JSON.parse(JSON.stringify(v));
 
   function emitChange(target, detail) {
     try {
       window.dispatchEvent(
-        new CustomEvent(
-          "webbuilder:header-footer-change",
-          {
-            detail: {
-              target,
-              ...clone(detail || {})
-            }
+        new CustomEvent("webbuilder:header-footer-change", {
+          detail: {
+            target,
+            ...clone(detail || {})
           }
-        )
+        })
       );
     } catch (e) {
-      console.warn(
-        "WebBuilderHeaderFooter: change event failed.",
-        e
-      );
+      console.warn("WebBuilderHeaderFooter: change event failed.", e);
     }
   }
 
@@ -40,111 +28,51 @@
     return {
       id:
         item.id ||
-        `bar_${Date.now()}_${Math.random()
-          .toString(36)
-          .slice(2, 8)}`,
-      type:
-        item.type === "icon"
-          ? "icon"
-          : "text",
+        `bar_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      type: item.type === "icon" ? "icon" : "text",
       text: item.text || "",
       iconName: item.iconName || null,
       x: Number(item.x) || 20,
       y: Number(item.y) || 18,
-      color:
-        item.color || "#ffffff",
+      color: item.color || "#ffffff",
       size: Number(item.size) || 16,
       bold: !!item.bold,
       italic: !!item.italic,
       underline: !!item.underline,
       align: item.align || "left",
-      fontFamily:
-        item.fontFamily || "inherit",
-      actionType:
-        item.actionType || "none",
-      actionUrl:
-        item.actionUrl || "",
-      actionMsg:
-        item.actionMsg || "",
-      productId:
-        item.productId || null,
-      modalTitle:
-        item.modalTitle || "",
-      modalBody:
-        item.modalBody || "",
-      modalFooter:
-        item.modalFooter || "",
-      messagePosition:
-        item.messagePosition ||
-        "bottom-right"
+      fontFamily: item.fontFamily || "inherit",
+      actionType: item.actionType || "none",
+      actionUrl: item.actionUrl || "",
+      actionMsg: item.actionMsg || "",
+      productId: item.productId || null,
+      modalTitle: item.modalTitle || "",
+      modalBody: item.modalBody || "",
+      modalFooter: item.modalFooter || "",
+      messagePosition: item.messagePosition || "bottom-right"
     };
   }
 
   function normalizeState() {
-    state.headerEnabled =
-      !!state.headerEnabled;
+    state.headerEnabled = !!state.headerEnabled;
+    state.headerSticky = !!state.headerSticky;
+    state.headerHeight = Math.max(40, Number(state.headerHeight) || 64);
+    state.headerBgType = state.headerBgType === "image" ? "image" : "solid";
+    state.headerBgColor = String(state.headerBgColor || "#111827");
+    state.headerBgImage = String(state.headerBgImage || "");
 
-    state.headerSticky =
-      !!state.headerSticky;
+    state.headerItems = Array.isArray(state.headerItems)
+      ? state.headerItems.map(normalizeItem)
+      : [];
 
-    state.headerHeight = Math.max(
-      40,
-      Number(state.headerHeight) || 64
-    );
+    state.footerEnabled = !!state.footerEnabled;
+    state.footerHeight = Math.max(40, Number(state.footerHeight) || 70);
+    state.footerBgType = state.footerBgType === "image" ? "image" : "solid";
+    state.footerBgColor = String(state.footerBgColor || "#111827");
+    state.footerBgImage = String(state.footerBgImage || "");
 
-    state.headerBgType =
-      state.headerBgType === "image"
-        ? "image"
-        : "solid";
-
-    state.headerBgColor =
-      String(
-        state.headerBgColor ||
-          "#111827"
-      );
-
-    state.headerBgImage =
-      String(
-        state.headerBgImage || ""
-      );
-
-    state.headerItems =
-      Array.isArray(state.headerItems)
-        ? state.headerItems.map(
-            normalizeItem
-          )
-        : [];
-
-    state.footerEnabled =
-      !!state.footerEnabled;
-
-    state.footerHeight = Math.max(
-      40,
-      Number(state.footerHeight) || 70
-    );
-
-    state.footerBgType =
-      state.footerBgType === "image"
-        ? "image"
-        : "solid";
-
-    state.footerBgColor =
-      String(
-        state.footerBgColor ||
-          "#111827"
-      );
-
-    state.footerBgImage =
-      String(
-        state.footerBgImage || ""
-      );
-
-    state.footerItems =
-      Array.isArray(state.footerItems)
-        ? state.footerItems.map(
-            normalizeItem
-          )
-        : [];
+    state.footerItems = Array.isArray(state.footerItems)
+      ? state.footerItems.map(normalizeItem)
+      : [];
 
     return state;
   }
@@ -169,116 +97,61 @@
   });
 
   function updateHeader(p = {}, h = true) {
-    if (h) {
-      window.WebBuilderHistory?.arm();
-    }
+    if (h) window.WebBuilderHistory?.arm();
 
-    if (p.enabled != null) {
-      state.headerEnabled =
-        !!p.enabled;
-    }
-
-    if (p.sticky != null) {
-      state.headerSticky =
-        !!p.sticky;
-    }
+    if (p.enabled != null) state.headerEnabled = !!p.enabled;
+    if (p.sticky != null) state.headerSticky = !!p.sticky;
 
     if (p.height != null) {
-      state.headerHeight = Math.max(
-        40,
-        Number(p.height) || 64
-      );
+      state.headerHeight = Math.max(40, Number(p.height) || 64);
     }
 
     if (p.bgType != null) {
-      state.headerBgType =
-        p.bgType === "image"
-          ? "image"
-          : "solid";
+      state.headerBgType = p.bgType === "image" ? "image" : "solid";
     }
 
-    if (p.bgColor != null) {
-      state.headerBgColor =
-        String(p.bgColor);
-    }
-
-    if (p.bgImage != null) {
-      state.headerBgImage =
-        String(p.bgImage);
-    }
+    if (p.bgColor != null) state.headerBgColor = String(p.bgColor);
+    if (p.bgImage != null) state.headerBgImage = String(p.bgImage);
 
     if (Array.isArray(p.items)) {
-      state.headerItems =
-        p.items.map(normalizeItem);
+      state.headerItems = p.items.map(normalizeItem);
     }
 
-    if (h) {
-      window.WebBuilderHistory?.commit();
-    }
+    if (h) window.WebBuilderHistory?.commit();
 
     const r = getHeader();
-
     emitChange("header", r);
-
     return r;
   }
 
   function updateFooter(p = {}, h = true) {
-    if (h) {
-      window.WebBuilderHistory?.arm();
-    }
+    if (h) window.WebBuilderHistory?.arm();
 
-    if (p.enabled != null) {
-      state.footerEnabled =
-        !!p.enabled;
-    }
+    if (p.enabled != null) state.footerEnabled = !!p.enabled;
 
     if (p.height != null) {
-      state.footerHeight = Math.max(
-        40,
-        Number(p.height) || 70
-      );
+      state.footerHeight = Math.max(40, Number(p.height) || 70);
     }
 
     if (p.bgType != null) {
-      state.footerBgType =
-        p.bgType === "image"
-          ? "image"
-          : "solid";
+      state.footerBgType = p.bgType === "image" ? "image" : "solid";
     }
 
-    if (p.bgColor != null) {
-      state.footerBgColor =
-        String(p.bgColor);
-    }
-
-    if (p.bgImage != null) {
-      state.footerBgImage =
-        String(p.bgImage);
-    }
+    if (p.bgColor != null) state.footerBgColor = String(p.bgColor);
+    if (p.bgImage != null) state.footerBgImage = String(p.bgImage);
 
     if (Array.isArray(p.items)) {
-      state.footerItems =
-        p.items.map(normalizeItem);
+      state.footerItems = p.items.map(normalizeItem);
     }
 
-    if (h) {
-      window.WebBuilderHistory?.commit();
-    }
+    if (h) window.WebBuilderHistory?.commit();
 
     const r = getFooter();
-
     emitChange("footer", r);
-
     return r;
   }
 
-  function addItem(
-    type,
-    target = "header",
-    patch = {},
-    h = true
-  ) {
+  function addItem(type, target = "header", patch = {}, h = true) {
     const items =
       target === "footer"
         ? state.footerItems
@@ -289,114 +162,73 @@
       type,
       text:
         patch.text ||
-        (type === "icon"
-          ? ""
-          : "Neuer Text")
+        (type === "icon" ? "" : "Neuer Text")
     });
 
-    if (h) {
-      window.WebBuilderHistory?.arm();
-    }
+    if (h) window.WebBuilderHistory?.arm();
 
     items.push(item);
 
-    if (h) {
-      window.WebBuilderHistory?.commit();
-    }
+    if (h) window.WebBuilderHistory?.commit();
 
     emitChange(
       target,
-      target === "footer"
-        ? getFooter()
-        : getHeader()
+      target === "footer" ? getFooter() : getHeader()
     );
 
     return item;
   }
 
-  function removeItem(
-    id,
-    target = "header",
-    h = true
-  ) {
+  function removeItem(id, target = "header", h = true) {
     const items =
       target === "footer"
         ? state.footerItems
         : state.headerItems;
 
-    const i = items.findIndex(
-      x => x?.id === id
-    );
-
+    const i = items.findIndex(x => x?.id === id);
     if (i < 0) return false;
 
-    if (h) {
-      window.WebBuilderHistory?.arm();
-    }
+    if (h) window.WebBuilderHistory?.arm();
 
     items.splice(i, 1);
 
-    if (
-      state.selectedBarItemRef?.id === id
-    ) {
+    if (state.selectedBarItemRef?.id === id) {
       state.selectedBarItemRef = null;
     }
 
-    if (h) {
-      window.WebBuilderHistory?.commit();
-    }
+    if (h) window.WebBuilderHistory?.commit();
 
     emitChange(
       target,
-      target === "footer"
-        ? getFooter()
-        : getHeader()
+      target === "footer" ? getFooter() : getHeader()
     );
 
     return true;
   }
 
-  function updateItem(
-    id,
-    patch,
-    target = "header",
-    h = true
-  ) {
+  function updateItem(id, patch, target = "header", h = true) {
     const items =
       target === "footer"
         ? state.footerItems
         : state.headerItems;
 
-    const item = items.find(
-      x => x?.id === id
-    );
-
+    const item = items.find(x => x?.id === id);
     if (!item) return null;
 
-    if (h) {
-      window.WebBuilderHistory?.arm();
-    }
+    if (h) window.WebBuilderHistory?.arm();
 
-    const merged =
+    Object.assign(
+      item,
       normalizeItem(
-        Object.assign(
-          {},
-          item,
-          clone(patch || {})
-        )
-      );
+        Object.assign({}, item, clone(patch || {}))
+      )
+    );
 
-    Object.assign(item, merged);
-
-    if (h) {
-      window.WebBuilderHistory?.commit();
-    }
+    if (h) window.WebBuilderHistory?.commit();
 
     emitChange(
       target,
-      target === "footer"
-        ? getFooter()
-        : getHeader()
+      target === "footer" ? getFooter() : getHeader()
     );
 
     return item;
@@ -416,29 +248,24 @@
     updateItem,
 
     onChange(cb) {
-      if (typeof cb !== "function") {
-        return () => {};
-      }
+      if (typeof cb !== "function") return () => {};
 
-      const h = e =>
-        cb(e.detail);
+      const handler = e => cb(e.detail);
 
       window.addEventListener(
         "webbuilder:header-footer-change",
-        h
+        handler
       );
 
       return () =>
         window.removeEventListener(
           "webbuilder:header-footer-change",
-          h
+          handler
         );
     }
   };
 
-  const byId =
-    id =>
-      document.getElementById(id);
+  const byId = id => document.getElementById(id);
 
   const esc = v =>
     String(v ?? "").replace(
@@ -453,12 +280,8 @@
         }[c])
     );
 
-  // ---------- selection ----------
-
   function currentSelection() {
-    const ref =
-      state.selectedBarItemRef;
-
+    const ref = state.selectedBarItemRef;
     if (!ref) return null;
 
     const items =
@@ -466,92 +289,51 @@
         ? state.footerItems
         : state.headerItems;
 
-    const item = items.find(
-      x => x.id === ref.id
-    );
+    const item = items.find(x => x.id === ref.id);
 
-    return item
-      ? {
-          ref,
-          item
-        }
-      : null;
+    return item ? { ref, item } : null;
   }
 
-  function selectItem(
-    target,
-    id
-  ) {
-    state.selectedBarItemRef = {
-      target,
-      id
-    };
+  function selectItem(target, id) {
+    state.selectedBarItemRef = { target, id };
 
-    // Selecting a bar item must deselect
-    // any canvas element.
-    if (
-      window.WebBuilderInspector?.select
-    ) {
-      window.WebBuilderInspector.select(
-        null
-      );
-    } else if (
-      window.WebBuilderElements
-    ) {
-      window.WebBuilderElements.setSelected(
-        null
-      );
+    if (window.WebBuilderInspector?.select) {
+      window.WebBuilderInspector.select(null);
+    } else {
+      window.WebBuilderElements?.setSelected?.(null);
     }
 
     render();
   }
 
   function clearSelection() {
-    if (
-      !state.selectedBarItemRef
-    ) {
-      return;
-    }
+    if (!state.selectedBarItemRef) return;
 
-    state.selectedBarItemRef =
-      null;
-
+    state.selectedBarItemRef = null;
     render();
   }
 
-  // ---------- canvas rendering ----------
-
   function iconMarkup(name) {
-    const registry =
-      window.WebBuilderIconRegistry;
+    const registry = window.WebBuilderIconRegistry;
 
-    const m =
-      registry &&
+    return registry &&
       typeof registry.get === "function"
-        ? registry.get(name)
-        : null;
-
-    return m || "";
+      ? registry.get(name) || ""
+      : "";
   }
 
   function itemInnerHtml(item) {
-    const textDeco =
-      item.underline
-        ? "underline"
-        : "none";
-
-    const fontFam =
-      item.fontFamily ||
-      "inherit";
-
-    const align =
-      item.align || "left";
+    const deco = item.underline ? "underline" : "none";
+    const font = item.fontFamily || "inherit";
+    const align = item.align || "left";
 
     if (item.type === "icon") {
-      return `<span style="display:inline-flex;width:${Number(item.size) || 24}px;height:${Number(item.size) || 24}px;color:${item.color || "#fff"};">${iconMarkup(item.iconName)}</span>`;
+      const size = Number(item.size) || 24;
+
+      return `<span style="display:inline-flex;width:${size}px;height:${size}px;color:${item.color || "#fff"}">${iconMarkup(item.iconName)}</span>`;
     }
 
-    return `<span style="font-size:${Number(item.size) || 16}px;color:${item.color || "#fff"};font-weight:${item.bold ? "bold" : "400"};font-style:${item.italic ? "italic" : "normal"};text-decoration:${textDeco};font-family:${fontFam};text-align:${align};white-space:nowrap;">${esc(item.text || "")}</span>`;
+    return `<span style="font-size:${Number(item.size) || 16}px;color:${item.color || "#fff"};font-weight:${item.bold ? "bold" : "400"};font-style:${item.italic ? "italic" : "normal"};text-decoration:${deco};font-family:${font};text-align:${align};white-space:nowrap">${esc(item.text || "")}</span>`;
   }
 
   function backgroundCss(target) {
@@ -570,222 +352,113 @@
         ? state.footerBgImage
         : state.headerBgImage;
 
-    if (
-      type === "image" &&
-      image
-    ) {
+    if (type === "image" && image) {
       return `background-color:${color};background-image:url("${image}");background-size:cover;background-position:center;background-repeat:no-repeat;`;
     }
 
     return `background-color:${color};background-image:none;`;
   }
 
-  function bindResizeHandle(
-    handle,
-    target
-  ) {
-    handle.addEventListener(
-      "mousedown",
-      e => {
-        e.preventDefault();
-        e.stopPropagation();
+  function bindResizeHandle(handle, target) {
+    handle.addEventListener("mousedown", e => {
+      e.preventDefault();
+      e.stopPropagation();
 
-        const isFooter =
-          target === "footer";
+      const isFooter = target === "footer";
+      const bar = handle.closest(".builder-bar");
+      if (!bar) return;
 
-        const bar =
-          handle.closest(
-            ".builder-bar"
-          );
+      const rect = bar.getBoundingClientRect();
+      const fixedEdgeY = isFooter ? rect.bottom : rect.top;
+      const zoom = Number(state.zoomLevel) || 1;
 
-        if (!bar) return;
+      window.WebBuilderHistory?.arm();
 
-        const barRect =
-          bar.getBoundingClientRect();
+      const onMove = moveEvent => {
+        const rawHeight = isFooter
+          ? (fixedEdgeY - moveEvent.clientY) / zoom
+          : (moveEvent.clientY - fixedEdgeY) / zoom;
 
-        const fixedEdgeY =
+        const height = Math.max(
+          40,
+          Math.min(400, Math.round(rawHeight))
+        );
+
+        if (isFooter) {
+          state.footerHeight = height;
+        } else {
+          state.headerHeight = height;
+        }
+
+        renderBars();
+
+        const input = byId(
           isFooter
-            ? barRect.bottom
-            : barRect.top;
-
-        const zoom =
-          Number(state.zoomLevel) ||
-          1;
-
-        window.WebBuilderHistory?.arm();
-
-        const onMove =
-          moveEvent => {
-            const rawHeight =
-              isFooter
-                ? (fixedEdgeY -
-                    moveEvent.clientY) /
-                  zoom
-                : (moveEvent.clientY -
-                    fixedEdgeY) /
-                  zoom;
-
-            const clamped =
-              Math.max(
-                40,
-                Math.min(
-                  400,
-                  Math.round(
-                    rawHeight
-                  )
-                )
-              );
-
-            if (isFooter) {
-              state.footerHeight =
-                clamped;
-            } else {
-              state.headerHeight =
-                clamped;
-            }
-
-            renderBars();
-
-            const input =
-              byId(
-                isFooter
-                  ? "footer-height-input"
-                  : "header-height-input"
-              );
-
-            if (input) {
-              input.value =
-                clamped;
-            }
-          };
-
-        const onUp = () => {
-          document.removeEventListener(
-            "mousemove",
-            onMove
-          );
-
-          document.removeEventListener(
-            "mouseup",
-            onUp
-          );
-
-          window.WebBuilderHistory?.commit();
-
-          emitChange(
-            target,
-            isFooter
-              ? getFooter()
-              : getHeader()
-          );
-        };
-
-        document.addEventListener(
-          "mousemove",
-          onMove
+            ? "footer-height-input"
+            : "header-height-input"
         );
 
-        document.addEventListener(
-          "mouseup",
-          onUp
+        if (input) input.value = height;
+      };
+
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+
+        window.WebBuilderHistory?.commit();
+
+        emitChange(
+          target,
+          isFooter ? getFooter() : getHeader()
         );
-      }
-    );
+      };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
   }
 
-  /*
-   * WICHTIG:
-   *
-   * Header/Footer verwenden KEIN eigenes pointerdown/pointermove/pointerup
-   * System mehr.
-   *
-   * Stattdessen wird exakt dieselbe Drag-Funktion aus canvas.js verwendet
-   * wie für normale Canvas-Elemente.
-   *
-   * Dadurch gibt es:
-   * - nur ein Drag-System
-   * - dieselbe Klick-/Drag-Erkennung
-   * - dieselbe Zoom-Umrechnung
-   * - dieselbe History-Behandlung
-   * - identisches Verhalten für alle Elementtypen
-   *
-   * Die Bewegungsgrenzen werden auf die tatsächliche Bar-Größe begrenzt.
-   */
-  function bindBarItemDrag(
-    domEl,
-    item,
-    barEl,
-    target,
-    cfg
-  ) {
-    const canvasHelper =
-      window.WebBuilderCanvas;
+  // Nutzt ausschließlich das zentrale Drag-System aus canvas.js.
+  function bindBarItemDrag(domEl, item, barEl) {
+    const canvas = window.WebBuilderCanvas;
 
-    if (
-      !canvasHelper ||
-      typeof canvasHelper.makeDraggable !==
-        "function"
-    ) {
+    if (!canvas?.makeDraggable) {
       console.warn(
         "WebBuilderHeaderFooter: canvas drag helper missing."
       );
       return;
     }
 
-    const barWidth =
-      barEl.clientWidth ||
-      barEl.getBoundingClientRect()
-        .width;
-
-    const barHeight =
-      barEl.clientHeight ||
-      Number(cfg.height) ||
-      0;
-
-    const elementWidth =
-      domEl.offsetWidth || 0;
-
-    const elementHeight =
-      domEl.offsetHeight || 0;
-
-    const maxX = Math.max(
-      0,
-      barWidth - elementWidth
-    );
-
-    const maxY = Math.max(
-      0,
-      barHeight - elementHeight
-    );
-
-    canvasHelper.makeDraggable(
+    canvas.makeDraggable(
       domEl,
       item,
       barEl,
       {
-        minX: 0,
-        minY: 0,
-        maxX,
-        maxY
+        getBounds: () => ({
+          minX: 0,
+          minY: 0,
+          maxX: Math.max(
+            0,
+            barEl.clientWidth - domEl.offsetWidth
+          ),
+          maxY: Math.max(
+            0,
+            barEl.clientHeight - domEl.offsetHeight
+          )
+        })
       }
     );
   }
 
-  function buildBarElement(
-    target
-  ) {
-    const isFooter =
-      target === "footer";
+  function buildBarElement(target) {
+    const isFooter = target === "footer";
 
     const cfg =
       isFooter
         ? getFooter()
         : getHeader();
 
-    const bar =
-      document.createElement(
-        "div"
-      );
+    const bar = document.createElement("div");
 
     const useSticky =
       !isFooter &&
@@ -794,151 +467,82 @@
 
     bar.className =
       "builder-bar" +
-      (useSticky
-        ? " sticky-header"
-        : "");
+      (useSticky ? " sticky-header" : "");
 
-    bar.dataset.barTarget =
-      target;
+    bar.dataset.barTarget = target;
 
-    bar.style.position =
-      useSticky
-        ? "sticky"
-        : "absolute";
-
+    bar.style.position = useSticky ? "sticky" : "absolute";
     bar.style.left = "0";
     bar.style.right = "0";
+    bar.style.top = isFooter ? "" : "0";
+    bar.style.bottom = isFooter ? "0" : "";
+    bar.style.height = cfg.height + "px";
+    bar.style.zIndex = isFooter ? "250" : "300";
+    bar.style.cssText += backgroundCss(target);
 
-    if (isFooter) {
-      bar.style.bottom = "0";
-    } else {
-      bar.style.top = "0";
-    }
+    cfg.items.forEach(item => {
+      const el = document.createElement("div");
 
-    bar.style.height =
-      cfg.height + "px";
+      const isSelected =
+        state.selectedBarItemRef &&
+        state.selectedBarItemRef.target === target &&
+        state.selectedBarItemRef.id === item.id;
 
-    bar.style.zIndex =
-      isFooter ? "250" : "300";
-
-    bar.style.cssText +=
-      backgroundCss(target);
-
-    cfg.items.forEach(
-      item => {
-        const el =
-          document.createElement(
-            "div"
-          );
-
-        const isSelected =
-          state.selectedBarItemRef &&
-          state.selectedBarItemRef
-            .target === target &&
-          state.selectedBarItemRef
-            .id === item.id;
-
-        el.className =
-          "bar-item" +
-          (isSelected
-            ? " bar-item-selected"
-            : "") +
-          (item.actionType &&
-          item.actionType !==
-            "none"
+      el.className =
+        "bar-item" +
+        (isSelected ? " bar-item-selected" : "") +
+        (
+          item.actionType &&
+          item.actionType !== "none"
             ? " has-action"
-            : "");
-
-        el.style.left =
-          (Number(item.x) || 0) +
-          "px";
-
-        el.style.top =
-          (Number(item.y) || 0) +
-          "px";
-
-        el.dataset.id =
-          item.id;
-
-        el.innerHTML =
-          itemInnerHtml(item);
-
-        const badge =
-          document.createElement(
-            "span"
-          );
-
-        badge.className =
-          "element-badge";
-
-        badge.innerText =
-          "⚡ Logik";
-
-        el.appendChild(
-          badge
+            : ""
         );
 
-        /*
-         * Klick:
-         * - Preview → Aktion
-         * - Editor → Auswahl
-         *
-         * Drag:
-         * - ausschließlich makeDraggable()
-         */
-        el.addEventListener(
-          "click",
-          e => {
-            e.stopPropagation();
+      el.style.left = (Number(item.x) || 0) + "px";
+      el.style.top = (Number(item.y) || 0) + "px";
+      el.dataset.id = item.id;
+      el.innerHTML = itemInnerHtml(item);
 
-            if (
-              state.isPreviewMode
-            ) {
-              window.WebBuilderActionRuntime?.execute?.(
-                item
-              );
-              return;
-            }
+      const badge = document.createElement("span");
+      badge.className = "element-badge";
+      badge.innerText = "⚡ Logik";
+      el.appendChild(badge);
 
-            selectItem(
-              target,
-              item.id
-            );
-          },
-          true
-        );
+      // Klick bleibt für Auswahl/Aktion zuständig.
+      // Drag läuft ausschließlich über makeDraggable().
+      el.addEventListener(
+        "click",
+        e => {
+          e.stopPropagation();
 
-        if (!state.isPreviewMode) {
-          bindBarItemDrag(
-            el,
-            item,
-            bar,
-            target,
-            cfg
-          );
-        }
+          if (state.isPreviewMode) {
+            window.WebBuilderActionRuntime?.execute?.(item);
+            return;
+          }
 
+          selectItem(target, item.id);
+        },
+        true
+      );
+
+      if (!state.isPreviewMode) {
+        // Wichtig: Das Element erst anhängen, damit clientWidth/offsetWidth
+        // beim eigentlichen Drag bereits echte Werte liefern.
+        bar.appendChild(el);
+        bindBarItemDrag(el, item, bar);
+      } else {
         bar.appendChild(el);
       }
-    );
+    });
 
     if (!state.isPreviewMode) {
-      const handle =
-        document.createElement(
-          "div"
-        );
+      const handle = document.createElement("div");
 
       handle.className =
         "bar-resize-handle " +
-        (isFooter
-          ? "top"
-          : "bottom");
+        (isFooter ? "top" : "bottom");
 
-      bindResizeHandle(
-        handle,
-        target
-      );
-
+      bindResizeHandle(handle, target);
       bar.appendChild(handle);
     }
 
@@ -959,48 +563,33 @@
   }
 
   function renderBars() {
-    const canvasEl =
-      document.getElementById(
-        "canvas"
-      );
-
+    const canvasEl = byId("canvas");
     if (!canvasEl) return;
 
     canvasEl
-      .querySelectorAll(
-        ".builder-bar"
-      )
-      .forEach(el =>
-        el.remove()
-      );
+      .querySelectorAll(".builder-bar")
+      .forEach(el => el.remove());
 
     if (state.headerEnabled) {
       canvasEl.insertBefore(
-        buildBarElement(
-          "header"
-        ),
+        buildBarElement("header"),
         canvasEl.firstChild
       );
     }
 
     if (state.footerEnabled) {
       canvasEl.appendChild(
-        buildBarElement(
-          "footer"
-        )
+        buildBarElement("footer")
       );
     }
   }
 
-  // ---------- left sidebar ----------
-
   function renderList(target) {
-    const list =
-      byId(
-        target === "footer"
-          ? "footer-items-list"
-          : "header-items-list"
-      );
+    const list = byId(
+      target === "footer"
+        ? "footer-items-list"
+        : "header-items-list"
+    );
 
     if (!list) return;
 
@@ -1015,35 +604,26 @@
         : '<p class="help-text">Noch keine Elemente.</p>';
 
     items.forEach(item => {
-      const isSel =
+      const selected =
         state.selectedBarItemRef &&
-        state.selectedBarItemRef
-          .target === target &&
-        state.selectedBarItemRef
-          .id === item.id;
+        state.selectedBarItemRef.target === target &&
+        state.selectedBarItemRef.id === item.id;
 
-      const row =
-        document.createElement(
-          "div"
-        );
+      const row = document.createElement("div");
 
       row.className =
         "item-row" +
-        (isSel
-          ? " active-item-row"
-          : "");
+        (selected ? " active-item-row" : "");
 
       row.innerHTML =
-        `<button type="button" class="bar-item-select" data-id="${esc(item.id)}" style="flex:1;text-align:left;">${item.type === "icon" ? esc(item.iconName || "Icon") : esc(item.text || "Text")}</button>` +
+        `<button type="button" class="bar-item-select" data-id="${esc(item.id)}" style="flex:1;text-align:left">${item.type === "icon" ? esc(item.iconName || "Icon") : esc(item.text || "Text")}</button>` +
         `<button type="button" class="item-delete bar-item-delete" data-id="${esc(item.id)}">✕</button>`;
 
       list.appendChild(row);
     });
   }
 
-  function syncBgControls(
-    target
-  ) {
+  function syncBgControls(target) {
     const type =
       target === "footer"
         ? state.footerBgType
@@ -1059,151 +639,67 @@
         ? state.footerBgImage
         : state.headerBgImage;
 
-    const typeSel =
-      byId(
-        `${target}-bg-type`
-      );
+    const typeSel = byId(`${target}-bg-type`);
+    const colorInput = byId(`${target}-bg-input`);
+    const urlInput = byId(`${target}-bg-image-url`);
 
-    const colorInput =
-      byId(
-        `${target}-bg-input`
-      );
-
-    const urlInput =
-      byId(
-        `${target}-bg-image-url`
-      );
-
-    if (typeSel) {
-      typeSel.value =
-        type;
-    }
-
-    if (colorInput) {
-      colorInput.value =
-        color;
-    }
+    if (typeSel) typeSel.value = type;
+    if (colorInput) colorInput.value = color;
 
     if (
       urlInput &&
-      document.activeElement !==
-        urlInput
+      document.activeElement !== urlInput
     ) {
-      urlInput.value =
-        image || "";
+      urlInput.value = image || "";
     }
 
-    byId(
-      `${target}-bg-solid-group`
-    )?.classList.toggle(
-      "hidden",
-      type !== "solid"
-    );
+    byId(`${target}-bg-solid-group`)
+      ?.classList.toggle("hidden", type !== "solid");
 
-    byId(
-      `${target}-bg-image-group`
-    )?.classList.toggle(
-      "hidden",
-      type !== "image"
-    );
+    byId(`${target}-bg-image-group`)
+      ?.classList.toggle("hidden", type !== "image");
   }
 
   function render() {
-    const h =
-      getHeader();
+    const h = getHeader();
+    const f = getFooter();
 
-    const f =
-      getFooter();
+    const headerToggle = byId("header-toggle");
+    if (headerToggle) headerToggle.checked = h.enabled;
 
-    if (
-      byId("header-toggle")
-    ) {
-      byId(
-        "header-toggle"
-      ).checked =
-        h.enabled;
-    }
+    const stickyToggle = byId("header-sticky-toggle");
+    if (stickyToggle) stickyToggle.checked = h.sticky;
 
-    if (
-      byId(
-        "header-sticky-toggle"
-      )
-    ) {
-      byId(
-        "header-sticky-toggle"
-      ).checked =
-        h.sticky;
-    }
+    const headerHeight = byId("header-height-input");
+    if (headerHeight) headerHeight.value = h.height;
 
-    if (
-      byId(
-        "header-height-input"
-      )
-    ) {
-      byId(
-        "header-height-input"
-      ).value =
-        h.height;
-    }
+    const footerToggle = byId("footer-toggle");
+    if (footerToggle) footerToggle.checked = f.enabled;
 
-    if (
-      byId("footer-toggle")
-    ) {
-      byId(
-        "footer-toggle"
-      ).checked =
-        f.enabled;
-    }
+    const footerHeight = byId("footer-height-input");
+    if (footerHeight) footerHeight.value = f.height;
 
-    if (
-      byId(
-        "footer-height-input"
-      )
-    ) {
-      byId(
-        "footer-height-input"
-      ).value =
-        f.height;
-    }
+    syncBgControls("header");
+    syncBgControls("footer");
 
-    syncBgControls(
-      "header"
-    );
-
-    syncBgControls(
-      "footer"
-    );
-
-    renderList(
-      "header"
-    );
-
-    renderList(
-      "footer"
-    );
-
+    renderList("header");
+    renderList("footer");
     renderEditor();
     renderBars();
   }
 
-  function populateBarIconSelect(
-    selectEl,
-    selectedName
-  ) {
+  function populateBarIconSelect(selectEl, selectedName) {
     if (!selectEl) return;
 
-    const registry =
-      window.WebBuilderIconRegistry;
+    const registry = window.WebBuilderIconRegistry;
 
     const allIcons =
       registry &&
-      typeof registry.getAll ===
-        "function"
+      typeof registry.getAll === "function"
         ? registry.getAll()
         : {};
 
-    const names =
-      Object.keys(allIcons);
+    const names = Object.keys(allIcons);
 
     selectEl.innerHTML =
       names.length
@@ -1215,329 +711,161 @@
             .join("")
         : '<option value="">— Kein Icon verfügbar —</option>';
 
-    if (
-      selectedName &&
-      names.includes(selectedName)
-    ) {
-      selectEl.value =
-        selectedName;
+    if (selectedName && names.includes(selectedName)) {
+      selectEl.value = selectedName;
     }
   }
 
   function renderEditor() {
-    const panel =
-      byId(
-        "bar-inspector-form"
-      );
+    const panel = byId("bar-inspector-form");
+    const emptyMsg = byId("no-selection");
+    const elementForm = byId("inspector-form");
+    const sel = currentSelection();
 
-    const emptyMsg =
-      byId(
-        "no-selection"
-      );
+    const showBar = !!sel && !state.selectedElementId;
 
-    const elementForm =
-      byId(
-        "inspector-form"
-      );
-
-    const sel =
-      currentSelection();
-
-    const showBar =
-      !!sel &&
-      !state.selectedElementId;
-
-    if (panel) {
-      panel.classList.toggle(
-        "hidden",
-        !showBar
-      );
-    }
+    panel?.classList.toggle("hidden", !showBar);
 
     if (showBar) {
-      elementForm?.classList.add(
-        "hidden"
-      );
-
-      emptyMsg?.classList.add(
-        "hidden"
-      );
-    } else if (
-      !state.selectedElementId
-    ) {
-      emptyMsg?.classList.remove(
-        "hidden"
-      );
+      elementForm?.classList.add("hidden");
+      emptyMsg?.classList.add("hidden");
+    } else if (!state.selectedElementId) {
+      emptyMsg?.classList.remove("hidden");
     }
 
     if (!sel) return;
 
     const { item } = sel;
+    const isIcon = item.type === "icon";
 
-    const isIcon =
-      item.type === "icon";
-
-    byId(
-      "bar-item-text-group"
-    )?.classList.toggle(
-      "hidden",
-      isIcon
-    );
-
-    byId(
-      "bar-group-icon"
-    )?.classList.toggle(
-      "hidden",
-      !isIcon
-    );
+    byId("bar-item-text-group")?.classList.toggle("hidden", isIcon);
+    byId("bar-group-icon")?.classList.toggle("hidden", !isIcon);
 
     if (isIcon) {
       populateBarIconSelect(
-        byId(
-          "bar-prop-icon"
-        ),
+        byId("bar-prop-icon"),
         item.iconName
       );
     }
 
-    if (
-      byId("bar-prop-text") &&
-      document.activeElement !==
-        byId("bar-prop-text")
-    ) {
-      byId(
-        "bar-prop-text"
-      ).value =
-        item.text || "";
+    const text = byId("bar-prop-text");
+    if (text && document.activeElement !== text) {
+      text.value = item.text || "";
     }
 
-    if (
-      byId("bar-prop-size") &&
-      document.activeElement !==
-        byId("bar-prop-size")
-    ) {
-      byId(
-        "bar-prop-size"
-      ).value =
-        Number(item.size) ||
-        16;
+    const size = byId("bar-prop-size");
+    if (size && document.activeElement !== size) {
+      size.value = Number(item.size) || 16;
     }
 
-    if (
-      byId("bar-prop-color")
-    ) {
-      byId(
-        "bar-prop-color"
-      ).value =
-        item.color ||
-        "#ffffff";
-    }
+    const color = byId("bar-prop-color");
+    if (color) color.value = item.color || "#ffffff";
 
-    if (
-      byId(
-        "bar-prop-font-family"
-      )
-    ) {
-      byId(
-        "bar-prop-font-family"
-      ).value =
-        item.fontFamily ||
-        "inherit";
-    }
+    const font = byId("bar-prop-font-family");
+    if (font) font.value = item.fontFamily || "inherit";
 
-    ["bold", "italic", "underline"]
-      .forEach(f => {
-        byId(
-          `bar-ttb-${f}`
-        )?.classList.toggle(
+    ["bold", "italic", "underline"].forEach(f => {
+      byId(`bar-ttb-${f}`)
+        ?.classList.toggle("active", !!item[f]);
+    });
+
+    ["left", "center", "right"].forEach(a => {
+      byId(`bar-ttb-align-${a}`)
+        ?.classList.toggle(
           "active",
-          !!item[f]
+          (item.align || "left") === a
         );
-      });
+    });
 
-    ["left", "center", "right"]
-      .forEach(a => {
-        byId(
-          `bar-ttb-align-${a}`
-        )?.classList.toggle(
-          "active",
-          (item.align ||
-            "left") === a
-        );
-      });
-
-    if (
-      byId(
-        "bar-prop-action-type"
-      )
-    ) {
-      byId(
-        "bar-prop-action-type"
-      ).value =
-        item.actionType ||
-        "none";
+    const actionType = byId("bar-prop-action-type");
+    if (actionType) {
+      actionType.value = item.actionType || "none";
     }
 
+    const actionUrl = byId("bar-prop-action-url");
     if (
-      byId(
-        "bar-prop-action-url"
-      ) &&
-      document.activeElement !==
-        byId(
-          "bar-prop-action-url"
-        )
+      actionUrl &&
+      document.activeElement !== actionUrl
     ) {
-      byId(
-        "bar-prop-action-url"
-      ).value =
-        item.actionUrl || "";
+      actionUrl.value = item.actionUrl || "";
     }
 
+    const actionMsg = byId("bar-prop-action-msg");
     if (
-      byId(
-        "bar-prop-action-msg"
-      ) &&
-      document.activeElement !==
-        byId(
-          "bar-prop-action-msg"
-        )
+      actionMsg &&
+      document.activeElement !== actionMsg
     ) {
-      byId(
-        "bar-prop-action-msg"
-      ).value =
-        item.actionMsg || "";
+      actionMsg.value = item.actionMsg || "";
     }
 
-    byId(
-      "bar-group-action-url"
-    )?.classList.toggle(
-      "hidden",
-      item.actionType !==
-        "open-url"
-    );
-
-    byId(
-      "bar-group-action-msg"
-    )?.classList.toggle(
-      "hidden",
-      ![
-        "alert-msg",
-        "open-custom-modal"
-      ].includes(
-        item.actionType
-      )
-    );
-
-    byId(
-      "bar-group-product"
-    )?.classList.toggle(
-      "hidden",
-      item.actionType !==
-        "cart-add"
-    );
-
-    const isModal =
-      item.actionType ===
-      "open-custom-modal";
-
-    const isAlert =
-      item.actionType ===
-      "alert-msg";
-
-    if (
-      byId(
-        "bar-prop-modal-title"
-      ) &&
-      document.activeElement !==
-        byId(
-          "bar-prop-modal-title"
-        )
-    ) {
-      byId(
-        "bar-prop-modal-title"
-      ).value =
-        item.modalTitle || "";
-    }
-
-    if (
-      byId(
-        "bar-prop-modal-body"
-      ) &&
-      document.activeElement !==
-        byId(
-          "bar-prop-modal-body"
-        )
-    ) {
-      byId(
-        "bar-prop-modal-body"
-      ).value =
-        item.modalBody || "";
-    }
-
-    if (
-      byId(
-        "bar-prop-modal-footer"
-      ) &&
-      document.activeElement !==
-        byId(
-          "bar-prop-modal-footer"
-        )
-    ) {
-      byId(
-        "bar-prop-modal-footer"
-      ).value =
-        item.modalFooter || "";
-    }
-
-    if (
-      byId(
-        "bar-prop-message-position"
-      )
-    ) {
-      byId(
-        "bar-prop-message-position"
-      ).value =
-        item.messagePosition ||
-        "bottom-right";
-    }
-
-    byId(
-      "bar-group-modal-title"
-    )?.classList.toggle(
-      "hidden",
-      !isModal
-    );
-
-    byId(
-      "bar-group-modal-body"
-    )?.classList.toggle(
-      "hidden",
-      !isModal
-    );
-
-    byId(
-      "bar-group-modal-footer"
-    )?.classList.toggle(
-      "hidden",
-      !isModal
-    );
-
-    byId(
-      "bar-group-message-position"
-    )?.classList.toggle(
-      "hidden",
-      !isAlert
-    );
-
-    const productSel =
-      byId(
-        "bar-prop-product"
+    byId("bar-group-action-url")
+      ?.classList.toggle(
+        "hidden",
+        item.actionType !== "open-url"
       );
+
+    byId("bar-group-action-msg")
+      ?.classList.toggle(
+        "hidden",
+        !["alert-msg", "open-custom-modal"].includes(item.actionType)
+      );
+
+    byId("bar-group-product")
+      ?.classList.toggle(
+        "hidden",
+        item.actionType !== "cart-add"
+      );
+
+    const isModal = item.actionType === "open-custom-modal";
+    const isAlert = item.actionType === "alert-msg";
+
+    const modalTitle = byId("bar-prop-modal-title");
+    if (
+      modalTitle &&
+      document.activeElement !== modalTitle
+    ) {
+      modalTitle.value = item.modalTitle || "";
+    }
+
+    const modalBody = byId("bar-prop-modal-body");
+    if (
+      modalBody &&
+      document.activeElement !== modalBody
+    ) {
+      modalBody.value = item.modalBody || "";
+    }
+
+    const modalFooter = byId("bar-prop-modal-footer");
+    if (
+      modalFooter &&
+      document.activeElement !== modalFooter
+    ) {
+      modalFooter.value = item.modalFooter || "";
+    }
+
+    const messagePosition = byId("bar-prop-message-position");
+    if (messagePosition) {
+      messagePosition.value =
+        item.messagePosition || "bottom-right";
+    }
+
+    byId("bar-group-modal-title")
+      ?.classList.toggle("hidden", !isModal);
+
+    byId("bar-group-modal-body")
+      ?.classList.toggle("hidden", !isModal);
+
+    byId("bar-group-modal-footer")
+      ?.classList.toggle("hidden", !isModal);
+
+    byId("bar-group-message-position")
+      ?.classList.toggle("hidden", !isAlert);
+
+    const productSel = byId("bar-prop-product");
 
     if (productSel) {
       const list =
-        window.WebBuilderProducts?.getAll?.() ||
-        [];
+        window.WebBuilderProducts?.getAll?.() || [];
 
       productSel.innerHTML =
         list.length
@@ -1549,79 +877,56 @@
               .join("")
           : '<option value="">— Kein Produkt —</option>';
 
-      productSel.value =
-        item.productId || "";
+      productSel.value = item.productId || "";
     }
   }
 
-  function updateSelected(
-    patch
-  ) {
-    const sel =
-      currentSelection();
-
+  function updateSelected(patch) {
+    const sel = currentSelection();
     if (!sel) return;
 
-    transact(() =>
+    transact(() => {
       updateItem(
         sel.ref.id,
         patch,
         sel.ref.target,
         false
-      )
-    );
+      );
+    });
   }
 
   function transact(fn) {
     window.WebBuilderHistory?.arm();
-
     fn();
-
     window.WebBuilderHistory?.commit();
-
     render();
   }
 
-  function bindControl(
-    id,
-    fn,
-    event = "change"
-  ) {
+  function bindControl(id, fn, event = "change") {
     byId(id)?.addEventListener(
       event,
       e => {
         e.preventDefault();
         e.stopImmediatePropagation();
-
-        transact(
-          () => fn(e)
-        );
+        transact(() => fn(e));
       },
       true
     );
   }
 
-  function bindBgControls(
-    target
-  ) {
-    byId(
-      `${target}-bg-type`
-    )?.addEventListener(
+  function bindBgControls(target) {
+    byId(`${target}-bg-type`)?.addEventListener(
       "change",
       e => {
         transact(() => {
-          if (
-            target === "footer"
-          ) {
+          if (target === "footer") {
             state.footerBgType =
-              e.target.value ===
-              "image"
+              e.target.value === "image"
                 ? "image"
                 : "solid";
           } else {
             state.headerBgType =
-              e.target.value ===
-              "image"
+              e.target.value === "image"
                 ? "image"
                 : "solid";
           }
@@ -1630,96 +935,58 @@
       true
     );
 
-    byId(
-      `${target}-bg-input`
-    )?.addEventListener(
+    byId(`${target}-bg-input`)?.addEventListener(
       "input",
       e => {
         transact(() => {
-          if (
-            target === "footer"
-          ) {
-            state.footerBgColor =
-              e.target.value;
+          if (target === "footer") {
+            state.footerBgColor = e.target.value;
           } else {
-            state.headerBgColor =
-              e.target.value;
+            state.headerBgColor = e.target.value;
           }
         });
       },
       true
     );
 
-    byId(
-      `${target}-bg-image-url`
-    )?.addEventListener(
+    byId(`${target}-bg-image-url`)?.addEventListener(
       "change",
       e => {
         transact(() => {
-          if (
-            target === "footer"
-          ) {
-            state.footerBgImage =
-              e.target.value;
+          if (target === "footer") {
+            state.footerBgImage = e.target.value;
           } else {
-            state.headerBgImage =
-              e.target.value;
+            state.headerBgImage = e.target.value;
           }
         });
       },
       true
     );
 
-    byId(
-      `${target}-bg-image-file`
-    )?.addEventListener(
+    byId(`${target}-bg-image-file`)?.addEventListener(
       "change",
       e => {
-        const file =
-          e.target.files?.[0];
+        const file = e.target.files?.[0];
 
-        if (
-          !file ||
-          !file.type.startsWith(
-            "image/"
-          )
-        ) {
-          return;
-        }
+        if (!file || !file.type.startsWith("image/")) return;
 
-        const reader =
-          new FileReader();
+        const reader = new FileReader();
 
         reader.onload = () => {
-          if (
-            typeof reader.result !==
-            "string"
-          ) {
-            return;
-          }
+          if (typeof reader.result !== "string") return;
 
           transact(() => {
-            if (
-              target === "footer"
-            ) {
-              state.footerBgImage =
-                reader.result;
-
-              state.footerBgType =
-                "image";
+            if (target === "footer") {
+              state.footerBgImage = reader.result;
+              state.footerBgType = "image";
             } else {
-              state.headerBgImage =
-                reader.result;
-
-              state.headerBgType =
-                "image";
+              state.headerBgImage = reader.result;
+              state.headerBgType = "image";
             }
           });
         };
 
-        reader.readAsDataURL(
-          file
-        );
+        reader.readAsDataURL(file);
       },
       true
     );
@@ -1728,183 +995,114 @@
   function bind() {
     bindControl(
       "header-toggle",
-      e =>
-        updateHeader(
-          {
-            enabled:
-              e.target.checked
-          },
-          false
-        )
+      e => updateHeader(
+        { enabled: e.target.checked },
+        false
+      )
     );
 
     bindControl(
       "header-sticky-toggle",
-      e =>
-        updateHeader(
-          {
-            sticky:
-              e.target.checked
-          },
-          false
-        )
+      e => updateHeader(
+        { sticky: e.target.checked },
+        false
+      )
     );
 
     bindControl(
       "header-height-input",
-      e =>
-        updateHeader(
-          {
-            height:
-              e.target.value
-          },
-          false
-        )
+      e => updateHeader(
+        { height: e.target.value },
+        false
+      )
     );
 
     bindControl(
       "footer-toggle",
-      e =>
-        updateFooter(
-          {
-            enabled:
-              e.target.checked
-          },
-          false
-        )
+      e => updateFooter(
+        { enabled: e.target.checked },
+        false
+      )
     );
 
     bindControl(
       "footer-height-input",
-      e =>
-        updateFooter(
-          {
-            height:
-              e.target.value
-          },
-          false
-        )
+      e => updateFooter(
+        { height: e.target.value },
+        false
+      )
     );
 
-    bindBgControls(
-      "header"
-    );
-
-    bindBgControls(
-      "footer"
-    );
+    bindBgControls("header");
+    bindBgControls("footer");
 
     [
-      [
-        "btn-add-header-text",
-        "header",
-        "text"
-      ],
-      [
-        "btn-add-header-icon",
-        "header",
-        "icon"
-      ],
-      [
-        "btn-add-footer-text",
-        "footer",
-        "text"
-      ],
-      [
-        "btn-add-footer-icon",
-        "footer",
-        "icon"
-      ]
-    ].forEach(
-      ([id, t, type]) =>
-        byId(id)?.addEventListener(
-          "click",
-          e => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
+      ["btn-add-header-text", "header", "text"],
+      ["btn-add-header-icon", "header", "icon"],
+      ["btn-add-footer-text", "footer", "text"],
+      ["btn-add-footer-icon", "footer", "icon"]
+    ].forEach(([id, target, type]) => {
+      byId(id)?.addEventListener(
+        "click",
+        e => {
+          e.preventDefault();
+          e.stopImmediatePropagation();
 
-            transact(() => {
-              const i =
-                addItem(
-                  type,
-                  t,
-                  type === "icon"
-                    ? {
-                        iconName:
-                          "arrow-right"
-                      }
-                    : {
-                        text:
-                          "Neuer Text"
-                      },
-                  false
-                );
+          transact(() => {
+            const item = addItem(
+              type,
+              target,
+              type === "icon"
+                ? { iconName: "arrow-right" }
+                : { text: "Neuer Text" },
+              false
+            );
 
-              state.selectedBarItemRef =
-                {
-                  target: t,
-                  id: i.id
-                };
+            state.selectedBarItemRef = {
+              target,
+              id: item.id
+            };
 
-              window.WebBuilderElements?.setSelected?.(
-                null
-              );
-            });
-          },
-          true
-        )
-    );
+            window.WebBuilderElements?.setSelected?.(null);
+          });
+        },
+        true
+      );
+    });
 
     document.addEventListener(
       "click",
       e => {
-        const s =
-          e.target.closest?.(
-            ".bar-item-select"
-          );
+        const select = e.target.closest?.(".bar-item-select");
+        const del = e.target.closest?.(".bar-item-delete");
 
-        const d =
-          e.target.closest?.(
-            ".bar-item-delete"
-          );
-
-        if (s) {
+        if (select) {
           e.preventDefault();
           e.stopImmediatePropagation();
 
-          const l =
-            s.closest(
-              "[id$='items-list']"
-            );
-
+          const list = select.closest("[id$='items-list']");
           selectItem(
-            l?.id ===
-              "footer-items-list"
+            list?.id === "footer-items-list"
               ? "footer"
               : "header",
-            s.dataset.id
+            select.dataset.id
           );
         }
 
-        if (d) {
+        if (del) {
           e.preventDefault();
           e.stopImmediatePropagation();
 
-          const l =
-            d.closest(
-              "[id$='items-list']"
-            );
-
-          const t =
-            l?.id ===
-              "footer-items-list"
+          const list = del.closest("[id$='items-list']");
+          const target =
+            list?.id === "footer-items-list"
               ? "footer"
               : "header";
 
           transact(() =>
             removeItem(
-              d.dataset.id,
-              t,
+              del.dataset.id,
+              target,
               false
             )
           );
@@ -1914,74 +1112,37 @@
     );
 
     [
-      [
-        "bar-prop-text",
-        "text"
-      ],
-      [
-        "bar-prop-color",
-        "color"
-      ],
-      [
-        "bar-prop-font-family",
-        "fontFamily"
-      ],
-      [
-        "bar-prop-action-url",
-        "actionUrl"
-      ],
-      [
-        "bar-prop-action-msg",
-        "actionMsg"
-      ],
-      [
-        "bar-prop-product",
-        "productId"
-      ],
-      [
-        "bar-prop-modal-title",
-        "modalTitle"
-      ],
-      [
-        "bar-prop-modal-body",
-        "modalBody"
-      ],
-      [
-        "bar-prop-modal-footer",
-        "modalFooter"
-      ],
-      [
-        "bar-prop-message-position",
-        "messagePosition"
-      ]
-    ].forEach(
-      ([id, f]) =>
-        byId(id)?.addEventListener(
-          "change",
-          e =>
-            updateSelected({
-              [f]:
-                e.target.value
-            }),
-          true
-        )
-    );
+      ["bar-prop-text", "text"],
+      ["bar-prop-color", "color"],
+      ["bar-prop-font-family", "fontFamily"],
+      ["bar-prop-action-url", "actionUrl"],
+      ["bar-prop-action-msg", "actionMsg"],
+      ["bar-prop-product", "productId"],
+      ["bar-prop-modal-title", "modalTitle"],
+      ["bar-prop-modal-body", "modalBody"],
+      ["bar-prop-modal-footer", "modalFooter"],
+      ["bar-prop-message-position", "messagePosition"]
+    ].forEach(([id, field]) => {
+      byId(id)?.addEventListener(
+        "change",
+        e =>
+          updateSelected({
+            [field]: e.target.value
+          }),
+        true
+      );
+    });
 
-    byId(
-      "bar-prop-icon"
-    )?.addEventListener(
+    byId("bar-prop-icon")?.addEventListener(
       "change",
       e =>
         updateSelected({
-          iconName:
-            e.target.value
+          iconName: e.target.value
         }),
       true
     );
 
-    byId(
-      "bar-prop-size"
-    )?.addEventListener(
+    byId("bar-prop-size")?.addEventListener(
       "change",
       e =>
         updateSelected({
@@ -1989,87 +1150,63 @@
             8,
             Math.min(
               300,
-              Number(
-                e.target.value
-              ) || 16
+              Number(e.target.value) || 16
             )
           )
         }),
       true
     );
 
-    byId(
-      "bar-prop-action-type"
-    )?.addEventListener(
+    byId("bar-prop-action-type")?.addEventListener(
       "change",
       e =>
         updateSelected({
-          actionType:
-            e.target.value
+          actionType: e.target.value
         }),
       true
     );
 
-    [
-      "bold",
-      "italic",
-      "underline"
-    ].forEach(
-      f =>
-        byId(
-          `bar-ttb-${f}`
-        )?.addEventListener(
-          "click",
-          e => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
+    ["bold", "italic", "underline"].forEach(f => {
+      byId(`bar-ttb-${f}`)?.addEventListener(
+        "click",
+        e => {
+          e.preventDefault();
+          e.stopImmediatePropagation();
 
-            const sel =
-              currentSelection();
+          const sel = currentSelection();
 
-            if (sel) {
-              updateSelected({
-                [f]:
-                  !sel.item[f]
-              });
-            }
-          },
-          true
-        )
-    );
-
-    [
-      "left",
-      "center",
-      "right"
-    ].forEach(
-      a =>
-        byId(
-          `bar-ttb-align-${a}`
-        )?.addEventListener(
-          "click",
-          e => {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-
+          if (sel) {
             updateSelected({
-              align: a
+              [f]: !sel.item[f]
             });
-          },
-          true
-        )
-    );
+          }
+        },
+        true
+      );
+    });
 
-    byId(
-      "btn-delete-bar-item"
-    )?.addEventListener(
+    ["left", "center", "right"].forEach(a => {
+      byId(`bar-ttb-align-${a}`)?.addEventListener(
+        "click",
+        e => {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+
+          updateSelected({
+            align: a
+          });
+        },
+        true
+      );
+    });
+
+    byId("btn-delete-bar-item")?.addEventListener(
       "click",
       e => {
         e.preventDefault();
         e.stopImmediatePropagation();
 
-        const sel =
-          currentSelection();
+        const sel = currentSelection();
 
         if (sel) {
           transact(() =>
@@ -2086,34 +1223,23 @@
 
     onChangeInternal();
 
-    state.subscribe?.(
-      e => {
-        if (
-          [
-            "header",
-            "footer",
-            "products",
-            "preview"
-          ].includes(e?.domain)
-        ) {
-          render();
-        }
+    state.subscribe?.(e => {
+      if (
+        ["header", "footer", "products", "preview"]
+          .includes(e?.domain)
+      ) {
+        render();
       }
-    );
+    });
 
     render();
   }
 
   function onChangeInternal() {
-    window.WebBuilderHeaderFooter.onChange(
-      render
-    );
+    window.WebBuilderHeaderFooter.onChange(render);
   }
 
-  if (
-    document.readyState ===
-    "loading"
-  ) {
+  if (document.readyState === "loading") {
     document.addEventListener(
       "DOMContentLoaded",
       bind,
@@ -2123,13 +1249,12 @@
     bind();
   }
 
-  window.WebBuilderHeaderFooterRuntime =
-    {
-      render,
-      renderBars,
-      selectItem,
-      clearSelection,
-      currentSelection,
-      itemInnerHtml
-    };
+  window.WebBuilderHeaderFooterRuntime = {
+    render,
+    renderBars,
+    selectItem,
+    clearSelection,
+    currentSelection,
+    itemInnerHtml
+  };
 })();
