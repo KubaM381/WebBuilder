@@ -462,13 +462,41 @@
     if (window.requestAnimationFrame) window.requestAnimationFrame(run); else window.setTimeout(run, 0);
   }
 
+  // NEU (Fix: Header/Footer-Icons ohne Reaktion auf Klick/Drag/Inspector):
+  // header-footer.js rendert Header/Footer direkt in #canvas (renderBars()),
+  // denselben Container, den dieser MutationObserver überwacht. Jede
+  // Header-/Footer-Interaktion (Auswahl, Drag-Ende, Farbe/Text/Aktion
+  // ändern) ersetzt die .builder-bar-Knoten und feuerte damit bisher immer
+  // auch einen kompletten Canvas-Re-Render (renderCanvas() hängt alle
+  // .placed-element-Knoten per appendChild ans Ende von #canvas an —
+  // also NACH der Footer-Bar). Da .placed-element ohne festen z-index rein
+  // über die DOM-Reihenfolge stapelt, lagen normale Canvas-Elemente danach
+  // unsichtbar über den Header-/Footer-Icons und fingen deren
+  // mousedown/click-Events ab, bevor sie header-footer.js erreichten —
+  // Drag und Selektion an Header-/Footer-Icons wirkten dadurch komplett
+  // "tot".
+  //
+  // Fix: Mutationen, die AUSSCHLIESSLICH .builder-bar-Knoten betreffen
+  // (Hinzufügen/Entfernen), lösen keinen Re-Render mehr aus — header-footer.js
+  // rendert seinen eigenen Bereich bereits vollständig selbst
+  // (renderBars()) und braucht dafür keine Hilfe von canvas.js. Ein echter
+  // .placed-element-Wechsel (Hinzufügen/Löschen/Duplizieren eines
+  // Canvas-Elements) enthält weiterhin mindestens einen Knoten ohne die
+  // Klasse "builder-bar" und löst wie bisher scheduleRender() aus.
+  function isBarOnlyMutation(mutation) {
+    const nodes = [...(mutation.addedNodes || []), ...(mutation.removedNodes || [])];
+    if (!nodes.length) return false;
+    return nodes.every(node => node.nodeType === 1 && node.classList && node.classList.contains("builder-bar"));
+  }
+
   function installCanvasOwnership() {
     const canvasEl = getCanvas();
     if (!canvasEl || !window.MutationObserver) return;
     if (canvasObserver) canvasObserver.disconnect();
     canvasObserver = new MutationObserver(mutations => {
       if (rendering) return;
-      if (mutations.some(mutation => mutation.type === "childList")) scheduleRender();
+      const relevant = mutations.filter(mutation => mutation.type === "childList" && !isBarOnlyMutation(mutation));
+      if (relevant.length) scheduleRender();
     });
     canvasObserver.observe(canvasEl, { childList: true });
   }
