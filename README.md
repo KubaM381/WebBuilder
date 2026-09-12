@@ -20,7 +20,8 @@ WebBuilder/
     ├── README.md          module overview, see there for details
     ├── builder.js          bootstrap / load order
     ├── *.js                domain modules (state, canvas, cart, products, ...)
-    ├── ui/                 shared HTML builders (see js/README.md)
+    ├── ui/                 cross-domain UI helpers: toast, modals, shared
+    │                      inspector markup (see js/README.md)
     └── Supabase/           Supabase client, auth, project/page CRUD, cloud modal UI
 ```
 
