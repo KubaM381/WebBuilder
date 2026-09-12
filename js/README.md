@@ -1,114 +1,202 @@
-# JavaScript-Architektur
+# JavaScript Architecture
 
-Kein Bundler, kein Framework. Alle Module hängen ihre öffentliche API an `window.WebBuilderXxx`. `js/builder.js` lädt alle anderen Dateien in fester Reihenfolge per `document.write` – **die Reihenfolge in `builder.js` ist funktional relevant**, nicht nur kosmetisch. Ausnahme: die drei `type="module"`-Zeilen am Ende (Supabase) — deren tatsächliche Ladereihenfolge wird vom Browser über ES-`import`-Statements aufgelöst, nicht über die `document.write()`-Reihenfolge.
+No bundler, no framework. Every module attaches its public API to
+`window.WebBuilderXxx`. `js/builder.js` loads all other files in a fixed
+order via `document.write` — **the order in `builder.js` is functionally
+relevant**, not just cosmetic. Exception: the three `type="module"` lines
+at the end (Supabase) — their actual load order is resolved by the browser
+via ES `import` statements, not by `document.write()` order.
 
-## Ordnerstruktur
+## Folder structure
 
 ```text
 js/
-├── builder.js            Bootstrap/Ladereihenfolge
-├── state.js               gemeinsamer State + Event-System + Utils
-├── toast.js                Toast-Benachrichtigungen
-├── storage.js              Snapshots, lokales Speichern, Undo/Redo-Service
-├── elements.js             Canvas-Elemente (CRUD) + Icon-Registry
-├── products.js             Produktverwaltung (CRUD + Tab-UI)
-├── cart.js                 Warenkorb (Daten + Drawer + Konfig-UI)
-├── canvas.js               Rendering, Zoom, Drag&Drop, Hintergrund
-├── inspector.js            Eigenschaften-Panel für Canvas-Elemente
-├── toolbar.js               Zoom-Buttons, Undo/Redo-Buttons, Speichern
-├── header-footer.js        Header/Footer (Daten + Rendering + Inspector)
-├── export.js                Statischer HTML-Export
-├── modals.js                 Generisches Modal + positionierte Meldungen
-├── preview.js                Vorschau-Modus + Klick-Aktions-Runtime
-├── README.md                 diese Datei
-└── Supabase/                 siehe eigenes README dort
+├── builder.js            bootstrap / load order
+├── state.js               shared state + event system + utils
+├── toast.js                toast notifications
+├── storage.js              snapshots, local save, undo/redo service
+├── elements.js             canvas elements (CRUD) + icon registry
+├── products.js             product management (CRUD + tab UI)
+├── cart.js                 cart (data + drawer + config UI)
+├── canvas.js               rendering, zoom, drag & drop, background
+├── inspector.js            properties panel for canvas elements
+├── toolbar.js               zoom buttons, undo/redo buttons, save
+├── header-footer.js        header/footer (data + rendering + inspector)
+├── export.js                static HTML export
+├── modals.js                 generic modal + positioned messages
+├── preview.js                preview mode + click-action runtime
+├── README.md                 this file
+└── Supabase/                 see its own README
     ├── supabase-config.js
     ├── supabase-data.js
     ├── supabase-ui.js
     └── README.md
 ```
 
-## Ladereihenfolge (aus `builder.js`)
+## Load order (from `builder.js`)
 
 ```text
 state.js → toast.js → storage.js → elements.js → products.js → cart.js
 → canvas.js → inspector.js → toolbar.js → header-footer.js → export.js
 → modals.js → preview.js
-→ Supabase/supabase-config.js (Modul)
-→ Supabase/supabase-data.js (Modul)
-→ Supabase/supabase-ui.js (Modul)
+→ Supabase/supabase-config.js (module)
+→ Supabase/supabase-data.js (module)
+→ Supabase/supabase-ui.js (module)
 ```
 
-Wichtigste Abhängigkeit: **`products.js` vor `cart.js`**, da `cart.js` Produkte ausschließlich über `window.WebBuilderProducts` referenziert (keine eigenen Produktdaten).
+Most important dependency: **`products.js` before `cart.js`**, since
+`cart.js` references products exclusively via `window.WebBuilderProducts`
+(no own product data).
 
-## Zentrale Bausteine
+## Core building blocks
 
 ### `state.js`
-Definiert `window.WebBuilderState` – den kompletten Anwendungszustand (Elemente, Produkte, Warenkorb, Header/Footer, Hintergrund, Zoom, History-Stacks). Stellt außerdem das Event-System bereit:
+Defines `window.WebBuilderState` — the full application state (elements,
+products, cart, header/footer, background, zoom, history stacks). Also
+provides the event system:
 
-- `state.subscribe(fn)` – Listener registrieren, bekommt `{domain, action, payload, state}`.
-- `state.notify(domain, action, payload)` – von jedem Modul aufgerufen, wenn sich seine Daten ändern.
+- `state.subscribe(fn)` — register a listener, receives
+  `{domain, action, payload, state}`.
+- `state.notify(domain, action, payload)` — called by any module when its
+  data changes.
 
-Jedes andere Modul liest/schreibt ausschließlich über dieses `state`-Objekt – kein Modul hält eigenen, parallelen Zustand. Enthält außerdem `window.WebBuilderUtils` (`normalizeInPlace`, `escapeHtml`) als zentrale, projektweit genutzte Hilfsfunktionen.
+Every other module reads/writes exclusively through this `state` object —
+no module keeps its own parallel state. Also exposes
+`window.WebBuilderUtils` (`normalizeInPlace`, `escapeHtml`) as shared,
+project-wide helpers.
 
 ### `storage.js`
-Exponiert `window.WebBuilderStorage` und `window.WebBuilderHistory`.
+Exposes `window.WebBuilderStorage` and `window.WebBuilderHistory`.
 
-- `createSnapshot()` / `applySnapshot()` sind die **einzige** Serialisierungsform des gesamten Projekts – genutzt von lokalem Speichern, Undo/Redo und Supabase. Neue speicherbare Felder müssen hier ergänzt werden.
-- `armHistory()` / `commitHistory()` kapseln eine Undo-Transaktion (vor einer Änderung "scharf machen", danach "committen").
-- `WebBuilderHistory.undoSnapshot()` / `.redoSnapshot()` liefern Snapshots zum Zurück-/Wiederherstellen.
+- `createSnapshot()` / `applySnapshot()` are the **only** serialization
+  form for the whole project — used by local save, undo/redo and Supabase.
+  New persistable fields must be added here.
+- `armHistory()` / `commitHistory()` wrap an undo transaction (arm before a
+  change, commit after).
+- `WebBuilderHistory.undoSnapshot()` / `.redoSnapshot()` return snapshots
+  to restore.
+- `normalizeRuntimeState()` calls each domain's own `normalizeState()`
+  (elements, products, cart, header/footer, canvas) after every
+  load/apply — this is where legacy-field migrations (see `elements.js`)
+  run.
 
 ### `toast.js`
-`window.WebBuilderToast.show(message, type)` – einzige Stelle für die unten rechts gestapelten Benachrichtigungen. `buildToastNode()` baut das rohe Toast-Markup und wird auch von `modals.js` (`openPositionedMessage()`) wiederverwendet.
+`window.WebBuilderToast.show(message, type)` — single place for the
+stacked bottom-right notifications. `buildToastNode()` builds the raw
+toast markup, also reused by `modals.js` (`openPositionedMessage()`).
 
 ### `modals.js`
-`window.WebBuilderModals` – generisches zentrales Modal (`open`, `openMessage`, `close`) sowie `openPositionedMessage()` für frei positionierte Meldungen (oben/unten/links/rechts/zentriert, konfigurierbar im Inspector).
+`window.WebBuilderModals` — generic central modal (`open`, `openMessage`,
+`close`) plus `openPositionedMessage()` for freely positioned messages
+(top/bottom/left/right/center, configurable in the inspector).
 
-## Fachliche Domänen-Module
+## Domain modules
 
 ### `elements.js`
-Canvas-Elemente (Text, Headline, Button, Bild, Box, Shape, Icon) als reine Daten: CRUD (`add`, `update`, `remove`, `duplicate`), Auswahl (`setSelected`/`getSelected`). Enthält außerdem die **Icon-Registry** (`window.WebBuilderIconRegistry`: `register`, `get`, `getAll`, `addCustom`, `getCustomNames`) – reine Daten/Registry, kein DOM-Zugriff.
+Canvas elements (text, headline, button, image, box, shape, icon) as plain
+data: CRUD (`add`, `update`, `remove`, `duplicate`), selection
+(`setSelected`/`getSelected`). `normalizeState()` migrates legacy
+click-action field names (`action`, `action_type`, `url`, `message`,
+`product_id`, …) from elements saved before the
+`actionType`/`actionUrl`/`actionMsg`/`productId` rename — same pattern as
+`products.js`/`cart.js`/`header-footer.js`. Also contains the **icon
+registry** (`window.WebBuilderIconRegistry`: `register`, `get`, `getAll`,
+`addCustom`, `getCustomNames`) — pure data/registry, no DOM access.
 
 ### `canvas.js`
-Rendering der Canvas-Elemente, Zoom, Zeichenflächen-Größe, Drag-and-Drop aus der Palette, Hintergrund-Editor-Bindung, Palette-UI für eigene Icons. Besitzt außerdem den **gemeinsamen Interaktions-Controller** `attachInteraction()` (Klick + Drag über Pointer Events, mit Bewegungsschwelle und `state.dragLock`), den auch `header-footer.js` für Bar-Elemente wiederverwendet.
+Rendering of canvas elements, zoom, canvas size, drag-and-drop from the
+palette, background-editor binding, palette UI for custom icons. Also owns
+the **shared interaction controller** `attachInteraction()` (click + drag
+via Pointer Events, with a movement threshold and `state.dragLock`), which
+`header-footer.js` reuses for bar elements.
 
 ### `inspector.js`
-Rechtes Eigenschaften-Panel für normale Canvas-Elemente: Textinhalt, Bild, Größe, Textformat, Klick-Aktionen (`actionType`/`actionUrl`/`actionMsg`/`productId`), erweiterte Eigenschaften (Icon-Rahmen, Formstil, Modal-Inhalt, Meldungsposition), Duplizieren/Löschen.
+Right-hand properties panel for normal canvas elements: text content,
+image, size, text formatting, click actions
+(`actionType`/`actionUrl`/`actionMsg`/`productId`), advanced properties
+(icon frame, shape style, modal content, message position),
+duplicate/delete.
 
 ### `header-footer.js`
-Eigenständige Domäne für Header/Footer: Zustand, Rendering der Leisten samt Elementen auf dem Canvas, Resize-Handle, sowie das **eigene rechte Inspector-Panel** für Bar-Elemente (separat vom normalen Element-Inspector, da beide Panels sich gegenseitig ausschließen).
+Standalone domain for header/footer: state, rendering of the bars with
+their elements on the canvas, resize handle, and its **own right-hand
+inspector panel** for bar elements (separate from the normal element
+inspector, since both panels are mutually exclusive).
 
 ### `products.js`
-Produktverwaltung: CRUD + Normalisierung + das Rendering/die Bedienung des Produkt-Tabs (`#product-list`, `#btn-add-product`). `window.WebBuilderProducts` ist die kanonische Schnittstelle, die von `inspector.js`, `header-footer.js`, `preview.js`, `storage.js`, `cart.js` genutzt wird. `window.WebBuilderProductsRuntime.render()` rendert den Tab neu.
+Product management: CRUD + normalization + rendering/handling of the
+product tab (`#product-list`, `#btn-add-product`). `window.WebBuilderProducts`
+is the canonical interface used by `inspector.js`, `header-footer.js`,
+`preview.js`, `storage.js`, `cart.js`.
+`window.WebBuilderProductsRuntime.render()` re-renders the tab.
 
 ### `cart.js`
-Warenkorb-Domäne: Items, Drawer-Rendering, Konfig-Editor (Form, Farben, Mengensteuerung, Preisdarstellung), Rabattcode (Demo: `DEMO10`), Empfehlungen, Meilensteine/Fortschrittsbalken. Referenziert Produkte nur über IDs via `window.WebBuilderProducts`.
+Cart domain: items, drawer rendering, config editor (shape, colors,
+quantity control, price display), discount code (demo: `DEMO10`),
+recommendations, milestones/progress bar. References products only via IDs
+through `window.WebBuilderProducts`.
 
-> Achtung: Diese eine fachliche Domäne exponiert **drei** getrennte globale Objekte – falls du etwas suchst, hier die Übersicht: `window.WebBuilderCart` (Daten-CRUD), `window.WebBuilderCartRuntime` (`render`, `open`, `close` des Drawers), `window.WebBuilderCartConfigRuntime` (`render`, `renderRecommendList`, `renderMilestoneList`, `renderCartItemDemo` für den Konfig-Tab in der Sidebar).
+> Note: this one domain exposes **three** separate global objects —
+> `window.WebBuilderCart` (data CRUD), `window.WebBuilderCartRuntime`
+> (`render`, `open`, `close` of the drawer), `window.WebBuilderCartConfigRuntime`
+> (`render`, `renderRecommendList`, `renderMilestoneList`,
+> `renderCartItemDemo` for the sidebar config tab).
 
 ### `toolbar.js`
-Obere Toolbar: Zoom-Steuerung (delegiert an `canvas.js`), Undo/Redo (nutzt `storage.js`/`history`), lokales Speichern-Binding. Exponiert `refreshAllDomains()` – rendert nach Undo/Redo **oder** Cloud-Laden alle betroffenen UI-Bereiche neu (Canvas, Header/Footer, Warenkorb, Produkte).
+Top toolbar: zoom controls (delegates to `canvas.js`), undo/redo (uses
+`storage.js`/history), local save binding. Exposes `refreshAllDomains()` —
+re-renders all affected UI areas after undo/redo **or** a cloud load
+(canvas, header/footer, cart, products).
 
 ### `preview.js`
-Vorschau-Modus (Editor-Chrome ausblenden) sowie die Runtime für Klick-Aktionen im Vorschau-/Live-Modus (`window.WebBuilderActionRuntime.execute(item)`): Scrollen, Browser-Verlauf, URL öffnen, Produkt in Warenkorb, Warenkorb-Drawer öffnen, Modal öffnen, Meldung anzeigen.
+Preview mode (hides editor chrome) plus the runtime for click actions in
+preview/live mode (`window.WebBuilderActionRuntime.execute(item)`):
+scrolling, browser history, opening a URL, adding a product to the cart,
+opening the cart drawer, opening a modal, showing a message.
 
 ### `export.js`
-Erzeugt aus dem aktuellen State ein statisches HTML-Dokument (Header/Elemente/Footer) für den Export-Button. Kein eigener State, keine Warenkorb-/Produktlogik – reiner Snapshot-zu-HTML-Renderer.
+Builds a static HTML document (header/elements/footer) from the current
+state for the export button. No own state, no cart/product logic — a pure
+snapshot-to-HTML renderer.
 
-### `Supabase/` (Ordner)
-Supabase-Client, Auth, Projekt-/Mehrseiten-Verwaltung sowie die Cloud-/Konto-Modal-UI (`#btn-cloud`). Aufgeteilt in Datenschicht (`supabase-data.js`) und UI-Schicht (`supabase-ui.js`) — **Details und Begründung siehe `js/Supabase/README.md`**. Nutzt für Speichern/Laden ausschließlich `WebBuilderStorage.createSnapshot()`/`applySnapshot()`.
+### `Supabase/` (folder)
+Supabase client, auth, project/multi-page management, and the cloud/account
+modal UI (`#btn-cloud`). Split into a data layer (`supabase-data.js`) and a
+UI layer (`supabase-ui.js`) — **details and rationale in
+`js/Supabase/README.md`**. Uses only
+`WebBuilderStorage.createSnapshot()`/`applySnapshot()` for save/load.
 
-## Event-Konventionen
+## Event conventions
 
-- Elemente/Zustände tragen **einheitlich** diese Feldnamen für Klick-Aktionen: `actionType`, `actionUrl`, `actionMsg`, `productId`. Andere Schreibweisen (`action`, `action_type`, `product_id`, `message`, …), die man in `preview.js`/`inspector.js` als Fallback sieht, werden von keinem Modul mehr erzeugt – beim nächsten Kontakt mit diesem Code prüfen, ob sie noch gebraucht werden (z. B. für sehr alte gespeicherte Projekte) oder entfernt werden können.
-- Drag-Interaktionen setzen `state.dragLock = true`, solange eine Bewegung aktiv ist. Jedes Modul, das bei State-Änderungen neu rendert, muss dieses Flag respektieren (siehe `scheduleRender()` in `canvas.js` und `render()` in `header-footer.js`), sonst kann ein Re-Render mitten im Drag den DOM-Knoten unter dem Cursor ersetzen und die Bewegung abbrechen.
-- Supabase-Passwort-Recovery: `Supabase/supabase-data.js` löst `CustomEvent("webbuilder:supabase-password-recovery")` aus, `Supabase/supabase-ui.js` hört darauf und öffnet das Passwort-Modal. Gleiches Muster wie `webbuilder:state-change` in `state.js`.
+- Elements/state uniformly use these field names for click actions:
+  `actionType`, `actionUrl`, `actionMsg`, `productId`. Legacy names
+  (`action`, `action_type`, `product_id`, `message`, …) are migrated once
+  on load by each domain's `normalizeState()` (`elements.js`,
+  `header-footer.js`'s `normalizeItem`) — `preview.js`/`inspector.js` read
+  only the canonical names.
+- Drag interactions set `state.dragLock = true` while a move is active.
+  Any module that re-renders on state changes must respect this flag (see
+  `scheduleRender()` in `canvas.js` and `render()` in `header-footer.js`),
+  otherwise a re-render mid-drag can replace the DOM node under the cursor
+  and abort the move.
+- Supabase password recovery: `Supabase/supabase-data.js` dispatches
+  `CustomEvent("webbuilder:supabase-password-recovery")`,
+  `Supabase/supabase-ui.js` listens and opens the password modal. Same
+  pattern as `webbuilder:state-change` in `state.js`.
 
-## Bekannte technische Schulden (Kurzfassung, Details im Chat-Review)
+## Known technical debt (short version, details in chat review)
 
-- Tote Exporte: `WebBuilderElements.createLegacyProxy`, `WebBuilderCanvas.makeDraggable`-Alias, `callbacks.onSelect` in `canvas.js`, `WebBuilderCart`-Produkt-Delegationsmethoden.
-- Dreifach duplizierte "In-place normalisieren"-Logik in `cart.js`/`products.js`/`header-footer.js`.
-- Dreifach duplizierte Icon-Map-Merge-Logik in `elements.js`/`canvas.js`/`export.js` (inkl. doppelter SVG-Strings).
-- Stilistisch stark verdichtete Dateien (`inspector.js`, `cart.js`, `elements.js`, `preview.js`) sollten auf den übrigen, gut lesbaren Stil vereinheitlicht werden.
-- Viele mehrzeilige "FIX:"/"NEU:"-Kommentare erzählen Bug-Historie statt aktuelles Verhalten zu dokumentieren – gehören eher in Commit-Messages/CHANGELOG.
-- Inline-`style="..."`-Attribute in `Supabase/supabase-ui.js` (Cloud-Modal-HTML), `cart.js` (Warenkorb-Item-HTML) und `products.js` (Produktkarten) sollten mittelfristig in feste CSS-Klassen überführt werden (siehe `css/README.md`).
+- Dead exports: `WebBuilderElements.createLegacyProxy`,
+  `WebBuilderCanvas.makeDraggable` alias, `callbacks.onSelect` in
+  `canvas.js`, `WebBuilderCart` product-delegation methods.
+- Triple-duplicated "normalize in place" logic in `cart.js`/`products.js`/
+  `header-footer.js` (`elements.js` now has a similar but lighter
+  migration step — candidate to unify later).
+- Triple-duplicated icon-map merge logic in `elements.js`/`canvas.js`/
+  `export.js` (`canvas.js` even duplicates the icon SVGs).
+- Densely written files (`inspector.js`, `cart.js`, `elements.js`,
+  `preview.js`) should eventually match the rest of the project's more
+  readable style.
+- Inline `style="..."` attributes in `Supabase/supabase-ui.js` (cloud modal
+  HTML), `cart.js` (cart item HTML) and `products.js` (product cards)
+  should move into fixed CSS classes (see `css/README.md`).
