@@ -2,7 +2,7 @@
 // The js/ directory intentionally contains only the main builder domains.
 // builder.js remains the central bootstrap/core and is not split further.
 document.write('<script src="js/state.js"><\/script>');
-document.write('<script src="js/toast.js"><\/script>');
+document.write('<script src="js/ui/toast.js"><\/script>');
 document.write('<script src="js/storage.js"><\/script>');
 document.write('<script src="js/elements.js"><\/script>');
 // products.js must load before cart.js — cart.js references products only
@@ -19,7 +19,7 @@ document.write('<script src="js/inspector.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 document.write('<script src="js/header-footer.js"><\/script>');
 document.write('<script src="js/export.js"><\/script>');
-document.write('<script src="js/modals.js"><\/script>');
+document.write('<script src="js/ui/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
 // Supabase files live in js/Supabase/ (see its README) as ES modules —
 // supabase-ui.js imports directly from supabase-data.js, so the order of
