@@ -44,7 +44,9 @@
   normalizeState();
   window.WebBuilderHeaderFooter={normalizeState,normalizeItem,getHeader,getFooter,updateHeader,updateFooter,addItem,removeItem,updateItem,onChange(cb){if(typeof cb!=="function")return()=>{};const h=e=>cb(e.detail);window.addEventListener("webbuilder:header-footer-change",h);return()=>window.removeEventListener("webbuilder:header-footer-change",h);}};
 
-  const byId=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#39;"}[c]));
+  // NEU: esc zentralisiert in state.js (WebBuilderUtils.escapeHtml) —
+  // vorher eine von 7 unabhängigen, identischen Kopien im Projekt.
+  const byId=id=>document.getElementById(id),esc=window.WebBuilderUtils.escapeHtml;
 
   function currentSelection(){
     const ref=state.selectedBarItemRef;
@@ -322,15 +324,4 @@
     byId("bar-prop-size")?.addEventListener("change",e=>updateSelected({size:Math.max(8,Math.min(300,Number(e.target.value)||16))}),true);
     byId("bar-prop-action-type")?.addEventListener("change",e=>updateSelected({actionType:e.target.value}),true);
     ["bold","italic","underline"].forEach(f=>byId(`bar-ttb-${f}`)?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();const sel=currentSelection();if(sel)updateSelected({[f]:!sel.item[f]});},true));
-    ["left","center","right"].forEach(a=>byId(`bar-ttb-align-${a}`)?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();updateSelected({align:a});},true));
-    byId("btn-delete-bar-item")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();const sel=currentSelection();if(sel)transact(()=>removeItem(sel.ref.id,sel.ref.target,false));},true);
-
-    onChangeInternal();
-    state.subscribe?.(e=>{if(["header","footer","products","preview"].includes(e?.domain))render();});
-    render();
-  }
-  function onChangeInternal(){window.WebBuilderHeaderFooter.onChange(render);}
-
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind,{once:true});else bind();
-  window.WebBuilderHeaderFooterRuntime={render,renderBars,selectItem,clearSelection,currentSelection,itemInnerHtml};
-})();
+    ["left","center","right"].forEach(a=>byId(`bar-ttb-align-${a}`)?.a
