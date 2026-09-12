@@ -12,7 +12,12 @@
 .sidebar-subsection .form-group:last-child { margin-bottom: 0; }
 .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 500; margin-bottom: 10px; cursor: pointer; }
 .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
-.sidebar-bg-controls select, .sidebar-bg-controls input[type="text"] { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.825rem; background: var(--bg-panel); }
+/* .sidebar-subsection.sidebar-bg-controls (both classes) instead of just
+   .sidebar-bg-controls: raises specificity above inspector.css's
+   .form-group select/input rule (equal specificity + later load order
+   previously let inspector.css silently win for <select>, see
+   css/README.md "Known gaps"). */
+.sidebar-subsection.sidebar-bg-controls select, .sidebar-subsection.sidebar-bg-controls input[type="text"] { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.825rem; background: var(--bg-panel); }
 .sidebar-bg-controls input[type="color"] { width: 32px; height: 32px; border: none; border-radius: 6px; cursor: pointer; background: transparent; }
 .file-input-wrapper { position: relative; display: inline-block; }
 .file-input-btn { padding: 5px 10px; font-size: 0.8rem; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; font-weight: 500; }
