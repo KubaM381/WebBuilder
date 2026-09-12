@@ -24,7 +24,7 @@
 .cart-item-desc { flex-basis: 100%; font-size: 0.75rem; color: var(--text-muted); margin-top: -4px; }
 .drawer-footer { padding: 20px; border-top: 1px solid var(--border-color); background: var(--bg-main); }
 .cart-empty-msg { color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 24px 0; }
-.cart-item-price-input { padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; }
+.cart-item-price-input { width: 70px; padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; }
 .cart-item-price-strike { text-decoration: line-through; color: var(--text-muted); font-size: 0.75rem; margin-right: 4px; }
 .cart-item-remove { background: transparent; border: none; cursor: pointer; font-size: 0.95rem; padding: 2px 6px; }
 .cart-item-remove.remove-shape-circle { border-radius: 50%; border: 1px solid currentColor; width: 26px; height: 26px; }
@@ -60,3 +60,19 @@
 .modal-header { padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
 .modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; font-size: 0.925rem; line-height: 1.6; color: #374151; }
 .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-main); }
+
+/* Reusable modal-body layout helpers (used by js/Supabase/supabase-ui.js
+   cloud modal and cart.js's recommendation picker). Extracted from inline
+   style="..." strings in the JS template literals to keep those files
+   shorter and design decisions in one place (see css/README.md). */
+.modal-stack { display: flex; flex-direction: column; gap: 10px; }
+.modal-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.modal-row-btn { flex: 1; justify-content: flex-start; }
+.modal-icon-btn { padding: 6px 10px; }
+.modal-btn-row { display: flex; gap: 8px; }
+.modal-btn-flex { flex: 1; }
+.modal-add-row { display: flex; gap: 8px; margin-top: 4px; }
+.modal-link-btn { align-self: flex-start; background: none; border: none; padding: 0; margin-top: -4px; color: inherit; text-decoration: underline; cursor: pointer; font-size: 13px; opacity: 0.8; }
+.modal-divider-tight { margin: 6px 0; }
+.pick-list { display: flex; flex-direction: column; gap: 8px; }
+.product-pick-btn { justify-content: flex-start; }
