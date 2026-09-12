@@ -48,14 +48,13 @@
   function scrollToTop(){return performScroll(() => 0);}
   function scrollToBottom(){return performScroll(container => container.scrollHeight);}
 
-  // NOTE: only actionType/actionUrl/actionMsg/productId are produced by
-  // elements.js and header-footer.js today. The action/action_type/
-  // action_url/url/message/product_id fallbacks below are legacy support
-  // for possibly older saved Supabase projects — NOT confirmed to still
-  // be needed. Do not remove until confirmed with project owner whether
-  // any stored project still uses the old field names.
-  function getActionType(item={}){return item.actionType||item.action||item.action_type||"none";}
-  function execute(item={}){const type=getActionType(item),url=item.actionUrl||item.action_url||item.url||"",message=item.actionMsg||item.actionMessage||item.message||"Aktion ausgeführt!";switch(type){case"scroll-top":return scrollToTop();case"scroll-bottom":return scrollToBottom();case"history-back":window.history.back();return true;case"history-forward":window.history.forward();return true;case"open-url":if(!url)return false;window.open(url,"_blank","noopener,noreferrer");return true;case"cart-add":{const productId=item.productId||item.product_id||item.product,product=window.WebBuilderProducts?.getById?.(productId);if(!product||!window.WebBuilderCart)return false;window.WebBuilderCart.addItem(product);return true;}case"open-cart-drawer":return !!window.WebBuilderCartRuntime?.open?.();case"open-custom-modal":return !!window.WebBuilderModals?.open?.(item.modalTitle||"Information",item.modalBody||message,item.modalFooter||"");
+  // actionType/actionUrl/actionMsg/productId are the only fields elements.js
+  // and header-footer.js ever produce; both migrate legacy field names once
+  // on load (see WebBuilderElements.normalizeState / WebBuilderHeaderFooter's
+  // normalizeItem), so items reaching this runtime always use the canonical
+  // names — no fallback needed here.
+  function getActionType(item={}){return item.actionType||"none";}
+  function execute(item={}){const type=getActionType(item),url=item.actionUrl||"",message=item.actionMsg||"Aktion ausgeführt!";switch(type){case"scroll-top":return scrollToTop();case"scroll-bottom":return scrollToBottom();case"history-back":window.history.back();return true;case"history-forward":window.history.forward();return true;case"open-url":if(!url)return false;window.open(url,"_blank","noopener,noreferrer");return true;case"cart-add":{const product=window.WebBuilderProducts?.getById?.(item.productId);if(!product||!window.WebBuilderCart)return false;window.WebBuilderCart.addItem(product);return true;}case"open-cart-drawer":return !!window.WebBuilderCartRuntime?.open?.();case"open-custom-modal":return !!window.WebBuilderModals?.open?.(item.modalTitle||"Information",item.modalBody||message,item.modalFooter||"");
     // item.messagePosition picks where the message appears (top/bottom,
     // left/right, centered) via openPositionedMessage().
     case"alert-msg":if(window.WebBuilderModals?.openPositionedMessage)window.WebBuilderModals.openPositionedMessage(message,item.messagePosition||"bottom-right");else if(window.WebBuilderModals?.openMessage)window.WebBuilderModals.openMessage(item.modalTitle||"Hinweis",message);else window.alert(message);return true;default:return false;}}
