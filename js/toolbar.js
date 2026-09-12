@@ -1,7 +1,7 @@
 // WebBuilder toolbar service
-// Shared toolbar actions for zoom, canvas sizing and history.
-// Button wiring lives here too (save/undo/redo) since these are the DOM
-// controls this module conceptually owns.
+// Shared toolbar actions for zoom, canvas sizing and history. Button
+// wiring (save/undo/redo) lives here too since these are the DOM controls
+// this module conceptually owns.
 (() => {
   const state = window.WebBuilderState;
   const canvas = window.WebBuilderCanvas;
@@ -29,15 +29,9 @@
     return canvas.extendCanvas(delta);
   }
 
-  // FIX: previously called `window.WebBuilderCanvasRuntime?.render?.()`,
-  // which no module ever exports (canvas.js exports `WebBuilderCanvas`).
-  // Undo/redo silently restored state but never refreshed the canvas,
-  // header/footer bars, cart drawer or product list on screen.
-  //
-  // Additiv jetzt auch über window.WebBuilderToolbar exponiert (siehe unten),
-  // damit js/supabase.js nach einem Cloud-Laden exakt dieselbe Refresh-Logik
-  // wiederverwenden kann statt sie ein zweites Mal zu implementieren
-  // (Projektregel 12).
+  // Re-renders every UI area derived from state (canvas, header/footer,
+  // cart, products). Used after undo/redo and by Supabase after a cloud
+  // load, so both paths stay in sync via one function.
   function refreshAllDomains() {
     window.WebBuilderCanvas?.render?.();
     window.WebBuilderHeaderFooter?.normalizeState?.();
@@ -75,8 +69,6 @@
     if (redoBtn) redoBtn.disabled = state.redoStack.length === 0;
   }
 
-  // FIX: btn-save / btn-undo / btn-redo existed in web.html and toolbar.js
-  // exported working functions, but nothing ever connected the two.
   function bindButtons() {
     const saveBtn = document.getElementById("btn-save");
     const undoBtn = document.getElementById("btn-undo");
@@ -128,8 +120,7 @@
     redo,
     clearHistory,
     updateUndoRedoButtons,
-    // NEU: additiv exponiert für js/supabase.js (Cloud-Laden soll denselben
-    // Refresh wie Undo/Redo auslösen, ohne die Logik zu duplizieren).
+    // Also called by js/Supabase/supabase-data.js after a cloud load.
     refreshAllDomains
   };
 })();
