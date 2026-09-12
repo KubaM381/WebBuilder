@@ -78,24 +78,18 @@ format.
 
 ## Known technical debt
 
-A detailed, categorized list (dead functions, duplicated logic, formatting
-inconsistencies, outdated docs, architecture proposals) was produced during
-a code review and is documented in the chat history with the developer.
-Short version:
-
-- A few exported functions are never called
-  (`WebBuilderElements.createLegacyProxy`, `WebBuilderCanvas.makeDraggable`
-  alias, `WebBuilderCart` product-delegation methods) — candidates for
-  removal.
-- The "normalize array in place instead of rebuilding it" logic is
-  implemented three times, nearly identically, in `cart.js`, `products.js`
-  and `header-footer.js` — candidate for a shared utility function.
-  `elements.js` now has a similar, lighter migration step of its own
-  (legacy click-action fields) — could eventually be unified too.
-- The icon map is assembled independently three times in `elements.js`,
-  `canvas.js` and `export.js` (`canvas.js` even duplicates the icon SVGs) —
-  should be reduced to one central function.
 - `inspector.js`, `cart.js`, `elements.js`, `preview.js` are densely
   written (many statements per line) — harder to read than the rest of the
   project; should be unified to the rest of the codebase's style
   (multi-line, one statement per line) next time they're touched.
+- `web.html` duplicates the click-action `<select>` option list (10
+  options) and the text-format toolbar markup once for normal elements
+  (`#prop-*`) and once for header/footer bar items (`#bar-prop-*`),
+  because `inspector.js` and `header-footer.js` render two separate,
+  mutually exclusive panels. Not unified — would need a shared HTML/
+  templating step across both files plus a `web.html` change, so treat it
+  as a structural task (plan first, see rule 2 above) if ever tackled.
+
+> Note for future AI sessions: this list reflects only what is genuinely
+> still open. Items that get fixed should be removed here, not left
+> marked "done" — completed work stays in git/chat history instead.
