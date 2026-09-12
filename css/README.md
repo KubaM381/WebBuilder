@@ -9,7 +9,7 @@ plus the `body.preview-mode` overrides.
 | File | Responsible for |
 |---|---|
 | `styles.css` | Central entry point (`@import` of all modules) plus `body.preview-mode` overrides. Kept centralized here (not its own file) since they cut across sidebar, inspector, canvas and zoom controls. |
-| `base.css` | CSS variables (colors, shadows), reset, base typography, `.hidden`, `.divider`. |
+| `base.css` | CSS variables (colors, shadows, plus shared one-off tones like `--border-muted`/`--primary-light-hover` used in 2+ files so no hex code needs copy-pasting), reset, base typography, `.hidden`, `.divider`. |
 | `layout.css` | Coarse app skeleton (`.app-body`). |
 | `toolbar.css` | Top toolbar + all `.btn*` button variants (reused project-wide). |
 | `sidebar.css` | Left sidebar: tabs, palette grid, form rows (`.item-row`), product cards, item-row text/width helpers. |
@@ -35,6 +35,10 @@ plus the `body.preview-mode` overrides.
 6. New JS-driven UI should use CSS classes, not inline `style="..."`
    strings in template literals — add the class here (`modals.css` for
    modal/layout helpers, `sidebar.css` for sidebar components) instead.
+7. A literal color value used in **2 or more places** belongs in a
+   `:root` variable in `base.css`, not copy-pasted as a hex code — even
+   for small "one-off" tones like a hover shade or a muted border grey
+   (see `--primary-light-hover`, `--border-muted`).
 
 ## To review (usage unclear)
 
@@ -45,14 +49,23 @@ search before deleting:
 - `.item-row-drag-handle` (`sidebar.css`) — likely prepared for an
   unfinished drag-reorder feature (e.g. sortable milestones/recommendations).
 
-## Known gap (found during inline-style cleanup, not yet fixed)
+## Known gaps (not yet fixed)
 
-`js/products.js`'s product-card markup (`renderProducts()`) uses classes
-`.product-card-header`, `.product-card-icon`, `.product-card-title`,
-`.product-delete`, `.product-card-fields`, `.product-card-description`,
-`.product-card-price` — **none of these are defined anywhere in
-`sidebar.css`** (only `.product-card`, `.product-card-row`,
-`.product-icon-preview` exist). The product tab currently renders with no
-styling for its internal structure. This is a missing-CSS bug, not an
-inline-style issue, so it wasn't fixed as part of the inline-style cleanup
-task — needs its own small task to add the missing rules to `sidebar.css`.
+1. `js/products.js`'s product-card markup (`renderProducts()`) uses classes
+   `.product-card-header`, `.product-card-icon`, `.product-card-title`,
+   `.product-delete`, `.product-card-fields`, `.product-card-description`,
+   `.product-card-price` — **none of these are defined anywhere in
+   `sidebar.css`** (only `.product-card`, `.product-card-row`,
+   `.product-icon-preview` exist). The product tab currently renders with no
+   styling for its internal structure. This is a missing-CSS bug, not
+   duplication — needs its own small task to add the missing rules to
+   `sidebar.css`.
+2. `sidebar.css`'s `.sidebar-bg-controls select, .sidebar-bg-controls
+   input[type="text"]` overlaps with `inspector.css`'s `.form-group input,
+   .form-group select` — both target the same background-editor form
+   fields with slightly different padding (6px 8px vs 8px 10px). Equal
+   specificity plus `inspector.css` loading after `sidebar.css` means
+   `<select>` fields silently fall back to `.form-group`'s padding while
+   `<input type="text">` fields (more specific selector) keep their own.
+   Cosmetic-only and easy to miss; left as-is here since fixing it changes
+   rendered spacing and wasn't part of the current task.
