@@ -1,4 +1,5 @@
 js/
+
 ├── builder.js            bootstrap / load order
 ├── state.js               shared state + event system + utils
 ├── storage.js              snapshots, local save, undo/redo service
