@@ -11,7 +11,29 @@
   function notify(domain, action, payload) { if (typeof state.notify === "function") state.notify(domain, action, payload); }
   function normalizeCartItem(item = {}) { const price = Number(item.price) || 0; const discountPrice = item.discountPrice != null && item.discountPrice !== "" ? Number(item.discountPrice) || 0 : null; return { id: item.id || `cart_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, name: item.name || "Produkt", price, discountPrice: discountPrice != null && discountPrice > 0 && discountPrice < price ? discountPrice : null, qty: Math.max(1, Number(item.qty) || 1), icon: item.icon || "📦", description: item.description || "" }; }
   function getEffectivePrice(item) { const discount = Number(item?.discountPrice); return Number.isFinite(discount) && discount > 0 && discount < (Number(item?.price) || 0) ? discount : Number(item?.price) || 0; }
-  function normalizeState() { window.WebBuilderProducts?.normalizeState?.(); state.cartItems = Array.isArray(state.cartItems) ? state.cartItems.map(normalizeCartItem) : []; if (!Array.isArray(state.cartConfig.recommendations)) state.cartConfig.recommendations = []; if (!Array.isArray(state.cartConfig.milestones)) state.cartConfig.milestones = []; return state; }
+  // FIX (gleicher Bug wie in products.js normalizeProducts, siehe dortiger
+  // Kommentar): normalizeState() ersetzte state.cartItems bisher komplett
+  // per `.map(normalizeCartItem)` durch brandneue Objekte. Da updateQty(),
+  // updatePrice(), updateDiscountPrice() usw. zuerst eine Referenz auf das
+  // bestehende Cart-Item holen und ERST DANACH window.WebBuilderHistory.arm()
+  // aufrufen (was normalizeState() auslöst), landeten Mengen-/Preisänderungen
+  // im Warenkorb-Drawer auf einem bereits "ausgehängten" alten Objekt und
+  // gingen beim nächsten Rendern wieder verloren. Fix: bestehende Items (mit
+  // id) werden per Object.assign() in-place aktualisiert statt ersetzt —
+  // Objektreferenzen bleiben stabil.
+  function normalizeState() {
+    window.WebBuilderProducts?.normalizeState?.();
+    state.cartItems = Array.isArray(state.cartItems) ? state.cartItems.map(item => {
+      if (item && typeof item === "object" && item.id) {
+        Object.assign(item, normalizeCartItem(item));
+        return item;
+      }
+      return normalizeCartItem(item);
+    }) : [];
+    if (!Array.isArray(state.cartConfig.recommendations)) state.cartConfig.recommendations = [];
+    if (!Array.isArray(state.cartConfig.milestones)) state.cartConfig.milestones = [];
+    return state;
+  }
   function getItems() { return state.cartItems; } function getConfig() { return state.cartConfig; } function getCount() { return state.cartItems.reduce((s,i)=>s+(Number(i.qty)||0),0); } function getSubtotal() { return state.cartItems.reduce((s,i)=>s+getEffectivePrice(i)*(Number(i.qty)||0),0); }
   function addItem(productOrItem, price, icon, description, recordHistory = true) { const source = typeof productOrItem === "object" ? productOrItem : {name:productOrItem,price,icon,description}; const normalized=normalizeCartItem(source); const existing=state.cartItems.find(i=>i.name===normalized.name); if(recordHistory) window.WebBuilderHistory?.arm(); if(existing) existing.qty=(Number(existing.qty)||0)+1; else state.cartItems.push(normalized); if(recordHistory) window.WebBuilderHistory?.commit(); notify("cart", existing?"increment":"add", existing||normalized); return existing||normalized; }
   function updateQty(id,qty,recordHistory=true){const item=state.cartItems.find(i=>i?.id===id);if(!item)return null;if(recordHistory)window.WebBuilderHistory?.arm();item.qty=Math.max(1,Number(qty)||1);if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","updateQty",item);return item;}
