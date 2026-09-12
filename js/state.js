@@ -1,6 +1,5 @@
 // WebBuilder shared state registry
 // Canonical source of truth for the modular migration.
-// Legacy locals may remain only until their domain is fully switched.
 
 window.WebBuilderState = window.WebBuilderState || {
   elements: [],
@@ -11,14 +10,10 @@ window.WebBuilderState = window.WebBuilderState || {
   draggedShape: null,
   zoomLevel: 0.85,
   canvasHeight: 1100,
-  // NEU: geteiltes Laufzeit-Flag für die Klick/Drag-Vereinheitlichung
-  // (siehe canvas.js attachInteraction()). Wird true, sobald sich ein
-  // beliebiges Element (Canvas oder Header/Footer) tatsächlich in Bewegung
-  // befindet, und verhindert, dass ein währenddessen angestoßenes
-  // Re-Rendering den gerade gezogenen DOM-Knoten ersetzt und damit die
-  // Bewegung/Pointer-Capture abbricht. Bewusst NICHT Teil des
-  // Speicherstands (storage.js createSnapshot() übernimmt nur explizit
-  // aufgeführte Felder) — reiner Laufzeitzustand, keine Projektdaten.
+  // Shared runtime flag set while any element (canvas or bar item) is
+  // being dragged (see canvas.js attachInteraction()), so a re-render
+  // mid-drag doesn't replace the dragged DOM node. Not persisted — pure
+  // runtime state, not project data.
   dragLock: false,
   products: [],
   cartItems: [],
@@ -90,25 +85,12 @@ WebBuilderState.notify = function notify(domain, action, payload) {
   return event;
 };
 
-// ------------------------------------------------------------------
-// Gemeinsame Utility: normalisiert eine Liste von Objekten IN PLACE statt
-// sie komplett neu zu erzeugen. Bereits bestehende, valide Einträge (mit
-// id) behalten ihre Objektreferenz (Object.assign schreibt die
-// normalisierten Werte zurück in dasselbe Objekt); nur neue/ungültige
-// Einträge (kein Objekt oder ohne id) werden über normalizeFn frisch
-// erzeugt. Wichtig für Module, die zwischenzeitlich eine Referenz auf ein
-// Listenelement halten (z.B. während eines aktiven Drags oder einer
-// laufenden Eingabe) — ein kompletter Array-Ersatz würde diese Referenz
-// "aushängen" und nachfolgende Änderungen gingen beim nächsten Rendern
-// wieder verloren.
-// Genutzt von cart.js, products.js, header-footer.js.
-//
-// NEU: escapeHtml() zentralisiert dieselbe HTML-Escape-Logik, die zuvor
-// unabhängig als "esc"/"escapeHtml" in canvas.js, export.js, inspector.js,
-// header-footer.js, cart.js, products.js und supabase.js definiert war
-// (7-fache Duplikation, siehe Projekt-Review). Alle genannten Module
-// referenzieren jetzt ausschließlich diese eine Implementierung.
+// Shared, project-wide helpers.
 window.WebBuilderUtils = window.WebBuilderUtils || {
+  // Normalizes a list in place instead of rebuilding it, so existing
+  // objects keep their reference (important while something else holds a
+  // reference to a list item, e.g. during a drag or an active input).
+  // Used by cart.js, products.js, header-footer.js.
   normalizeInPlace(list, normalizeFn) {
     if (!Array.isArray(list)) return [];
     return list.map(item => {
@@ -125,11 +107,9 @@ window.WebBuilderUtils = window.WebBuilderUtils || {
     }[c]));
   },
   // Shared text-style CSS (font-weight/font-style/text-decoration/
-  // font-family) for button/headline/paragraph elements — was duplicated
-  // per element type in both canvas.js (editor rendering) and export.js
-  // (static HTML export), 6 nearly identical spots total. normalWeight
-  // covers the differing non-bold default per element type (buttons use
-  // "600", headlines "400", plain text/paragraphs "normal").
+  // font-family) for canvas.js and export.js. normalWeight covers the
+  // differing non-bold default per element type (button "600", headline
+  // "400", plain text "normal").
   buildTextStyleCss(item = {}, normalWeight = "normal") {
     return `font-weight:${item.bold ? "bold" : normalWeight};font-style:${item.italic ? "italic" : "normal"};text-decoration:${item.underline ? "underline" : "none"};font-family:${item.fontFamily || "inherit"};`;
   }
