@@ -1,13 +1,42 @@
 # JavaScript-Architektur
 
-Kein Bundler, kein Framework. Alle Module hängen ihre öffentliche API an `window.WebBuilderXxx`. `js/builder.js` lädt alle anderen Dateien in fester Reihenfolge per `document.write` – **die Reihenfolge in `builder.js` ist funktional relevant**, nicht nur kosmetisch.
+Kein Bundler, kein Framework. Alle Module hängen ihre öffentliche API an `window.WebBuilderXxx`. `js/builder.js` lädt alle anderen Dateien in fester Reihenfolge per `document.write` – **die Reihenfolge in `builder.js` ist funktional relevant**, nicht nur kosmetisch. Ausnahme: die drei `type="module"`-Zeilen am Ende (Supabase) — deren tatsächliche Ladereihenfolge wird vom Browser über ES-`import`-Statements aufgelöst, nicht über die `document.write()`-Reihenfolge.
+
+## Ordnerstruktur
+
+```text
+js/
+├── builder.js            Bootstrap/Ladereihenfolge
+├── state.js               gemeinsamer State + Event-System + Utils
+├── toast.js                Toast-Benachrichtigungen
+├── storage.js              Snapshots, lokales Speichern, Undo/Redo-Service
+├── elements.js             Canvas-Elemente (CRUD) + Icon-Registry
+├── products.js             Produktverwaltung (CRUD + Tab-UI)
+├── cart.js                 Warenkorb (Daten + Drawer + Konfig-UI)
+├── canvas.js               Rendering, Zoom, Drag&Drop, Hintergrund
+├── inspector.js            Eigenschaften-Panel für Canvas-Elemente
+├── toolbar.js               Zoom-Buttons, Undo/Redo-Buttons, Speichern
+├── header-footer.js        Header/Footer (Daten + Rendering + Inspector)
+├── export.js                Statischer HTML-Export
+├── modals.js                 Generisches Modal + positionierte Meldungen
+├── preview.js                Vorschau-Modus + Klick-Aktions-Runtime
+├── README.md                 diese Datei
+└── Supabase/                 siehe eigenes README dort
+    ├── supabase-config.js
+    ├── supabase-data.js
+    ├── supabase-ui.js
+    └── README.md
+```
 
 ## Ladereihenfolge (aus `builder.js`)
 
 ```text
 state.js → toast.js → storage.js → elements.js → products.js → cart.js
 → canvas.js → inspector.js → toolbar.js → header-footer.js → export.js
-→ modals.js → preview.js → supabase-config.js (Modul) → supabase.js (Modul)
+→ modals.js → preview.js
+→ Supabase/supabase-config.js (Modul)
+→ Supabase/supabase-data.js (Modul)
+→ Supabase/supabase-ui.js (Modul)
 ```
 
 Wichtigste Abhängigkeit: **`products.js` vor `cart.js`**, da `cart.js` Produkte ausschließlich über `window.WebBuilderProducts` referenziert (keine eigenen Produktdaten).
@@ -20,7 +49,7 @@ Definiert `window.WebBuilderState` – den kompletten Anwendungszustand (Element
 - `state.subscribe(fn)` – Listener registrieren, bekommt `{domain, action, payload, state}`.
 - `state.notify(domain, action, payload)` – von jedem Modul aufgerufen, wenn sich seine Daten ändern.
 
-Jedes andere Modul liest/schreibt ausschließlich über dieses `state`-Objekt – kein Modul hält eigenen, parallelen Zustand.
+Jedes andere Modul liest/schreibt ausschließlich über dieses `state`-Objekt – kein Modul hält eigenen, parallelen Zustand. Enthält außerdem `window.WebBuilderUtils` (`normalizeInPlace`, `escapeHtml`) als zentrale, projektweit genutzte Hilfsfunktionen.
 
 ### `storage.js`
 Exponiert `window.WebBuilderStorage` und `window.WebBuilderHistory`.
@@ -30,7 +59,7 @@ Exponiert `window.WebBuilderStorage` und `window.WebBuilderHistory`.
 - `WebBuilderHistory.undoSnapshot()` / `.redoSnapshot()` liefern Snapshots zum Zurück-/Wiederherstellen.
 
 ### `toast.js`
-`window.WebBuilderToast.show(message, type)` – einzige Stelle für die unten rechts gestapelten Benachrichtigungen.
+`window.WebBuilderToast.show(message, type)` – einzige Stelle für die unten rechts gestapelten Benachrichtigungen. `buildToastNode()` baut das rohe Toast-Markup und wird auch von `modals.js` (`openPositionedMessage()`) wiederverwendet.
 
 ### `modals.js`
 `window.WebBuilderModals` – generisches zentrales Modal (`open`, `openMessage`, `close`) sowie `openPositionedMessage()` für frei positionierte Meldungen (oben/unten/links/rechts/zentriert, konfigurierbar im Inspector).
@@ -66,13 +95,14 @@ Vorschau-Modus (Editor-Chrome ausblenden) sowie die Runtime für Klick-Aktionen 
 ### `export.js`
 Erzeugt aus dem aktuellen State ein statisches HTML-Dokument (Header/Elemente/Footer) für den Export-Button. Kein eigener State, keine Warenkorb-/Produktlogik – reiner Snapshot-zu-HTML-Renderer.
 
-### `supabase-config.js` / `supabase.js`
-Supabase-Client (nur Publishable Key), Auth (Login/Registrierung/Passwort-Reset/Logout), Projekt- und Mehrseiten-Verwaltung (CRUD), sowie die Cloud-/Konto-Modal-UI (`#btn-cloud`). Nutzt für Speichern/Laden ausschließlich `WebBuilderStorage.createSnapshot()`/`applySnapshot()`. Größte Datei im Projekt – bei der nächsten größeren Änderung Aufteilung in Daten-Layer und Modal-UI erwägen.
+### `Supabase/` (Ordner)
+Supabase-Client, Auth, Projekt-/Mehrseiten-Verwaltung sowie die Cloud-/Konto-Modal-UI (`#btn-cloud`). Aufgeteilt in Datenschicht (`supabase-data.js`) und UI-Schicht (`supabase-ui.js`) — **Details und Begründung siehe `js/Supabase/README.md`**. Nutzt für Speichern/Laden ausschließlich `WebBuilderStorage.createSnapshot()`/`applySnapshot()`.
 
 ## Event-Konventionen
 
 - Elemente/Zustände tragen **einheitlich** diese Feldnamen für Klick-Aktionen: `actionType`, `actionUrl`, `actionMsg`, `productId`. Andere Schreibweisen (`action`, `action_type`, `product_id`, `message`, …), die man in `preview.js`/`inspector.js` als Fallback sieht, werden von keinem Modul mehr erzeugt – beim nächsten Kontakt mit diesem Code prüfen, ob sie noch gebraucht werden (z. B. für sehr alte gespeicherte Projekte) oder entfernt werden können.
 - Drag-Interaktionen setzen `state.dragLock = true`, solange eine Bewegung aktiv ist. Jedes Modul, das bei State-Änderungen neu rendert, muss dieses Flag respektieren (siehe `scheduleRender()` in `canvas.js` und `render()` in `header-footer.js`), sonst kann ein Re-Render mitten im Drag den DOM-Knoten unter dem Cursor ersetzen und die Bewegung abbrechen.
+- Supabase-Passwort-Recovery: `Supabase/supabase-data.js` löst `CustomEvent("webbuilder:supabase-password-recovery")` aus, `Supabase/supabase-ui.js` hört darauf und öffnet das Passwort-Modal. Gleiches Muster wie `webbuilder:state-change` in `state.js`.
 
 ## Bekannte technische Schulden (Kurzfassung, Details im Chat-Review)
 
@@ -81,3 +111,4 @@ Supabase-Client (nur Publishable Key), Auth (Login/Registrierung/Passwort-Reset/
 - Dreifach duplizierte Icon-Map-Merge-Logik in `elements.js`/`canvas.js`/`export.js` (inkl. doppelter SVG-Strings).
 - Stilistisch stark verdichtete Dateien (`inspector.js`, `cart.js`, `elements.js`, `preview.js`) sollten auf den übrigen, gut lesbaren Stil vereinheitlicht werden.
 - Viele mehrzeilige "FIX:"/"NEU:"-Kommentare erzählen Bug-Historie statt aktuelles Verhalten zu dokumentieren – gehören eher in Commit-Messages/CHANGELOG.
+- Inline-`style="..."`-Attribute in `Supabase/supabase-ui.js` (Cloud-Modal-HTML), `cart.js` (Warenkorb-Item-HTML) und `products.js` (Produktkarten) sollten mittelfristig in feste CSS-Klassen überführt werden (siehe `css/README.md`).
