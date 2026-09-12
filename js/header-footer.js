@@ -9,16 +9,13 @@
 
   function numOr(v,fallback){const n=Number(v);return(v!=null&&v!==""&&Number.isFinite(n))?n:fallback;}
 
-  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",
-    // Legacy fallback: migrates bar items saved before the actionType/
-    // actionUrl/actionMsg/productId rename. No-op once the canonical field
-    // holds any truthy value (including "none"), so this only ever fires once.
-    actionType:item.actionType||item.action||item.action_type||"none",actionUrl:item.actionUrl||item.action_url||item.url||"",actionMsg:item.actionMsg||item.actionMessage||item.message||"",productId:item.productId||item.product_id||item.product||null,
-    modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
+  // Legacy fallback: migrates bar items saved before the actionType/
+  // actionUrl/actionMsg/productId rename (same pattern as elements.js's
+  // migrateActionFields()). No-op once the canonical field is set.
+  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||item.action||item.action_type||"none",actionUrl:item.actionUrl||item.action_url||item.url||"",actionMsg:item.actionMsg||item.actionMessage||item.message||"",productId:item.productId||item.product_id||item.product||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
 
-  // In-place normalisieren (siehe WebBuilderUtils.normalizeInPlace,
-  // state.js) — hält Objektreferenzen während eines aktiven Bar-Item-Drags
-  // stabil.
+  // Normalizes in place (WebBuilderUtils.normalizeInPlace, state.js) so
+  // object references stay stable during an active bar-item drag.
   function normalizeItemsInPlace(list){
     return window.WebBuilderUtils.normalizeInPlace(list, normalizeItem);
   }
@@ -45,12 +42,13 @@
   function updateFooter(p={},h=true){if(h)window.WebBuilderHistory?.arm();if(p.enabled!=null)state.footerEnabled=!!p.enabled;if(p.height!=null)state.footerHeight=Math.max(40,Number(p.height)||70);if(p.bgType!=null)state.footerBgType=p.bgType==="image"?"image":"solid";if(p.bgColor!=null)state.footerBgColor=String(p.bgColor);if(p.bgImage!=null)state.footerBgImage=String(p.bgImage);if(Array.isArray(p.items))state.footerItems=p.items.map(normalizeItem);if(h)window.WebBuilderHistory?.commit();const r=getFooter();emitChange("footer",r);return r;}
   function addItem(type,target="header",patch={},h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=normalizeItem({...patch,type,text:patch.text||(type==="icon"?"":"Neuer Text")});if(h)window.WebBuilderHistory?.arm();items.push(item);if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
   function removeItem(id,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,i=items.findIndex(x=>x?.id===id);if(i<0)return false;if(h)window.WebBuilderHistory?.arm();items.splice(i,1);if(state.selectedBarItemRef?.id===id)state.selectedBarItemRef=null;if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return true;}
+  // Merge patch into item before normalizing (order matters: normalizing
+  // first would let stale item fields overwrite the incoming patch).
   function updateItem(id,patch,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=items.find(x=>x?.id===id);if(!item)return null;if(h)window.WebBuilderHistory?.arm();const merged=normalizeItem(Object.assign({},item,clone(patch||{})));Object.assign(item,merged);if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
   normalizeState();
   window.WebBuilderHeaderFooter={normalizeState,normalizeItem,getHeader,getFooter,updateHeader,updateFooter,addItem,removeItem,updateItem,onChange(cb){if(typeof cb!=="function")return()=>{};const h=e=>cb(e.detail);window.addEventListener("webbuilder:header-footer-change",h);return()=>window.removeEventListener("webbuilder:header-footer-change",h);}};
 
-  // NEU: esc zentralisiert in state.js (WebBuilderUtils.escapeHtml) —
-  // vorher eine von 7 unabhängigen, identischen Kopien im Projekt.
+  // esc centralized in state.js (WebBuilderUtils.escapeHtml).
   const byId=id=>document.getElementById(id),esc=window.WebBuilderUtils.escapeHtml;
 
   function currentSelection(){
@@ -60,6 +58,9 @@
     const item=items.find(x=>x.id===ref.id);
     return item?{ref,item}:null;
   }
+  // Selecting a bar item must deselect any canvas element (mirrors the
+  // reverse case in inspector.js's select()) — only one right-hand panel
+  // is visible at a time.
   function selectItem(target,id){
     state.selectedBarItemRef={target,id};
     if(window.WebBuilderInspector?.select) window.WebBuilderInspector.select(null);
@@ -116,9 +117,11 @@
     });
   }
 
+  // Reuses the shared click+drag controller from canvas.js so bar items
+  // behave identically to canvas elements (see attachInteraction() there).
   function bindBarItemInteraction(domEl,item,barEl,target,cfg){
     const canvasHelper=window.WebBuilderCanvas;
-    if(!canvasHelper?.attachInteraction){console.error("WebBuilderHeaderFooter: WebBuilderCanvas.attachInteraction fehlt.");return;}
+    if(!canvasHelper?.attachInteraction){console.error("WebBuilderHeaderFooter: WebBuilderCanvas.attachInteraction missing.");return;}
     canvasHelper.attachInteraction(domEl,item,barEl,{
       getBounds(){
         const zoom=Number(state.zoomLevel)||1;
@@ -199,11 +202,9 @@
     byId(`${target}-bg-image-group`)?.classList.toggle("hidden",type!=="image");
   }
 
-  // render() reißt in renderBars() sämtliche .bar-item-DOM-Knoten ab und
-  // baut sie komplett neu auf. Ein Rendering mitten in einem aktiven Drag
-  // würde dessen Pointer-Capture/Event-Listener zerstören (analog zu
-  // scheduleRender() in canvas.js). Deshalb verschiebt sich render() so
-  // lange auf den nächsten Frame, wie state.dragLock aktiv ist.
+  // renderBars() below rebuilds every .bar-item DOM node, which would break
+  // an active drag's pointer capture (same reasoning as scheduleRender() in
+  // canvas.js). Defer to the next frame while state.dragLock is true.
   function render(){
     if(state.dragLock){
       if(window.requestAnimationFrame)window.requestAnimationFrame(render);else window.setTimeout(render,16);
@@ -329,4 +330,18 @@
     byId("bar-prop-size")?.addEventListener("change",e=>updateSelected({size:Math.max(8,Math.min(300,Number(e.target.value)||16))}),true);
     byId("bar-prop-action-type")?.addEventListener("change",e=>updateSelected({actionType:e.target.value}),true);
     ["bold","italic","underline"].forEach(f=>byId(`bar-ttb-${f}`)?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();const sel=currentSelection();if(sel)updateSelected({[f]:!sel.item[f]});},true));
-    ["left","center","right"].forEach(a=>byId(`bar-ttb-align-${a}`)?.a
+    ["left","center","right"].forEach(a=>byId(`bar-ttb-align-${a}`)?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();updateSelected({align:a});},true));
+    byId("btn-delete-bar-item")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();const sel=currentSelection();if(sel)transact(()=>removeItem(sel.ref.id,sel.ref.target,false));},true);
+
+    onChangeInternal();
+    // Header/footer changes are pushed via WebBuilderHeaderFooter.onChange()
+    // above, not via state.notify() — only "products" and "preview" need to
+    // trigger a re-render here.
+    state.subscribe?.(e=>{if(["products","preview"].includes(e?.domain))render();});
+    render();
+  }
+  function onChangeInternal(){window.WebBuilderHeaderFooter.onChange(render);}
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind,{once:true});else bind();
+  window.WebBuilderHeaderFooterRuntime={render,renderBars,selectItem,clearSelection,currentSelection,itemInnerHtml};
+})();
