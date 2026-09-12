@@ -17,12 +17,17 @@ document.write('<script src="js/header-footer.js"><\/script>');
 document.write('<script src="js/export.js"><\/script>');
 document.write('<script src="js/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
-// FIX: supabase-config.js / supabase.js use import/export syntax, which is
-// only valid inside an ES module script. Without type="module" the browser
-// threw a SyntaxError on both files at parse time and neither ever ran —
-// Supabase was completely dead, not just unused from the UI.
-document.write('<script type="module" src="js/supabase-config.js"><\/script>');
-document.write('<script type="module" src="js/supabase.js"><\/script>');
+// Supabase-Dateien liegen gebündelt in js/Supabase/ (siehe dortiges
+// README). Alle drei nutzen import/export-Syntax, daher type="module".
+// supabase-ui.js importiert per ES import direkt aus supabase-data.js
+// (siehe Kommentar dort) — die Reihenfolge dieser drei Zeilen ist daher
+// nur informell, nicht funktional entscheidend.
+// ACHTUNG Groß-/Kleinschreibung: der Ordner heißt "Supabase" (großes S) —
+// auf manchen Servern (z.B. GitHub Pages/Linux) wird das case-sensitive
+// geprüft.
+document.write('<script type="module" src="js/Supabase/supabase-config.js"><\/script>');
+document.write('<script type="module" src="js/Supabase/supabase-data.js"><\/script>');
+document.write('<script type="module" src="js/Supabase/supabase-ui.js"><\/script>');
 
 // FIX: nothing wired up the sidebar tab buttons — clicking "Kopf/Fuß",
 // "Warenkorb" or "Produkte" did nothing at all.
