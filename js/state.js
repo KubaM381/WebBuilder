@@ -73,8 +73,6 @@ window.WebBuilderState = window.WebBuilderState || {
 };
 
 const WebBuilderState = window.WebBuilderState;
-WebBuilderState.STORAGE_KEY = WebBuilderState.storageKey;
-WebBuilderState.HISTORY_LIMIT = WebBuilderState.historyLimit;
 WebBuilderState._listeners = WebBuilderState._listeners || new Set();
 
 WebBuilderState.subscribe = function subscribe(listener) {
@@ -90,4 +88,29 @@ WebBuilderState.notify = function notify(domain, action, payload) {
   });
   window.dispatchEvent(new CustomEvent("webbuilder:state-change", { detail: event }));
   return event;
+};
+
+// ------------------------------------------------------------------
+// Gemeinsame Utility: normalisiert eine Liste von Objekten IN PLACE statt
+// sie komplett neu zu erzeugen. Bereits bestehende, valide Einträge (mit
+// id) behalten ihre Objektreferenz (Object.assign schreibt die
+// normalisierten Werte zurück in dasselbe Objekt); nur neue/ungültige
+// Einträge (kein Objekt oder ohne id) werden über normalizeFn frisch
+// erzeugt. Wichtig für Module, die zwischenzeitlich eine Referenz auf ein
+// Listenelement halten (z.B. während eines aktiven Drags oder einer
+// laufenden Eingabe) — ein kompletter Array-Ersatz würde diese Referenz
+// "aushängen" und nachfolgende Änderungen gingen beim nächsten Rendern
+// wieder verloren.
+// Genutzt von cart.js, products.js, header-footer.js.
+window.WebBuilderUtils = window.WebBuilderUtils || {
+  normalizeInPlace(list, normalizeFn) {
+    if (!Array.isArray(list)) return [];
+    return list.map(item => {
+      if (item && typeof item === "object" && item.id) {
+        Object.assign(item, normalizeFn(item));
+        return item;
+      }
+      return normalizeFn(item);
+    });
+  }
 };
