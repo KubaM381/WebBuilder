@@ -1,9 +1,7 @@
 // WebBuilder cart domain
-// Owns cart data (Warenkorb) and its editor UI only. Produktverwaltung
-// (CRUD, Normalisierung, Produkt-Tab) lebt jetzt in js/products.js (siehe
-// README "Geplante Strukturmaßnahme" — Aufteilung durchgeführt). cart.js
-// referenziert Produkte ausschließlich per ID über window.WebBuilderProducts,
-// keine Datenduplikate.
+// Owns cart data and its editor UI only. Product management lives in
+// products.js; cart.js references products only by ID via
+// window.WebBuilderProducts, no duplicated product data.
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCart: WebBuilderState is not available."); return; }
@@ -11,10 +9,8 @@
   function notify(domain, action, payload) { if (typeof state.notify === "function") state.notify(domain, action, payload); }
   function normalizeCartItem(item = {}) { const price = Number(item.price) || 0; const discountPrice = item.discountPrice != null && item.discountPrice !== "" ? Number(item.discountPrice) || 0 : null; return { id: item.id || `cart_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, name: item.name || "Produkt", price, discountPrice: discountPrice != null && discountPrice > 0 && discountPrice < price ? discountPrice : null, qty: Math.max(1, Number(item.qty) || 1), icon: item.icon || "📦", description: item.description || "" }; }
   function getEffectivePrice(item) { const discount = Number(item?.discountPrice); return Number.isFinite(discount) && discount > 0 && discount < (Number(item?.price) || 0) ? discount : Number(item?.price) || 0; }
-  // In-place normalisieren (siehe WebBuilderUtils.normalizeInPlace,
-  // state.js) — hält Objektreferenzen stabil, damit laufende Mengen-/
-  // Preisänderungen im Warenkorb nicht durch eine History-Transaktion
-  // verworfen werden.
+  // Normalizes in place (WebBuilderUtils.normalizeInPlace) so references
+  // stay stable during active quantity/price edits.
   function normalizeState() {
     window.WebBuilderProducts?.normalizeState?.();
     state.cartItems = window.WebBuilderUtils.normalizeInPlace(state.cartItems, normalizeCartItem);
@@ -34,9 +30,7 @@
   function setItemDisplay(patch={},recordHistory=true){if(recordHistory)window.WebBuilderHistory?.arm();state.cartConfig.itemDisplay=Object.assign({},state.cartConfig.itemDisplay||{},clone(patch));if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","display",state.cartConfig.itemDisplay);return state.cartConfig.itemDisplay;}
   function setButtonLabel(label,recordHistory=true){if(recordHistory)window.WebBuilderHistory?.arm();state.cartButtonLabel=String(label||"Zur Kasse gehen");if(recordHistory)window.WebBuilderHistory?.commit();notify("cart","button-label",state.cartButtonLabel);return state.cartButtonLabel;}
 
-  // ------------------------------------------------------------------
-  // Rabattcode (Demo-Implementierung: Code "DEMO10" = -10%)
-  // ------------------------------------------------------------------
+  // Demo discount code: "DEMO10" = -10%.
   function applyDiscountCode() {
     const input = document.getElementById("cart-discount-input");
     const code = (input?.value || "").trim().toUpperCase();
@@ -50,11 +44,7 @@
     renderCart();
   }
 
-  // ------------------------------------------------------------------
-  // Produktempfehlungen — referenzieren ausschließlich Produkt-IDs aus
-  // js/products.js (window.WebBuilderProducts), keine duplizierten
-  // Produktdaten (siehe Projektregel zu Produkten).
-  // ------------------------------------------------------------------
+  // Recommendations store product IDs only, no duplicated product data.
   function addRecommendation(productId) {
     if (!productId || !window.WebBuilderProducts?.getById?.(productId)) return null;
     window.WebBuilderHistory?.arm();
@@ -71,9 +61,7 @@
     notify("cart", "recommendations", state.cartConfig.recommendations);
   }
 
-  // ------------------------------------------------------------------
-  // Meilensteine (Fortschrittsbalken)
-  // ------------------------------------------------------------------
+  // Progress-bar milestones.
   function addMilestone() {
     window.WebBuilderHistory?.arm();
     if (!Array.isArray(state.cartConfig.milestones)) state.cartConfig.milestones = [];
@@ -97,10 +85,7 @@
   const esc=window.WebBuilderUtils.escapeHtml;
   const eur=v=>`${Number(v||0).toFixed(2).replace(".",",")} €`;
 
-  // ------------------------------------------------------------------
-  // Baut das HTML für eine einzelne Warenkorb-Zeile — abhängig von
-  // cartConfig.itemShape und cartConfig.itemDisplay.
-  // ------------------------------------------------------------------
+  // Builds one cart-row's HTML, based on cartConfig.itemShape/itemDisplay.
   function buildCartItemHTML(item, isDemo) {
     const config = getConfig() || {};
     const disp = config.itemDisplay || {};
@@ -167,7 +152,7 @@
     if (!listEl) return;
     const ids = Array.isArray(getConfig()?.recommendations) ? getConfig().recommendations : [];
     const rows = ids.map(id => ({ id, product: window.WebBuilderProducts?.getById?.(id) })).filter(r => r.product);
-    // Verwaiste IDs (Produkt gelöscht) automatisch entfernen.
+    // Drop orphaned IDs (product was deleted).
     if (rows.length !== ids.length) state.cartConfig.recommendations = rows.map(r => r.id);
     listEl.innerHTML = rows.length ? "" : '<p class="help-text">Noch keine Empfehlungen.</p>';
     rows.forEach(({ id, product }) => {
@@ -329,8 +314,7 @@
       else if(t.classList.contains("cart-qty-plus"))changeQty(id,1);
       renderCart();
     },true);
-    // FIX: previously the price input and the quantity dropdown were never
-    // wired up at all — editing them in the drawer had zero effect.
+    // Wires the price input and quantity dropdown inside the drawer.
     list?.addEventListener("change",e=>{
       const qtySel=e.target.closest?.(".cart-qty-select[data-cart-id]");
       if(qtySel){updateQty(qtySel.dataset.cartId,parseInt(qtySel.value,10)||1);renderCart();return;}
@@ -343,9 +327,8 @@
     document.getElementById("btn-open-cart")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();openCart();},true);
     bindAddRecommendation();
     bindAddMilestone();
-    // Reagiert auf "cart" UND "products" — Produktänderungen wirken sich
-    // auf Empfehlungs-/Demo-Vorschau im Warenkorb aus, auch wenn die
-    // Produkt-Tab-Darstellung selbst jetzt von products.js gerendert wird.
+    // Reacts to both "cart" and "products": product changes affect the
+    // recommendation/demo preview shown in the cart.
     state.subscribe?.(e=>{if(["cart","products"].includes(e?.domain)){renderCart();renderRecommendList();renderMilestoneList();renderCartItemDemo();}});
     renderCart();renderRecommendList();renderMilestoneList();renderCartItemDemo();
   }
