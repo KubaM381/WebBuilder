@@ -12,20 +12,17 @@
   window.WebBuilderPreview={isPreview,apply,enter,exit,toggle,bindToggle};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bindToggle,{once:true});else bindToggle();
 
-  // body has overflow:hidden (see base.css), so window/document never
-  // scroll. .canvas-container is the real scroll container in both
-  // editor and preview mode.
+  // body has overflow:hidden (base.css); .canvas-container is the actual
+  // scroll container in both editor and preview mode.
   function getScrollContainer(){
     const el=document.querySelector(".canvas-container");
     if(el)return el;
     return document.scrollingElement||document.documentElement;
   }
 
-  // .canvas-column is transform:scale()'d (see canvas.js applyZoom()), so
-  // right after a zoom/render change the layout may not be settled yet.
-  // Two nested rAF calls ensure layout is current before we read
-  // scrollHeight; a direct scrollTop fallback covers browsers where
-  // scrollTo({behavior:"smooth"}) doesn't fire.
+  // .canvas-column is scale()'d (canvas.js applyZoom()), so layout may
+  // not be settled right after a zoom/render change — two nested rAF
+  // calls wait for it before reading scrollHeight.
   function performScroll(getTarget){
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -48,15 +45,11 @@
   function scrollToTop(){return performScroll(() => 0);}
   function scrollToBottom(){return performScroll(container => container.scrollHeight);}
 
-  // actionType/actionUrl/actionMsg/productId are the only fields elements.js
-  // and header-footer.js ever produce; both migrate legacy field names once
-  // on load (see WebBuilderElements.normalizeState / WebBuilderHeaderFooter's
-  // normalizeItem), so items reaching this runtime always use the canonical
-  // names — no fallback needed here.
+  // elements.js/header-footer.js migrate legacy field names on load, so
+  // items here always use actionType/actionUrl/actionMsg/productId.
   function getActionType(item={}){return item.actionType||"none";}
   function execute(item={}){const type=getActionType(item),url=item.actionUrl||"",message=item.actionMsg||"Aktion ausgeführt!";switch(type){case"scroll-top":return scrollToTop();case"scroll-bottom":return scrollToBottom();case"history-back":window.history.back();return true;case"history-forward":window.history.forward();return true;case"open-url":if(!url)return false;window.open(url,"_blank","noopener,noreferrer");return true;case"cart-add":{const product=window.WebBuilderProducts?.getById?.(item.productId);if(!product||!window.WebBuilderCart)return false;window.WebBuilderCart.addItem(product);return true;}case"open-cart-drawer":return !!window.WebBuilderCartRuntime?.open?.();case"open-custom-modal":return !!window.WebBuilderModals?.open?.(item.modalTitle||"Information",item.modalBody||message,item.modalFooter||"");
-    // item.messagePosition picks where the message appears (top/bottom,
-    // left/right, centered) via openPositionedMessage().
+    // item.messagePosition picks the on-screen corner via openPositionedMessage().
     case"alert-msg":if(window.WebBuilderModals?.openPositionedMessage)window.WebBuilderModals.openPositionedMessage(message,item.messagePosition||"bottom-right");else if(window.WebBuilderModals?.openMessage)window.WebBuilderModals.openMessage(item.modalTitle||"Hinweis",message);else window.alert(message);return true;default:return false;}}
   window.WebBuilderActionRuntime={getActionType,execute,getScrollContainer};
 })();
