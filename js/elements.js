@@ -20,6 +20,29 @@
     state.notify?.("elements", type);
   }
 
+  // Migrates click-action fields from before the actionType/actionUrl/
+  // actionMsg/productId rename (old names: action, action_type, action_url,
+  // url, actionMessage, message, product_id, product). Unlike products.js/
+  // cart.js/header-footer.js, canvas elements had no normalize step at all,
+  // so any element saved under the old names would never get fixed up.
+  // Runs once per load via normalizeState(); safe to call repeatedly since
+  // it's a no-op once actionType/actionUrl/actionMsg/productId are set.
+  function migrateActionFields(item) {
+    if (!item || typeof item !== "object") return item;
+    if (item.actionType == null) item.actionType = item.action || item.action_type || "none";
+    if (!item.actionUrl) item.actionUrl = item.action_url || item.url || "";
+    if (!item.actionMsg) item.actionMsg = item.actionMessage || item.message || "";
+    if (item.productId == null) item.productId = item.product_id || item.product || null;
+    delete item.action; delete item.action_type; delete item.action_url; delete item.url;
+    delete item.actionMessage; delete item.message; delete item.product_id; delete item.product;
+    return item;
+  }
+
+  function normalizeState() {
+    state.elements.forEach(migrateActionFields);
+    return state.elements;
+  }
+
   function getAll() {
     return state.elements;
   }
@@ -105,6 +128,7 @@
         if (item && typeof item === "object") state.elements.push(clone(item));
       });
     }
+    normalizeState();
     if (!getById(state.selectedElementId)) state.selectedElementId = null;
     notify("replace-all");
     return state.elements;
@@ -128,7 +152,7 @@
 
   window.WebBuilderElements = {
     clone, createId, getAll, getById, create, add, addNew, remove, update,
-    duplicate, replaceAll, setSelected, getSelected, clear
+    duplicate, replaceAll, setSelected, getSelected, clear, normalizeState
   };
 
   // ------------------------------------------------------------------
@@ -158,10 +182,10 @@
     return Object.assign({}, icons);
   }
 
-  // Zentraler Merge-Punkt: alle registrierten Icons plus die optionale,
-  // extern befüllbare window.WebBuilderIconMap-Erweiterung. Genutzt von
-  // canvas.js (Editor-Rendering) und export.js (statischer HTML-Export),
-  // damit die Merge-Logik nicht mehrfach dupliziert wird.
+  // Central merge point: all registered icons plus the optional, externally
+  // fillable window.WebBuilderIconMap extension. Used by canvas.js (editor
+  // rendering) and export.js (static HTML export) so the merge logic isn't
+  // duplicated.
   function getMergedMap() {
     return Object.assign({}, getAllIcons(), window.WebBuilderIconMap || {});
   }
