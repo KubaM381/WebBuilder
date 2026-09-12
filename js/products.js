@@ -53,7 +53,9 @@
   // ------------------------------------------------------------------
   // Produkt-Tab-Editor-UI (linke Seitenleiste, Tab "📦 Produkte")
   // ------------------------------------------------------------------
-  const esc = v => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  // NEU: esc zentralisiert in state.js (WebBuilderUtils.escapeHtml) —
+  // vorher eine von 7 unabhängigen, identischen Kopien im Projekt.
+  const esc = window.WebBuilderUtils.escapeHtml;
 
   function renderProducts() {
     const list = document.getElementById("product-list");
