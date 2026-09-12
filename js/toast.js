@@ -1,21 +1,30 @@
 // WebBuilder shared toast module
-// Einziger Ort für Toast-Benachrichtigungen. Ersetzt die bisher in
-// supabase.js, toolbar.js und export.js jeweils separat definierten
-// Mini-Implementierungen (siehe README "Offene Punkte" — wurde bewusst erst
-// jetzt vereinheitlicht, im Rahmen der Supabase-UI-Anbindung, da dort
-// ohnehin neues Feedback-UI (Login-/Speichern-Status) entsteht).
+// Einziger Ort für Toast-Erzeugung. buildToastNode() baut das eigentliche
+// Toast-Markup (Icon + Text) und wird sowohl von show() (fester Stapel
+// unten rechts, #toast-container) als auch von modals.js
+// openPositionedMessage() (frei positionierte Meldung) genutzt — vorher
+// bauten beide unabhängig ein fast identisches .toast-Element.
 (() => {
+  const esc = window.WebBuilderUtils?.escapeHtml || (v => String(v ?? ""));
+  const ICONS = { success: "✅", danger: "⚠️", info: "ℹ️" };
+
+  function buildToastNode(message, type = "info", icon = null) {
+    const node = document.createElement("div");
+    node.className = `toast toast-${type}`;
+    node.innerHTML = `<span>${icon || ICONS[type] || ICONS.info}</span> <span>${esc(message)}</span>`;
+    return node;
+  }
+
   function show(message, type = "info") {
     const container = document.getElementById("toast-container");
     if (!container) {
       console[type === "danger" ? "error" : "log"](message);
       return;
     }
-    const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<span>${type === "success" ? "✅" : type === "danger" ? "⚠️" : "ℹ️"}</span> <span>${message}</span>`;
+    const toast = buildToastNode(message, type);
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
   }
-  window.WebBuilderToast = { show };
+
+  window.WebBuilderToast = { show, buildToastNode };
 })();
