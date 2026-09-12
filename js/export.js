@@ -23,10 +23,11 @@
     }[c]));
   }
 
+  // Zentraler Merge-Punkt für alle Icons (siehe elements.js
+  // WebBuilderIconRegistry.getMergedMap()) — keine eigene Merge-Kopie mehr
+  // hier.
   function getIconMap() {
-    const registry = window.WebBuilderIconRegistry && typeof window.WebBuilderIconRegistry.getAll === "function"
-      ? window.WebBuilderIconRegistry.getAll() : {};
-    return Object.assign({}, registry, window.WebBuilderIconMap || {});
+    return window.WebBuilderIconRegistry?.getMergedMap?.() || {};
   }
 
   // Nutzt dieselbe Markup-Funktion, die header-footer.js für das Live-
