@@ -1,5 +1,6 @@
 .sidebar { width: 320px; min-width: 320px; max-width: 320px; flex-shrink: 0; background: var(--bg-panel); border-right: 1px solid var(--border-color); padding: 20px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; z-index: 10; }
 .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 18px 0 10px 0; letter-spacing: 0.05em; }
+.section-title.tight { margin: 0 0 6px; }
 .help-text { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.4; }
 .sidebar-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 6px; }
 .sidebar-tab { padding: 8px 6px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-muted); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
@@ -23,6 +24,7 @@
 .item-row.active-item-row { border-color: var(--selection-color); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
 .item-row input[type="text"], .item-row input[type="number"], .item-row select, .item-row textarea { flex: 1; min-width: 60px; padding: 4px 6px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.78rem; }
 .item-row input[type="color"] { width: 24px; height: 24px; border: none; padding: 0; cursor: pointer; flex: none; }
+.item-row-text { flex: 1; font-size: 0.78rem; }
 .item-delete { background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 0.9rem; flex: none; }
 .mini-check { display: flex; align-items: center; gap: 2px; font-size: 0.7rem; color: var(--text-muted); flex: none; }
 .item-row-drag-handle { cursor: grab; color: var(--text-muted); flex: none; font-size: 0.8rem; }
@@ -32,3 +34,9 @@
 .product-card-row input, .product-card-row textarea { flex: 1; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.8rem; }
 .product-card-row input[type="color"] { flex: none; width: 30px; height: 30px; padding: 0; border: none; cursor: pointer; }
 .product-icon-preview { font-size: 1.3rem; width: 30px; text-align: center; flex: none; }
+
+/* Fixed-width overrides for the milestone row (js/cart.js
+   renderMilestoneList): win over the generic .item-row input[type=...]
+   flex:1 rule above via equal specificity + later source order. */
+.item-row input.ms-amount { flex: none; width: 70px; }
+.item-row input.ms-label { flex: none; width: 100px; }
