@@ -31,8 +31,6 @@
 .item-row input[type="color"] { width: 24px; height: 24px; border: none; padding: 0; cursor: pointer; flex: none; }
 .item-row-text { flex: 1; font-size: 0.78rem; }
 .item-delete { background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 0.9rem; flex: none; }
-.mini-check { display: flex; align-items: center; gap: 2px; font-size: 0.7rem; color: var(--text-muted); flex: none; }
-.item-row-drag-handle { cursor: grab; color: var(--text-muted); flex: none; font-size: 0.8rem; }
 .product-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
 .product-card-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
 .product-card-row:last-child { margin-bottom: 0; }
