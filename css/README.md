@@ -40,15 +40,6 @@ plus the `body.preview-mode` overrides.
    for small "one-off" tones like a hover shade or a muted border grey
    (see `--primary-light-hover`, `--border-muted`).
 
-## To review (usage unclear)
-
-Defined but no confirmed active use in current JS. Verify via full-repo
-search before deleting:
-
-- `.mini-check` (`sidebar.css`)
-- `.item-row-drag-handle` (`sidebar.css`) — likely prepared for an
-  unfinished drag-reorder feature (e.g. sortable milestones/recommendations).
-
 ## Known gaps (not yet fixed)
 
 None currently tracked. Resolved items stay in git/chat history instead of
