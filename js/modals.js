@@ -36,12 +36,11 @@
     return true;
   }
 
+  // esc centralized in state.js (WebBuilderUtils.escapeHtml) — this used
+  // to be its own, incomplete escape copy (no quote handling) here.
   function openMessage(title, message) {
-    const safeMessage = String(message == null ? "" : message)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\n/g, "<br>");
+    const esc = window.WebBuilderUtils.escapeHtml;
+    const safeMessage = esc(message).replace(/\n/g, "<br>");
     return open(title, `<div>${safeMessage}</div>`);
   }
 
