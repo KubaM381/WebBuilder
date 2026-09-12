@@ -93,8 +93,7 @@
     getItems, getConfig, getCount, getSubtotal, getEffectivePrice, addItem, updateQty, changeQty, updatePrice, updateDiscountPrice, removeItem, clear, setConfig, setItemDisplay, setButtonLabel, normalizeCartItem, normalizeState, applyDiscountCode, addRecommendation, removeRecommendation, addMilestone, removeMilestone
   };
 
-  // NEU: esc zentralisiert in state.js (WebBuilderUtils.escapeHtml) —
-  // vorher eine von 7 unabhängigen, identischen Kopien im Projekt.
+  // esc centralized in state.js (WebBuilderUtils.escapeHtml).
   const esc=window.WebBuilderUtils.escapeHtml;
   const eur=v=>`${Number(v||0).toFixed(2).replace(".",",")} €`;
 
@@ -133,7 +132,7 @@
     } else if (isDemo) {
       priceHtml = `<span>${hasDiscount ? `<s class="cart-item-price-strike">${eur(item.price)}</s> ` : ""}${eur(effective)}</span>`;
     } else {
-      priceHtml = `<input type="number" class="cart-item-price-input" data-cart-id="${esc(item.id)}" value="${Number(item.price || 0).toFixed(2)}" step="0.01" style="width:70px;" />`;
+      priceHtml = `<input type="number" class="cart-item-price-input" data-cart-id="${esc(item.id)}" value="${Number(item.price || 0).toFixed(2)}" step="0.01" />`;
     }
 
     const descHtml = disp.showDescription && item.description ? `<div class="cart-item-desc">${esc(item.description)}</div>` : "";
@@ -174,7 +173,7 @@
     rows.forEach(({ id, product }) => {
       const row = document.createElement("div");
       row.className = "item-row";
-      row.innerHTML = `<span class="product-icon-preview">${esc(product.icon || "📦")}</span><span style="flex:1;">${esc(product.name)} — ${eur(product.discountPrice != null ? product.discountPrice : product.price)}</span><button type="button" class="item-delete" data-rec-id="${esc(id)}">✕</button>`;
+      row.innerHTML = `<span class="product-icon-preview">${esc(product.icon || "📦")}</span><span class="item-row-text">${esc(product.name)} — ${eur(product.discountPrice != null ? product.discountPrice : product.price)}</span><button type="button" class="item-delete" data-rec-id="${esc(id)}">✕</button>`;
       listEl.appendChild(row);
     });
     listEl.querySelectorAll("[data-rec-id]").forEach(btn => btn.addEventListener("click", e => {
@@ -196,7 +195,7 @@
         window.WebBuilderModals?.openMessage?.("Keine Produkte", "Lege zuerst im Tab „📦 Produkte“ ein Produkt an.");
         return;
       }
-      const bodyHtml = `<div style="display:flex;flex-direction:column;gap:8px;">${list.map(p => `<button type="button" class="btn btn-secondary product-pick-btn" data-id="${esc(p.id)}" style="justify-content:flex-start;">${esc(p.icon || "📦")} ${esc(p.name)} — ${eur(p.discountPrice != null ? p.discountPrice : p.price)}</button>`).join("")}</div>`;
+      const bodyHtml = `<div class="pick-list">${list.map(p => `<button type="button" class="btn btn-secondary product-pick-btn" data-id="${esc(p.id)}">${esc(p.icon || "📦")} ${esc(p.name)} — ${eur(p.discountPrice != null ? p.discountPrice : p.price)}</button>`).join("")}</div>`;
       window.WebBuilderModals?.open?.("Produkt als Empfehlung wählen", bodyHtml);
       document.querySelectorAll(".product-pick-btn").forEach(pickBtn => pickBtn.addEventListener("click", pe => {
         addRecommendation(pe.currentTarget.dataset.id);
@@ -215,8 +214,8 @@
     milestones.forEach(m => {
       const row = document.createElement("div");
       row.className = "item-row";
-      row.innerHTML = `<input type="number" class="ms-amount" data-id="${esc(m.id)}" value="${Number(m.amount) || 0}" step="1" style="width:70px;" placeholder="Betrag (€)">
-        <input type="text" class="ms-label" data-id="${esc(m.id)}" value="${esc(m.label)}" style="width:100px;" placeholder="Label">
+      row.innerHTML = `<input type="number" class="ms-amount" data-id="${esc(m.id)}" value="${Number(m.amount) || 0}" step="1" placeholder="Betrag (€)">
+        <input type="text" class="ms-label" data-id="${esc(m.id)}" value="${esc(m.label)}" placeholder="Label">
         <select class="ms-action" data-id="${esc(m.id)}">
           <option value="free-shipping" ${m.action === "free-shipping" ? "selected" : ""}>Kostenloser Versand</option>
           <option value="discount" ${m.action === "discount" ? "selected" : ""}>Extra-Rabatt (10%)</option>
