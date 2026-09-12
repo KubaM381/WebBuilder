@@ -1,70 +1,58 @@
-## Aktuelle Projektstruktur
+# WebBuilder
+
+Visueller Drag-and-Drop-Website-Baukasten (Vanilla JS, kein Build-Tool/Framework). Nutzer platzieren Elemente per Drag-and-Drop, gestalten Header/Footer, verwalten Produkte und einen Warenkorb, und speichern Projekte lokal oder in Supabase.
+
+## Projektstruktur
 
 ```text
 WebBuilder/
-├── index.html
-├── web.html
+├── web.html              # einzige HTML-Einstiegsseite (Editor-UI)
+├── README.md             # dieses Dokument
 ├── css/
-│   ├── styles.css          # aktuell aktive Gesamt-CSS-Datei
-│   ├── base.css            # globale Basis / Variablen / Typografie
-│   ├── layout.css          # grundlegendes Layout
-│   ├── toolbar.css         # Toolbar
-│   ├── sidebar.css         # linke Seitenleiste
-│   ├── inspector.css       # Eigenschaften-/Inspector-Bereich
-│   ├── canvas.css          # Canvas und Builder-Fläche
-│   ├── elements.css        # Elemente und Elementdarstellung
-│   ├── modals.css          # Modals und Dialoge
-│   └── responsive.css      # Responsive Regeln
+│   ├── README.md         # CSS-Architektur, Details siehe dort
+│   └── *.css
 └── js/
-    ├── builder.js          # zentraler Builder-Kern / Bootstrap
-    ├── state.js             # zentraler Builder-State
-    ├── toast.js              # zentraler Toast-/Benachrichtigungs-Helper
-    ├── canvas.js             # Canvas, Drag & Drop, Canvas-Steuerung, Eigene-Icons-UI
-    ├── elements.js           # Elementtypen, Elementdaten und Icon-Registry
-    ├── inspector.js          # Auswahl, Eigenschaften, Elementaktionen und Duplizieren
-    ├── toolbar.js            # Toolbar und Editor-Steuerung
-    ├── header-footer.js      # Header-/Footer-Logik
-    ├── products.js           # Produktverwaltung (CRUD, Normalisierung, Produkt-Tab)
-    ├── cart.js                # Warenkorb (siehe "Verantwortlichkeiten")
-    ├── export.js             # Statischer HTML-Export des aktuellen Projekts
-    ├── modals.js             # Modal-/Dialog-Logik
-    ├── storage.js            # Speicherung, Projektzustand und History
-    ├── preview.js            # Vorschau und Action-Runtime
-    ├── supabase.js           # Supabase-Anbindung (Auth, Projekte, Seiten, Cloud-UI)
-    └── supabase-config.js    # Supabase-Konfiguration
+    ├── README.md         # Modulübersicht, Details siehe dort
+    └── *.js
 ```
 
-### Verantwortlichkeiten
+> `index.html` wird aktuell nicht mehr aktiv genutzt/ist nicht Teil des laufenden Builders. Falls sie im Repo noch existiert: vor dem nächsten größeren Umbau prüfen, ob sie gelöscht werden kann.
 
-- `builder.js` — zentraler Bootstrap und Builder-Kern. In dieser Phase bewusst nicht weiter aufteilen.
-- `state.js` — zentraler Zustand, State-Änderungen und gemeinsame Builder-Daten.
-- `toast.js` — einziger Ort für Toast-Benachrichtigungen (`window.WebBuilderToast.show(message, type)`); wird von `toolbar.js`, `export.js`, `supabase.js` und `canvas.js` verwendet.
-- `canvas.js` — Canvas-Rendering, Drag & Drop, Zoom, Canvas-Steuerung. Besitzt zusätzlich die Palette-UI für benutzerdefinierte Icons (`renderCustomIconPalette()`, `bindCustomIconForm()`), da diese UI direkt auf der bestehenden Palette-Drag&Drop-Logik (`bindPaletteDragAndDrop()`) aufbaut.
-- `elements.js` — Elementtypen, Elementdaten und Icon-Registry (`window.WebBuilderIconRegistry`: `register`, `get`, `getAll`, `addCustom`, `getCustomNames`). Reine Daten-/Registry-Logik, kein DOM-Zugriff.
-- `inspector.js` — Auswahl, Eigenschaften, Aktionen, Duplizieren/Löschen und spezielle Element-Einstellungen.
-- `toolbar.js` — Toolbar- und Editor-Steuerung (Zoom, Undo/Redo, lokales Speichern); exponiert zusätzlich `refreshAllDomains()`, das nach jedem State-Reset (Undo/Redo, Cloud-Laden) die komplette UI neu rendert.
-- `header-footer.js` — Header-/Footer-Zustand und Editor-Funktionen.
-- `products.js` — Produktverwaltung: CRUD (`add`/`update`/`remove`/`replaceAll`), `normalizeProduct` und das Rendering/die Bedienung des Produkt-Tabs (`#product-list`, `#btn-add-product`). Reine Datenquelle für Produkte; `window.WebBuilderProducts` (`getAll`, `getById`, `add`, `update`, `remove`, `replaceAll`, `normalize`, `normalizeState`) ist die kanonische Schnittstelle, die `inspector.js`, `header-footer.js`, `preview.js`, `storage.js`, `toolbar.js` und `cart.js` nutzen. `window.WebBuilderProductsRuntime.render()` rendert den Produkt-Tab neu (z. B. nach Undo/Redo oder Cloud-Laden). Ausgelagert aus `cart.js` (siehe Git-/Chatverlauf).
-- `cart.js` — **nur noch Warenkorb-Domäne**: Warenkorb-Items, Drawer-Rendering (`renderCart()`, `buildCartItemHTML()`), Konfig-Editor-UI (`window.WebBuilderCartConfigRuntime`), Rabattcode, Empfehlungen und Meilensteine/Fortschritt, Checkout-Button-Styling. Referenziert Produkte ausschließlich über `window.WebBuilderProducts` (nur IDs, keine Datenduplikate). `window.WebBuilderCart` behält aus Kompatibilitätsgründen zusätzlich dünne, an `products.js` delegierende Produktfunktionen (`getProducts`, `getProduct`, `addProduct`, `updateProduct`, `removeProduct`, `replaceProducts`, `normalizeProduct`).
-- `export.js` — erzeugt aus dem aktuellen State einen statischen HTML-Export (Header/Canvas-Elemente/Footer); besitzt keine eigene Persistenz, keine Warenkorb-/Produktlogik.
-- `modals.js` — Modal- und Dialogfunktionen.
-- `storage.js` — Speicherung, Projektzustand und History-Funktionen. `createSnapshot()`/`applySnapshot()` sind die kanonische Serialisierungsform des gesamten Builder-Zustands und werden von lokalem Speichern, Undo/Redo **und** dem Supabase-Cloud-Speichern/-Laden gemeinsam genutzt. Eigene Icons sind bewusst NICHT Teil des Snapshots (siehe Icon-Registry in `elements.js`).
-- `preview.js` — Preview-Modus und Action-/Link-Runtime.
-- `supabase.js` — Supabase-Anbindung: Auth (Login/Registrierung/Passwort-Reset/Logout), Projekt-Verwaltung (erstellen/umbenennen/löschen/auflisten), Mehrseiten-Verwaltung (Seiten anlegen/umbenennen/löschen/wechseln) und die zugehörige Konto-/Cloud-UI (Modal über `#btn-cloud`). Nutzt zum Speichern/Laden ausschließlich `WebBuilderStorage.createSnapshot()`/`applySnapshot()`, damit Cloud-Daten strukturell nie vom lokalen Format abweichen. Größe im Auge behalten (siehe Abschnitt "Wann wird ein Modul aufgeteilt?").
-- `supabase-config.js` — Supabase-Konfiguration.
+## Kernarchitektur in Kürze
 
-**Wichtig für Skript-Ladereihenfolge:** `products.js` muss in `builder.js` **vor** `cart.js` eingebunden werden (Abhängigkeitsreihenfolge, Projektregel 8), da `cart.js` Produkte ausschließlich über `window.WebBuilderProducts` referenziert.
+- **Ein zentraler State**: `js/state.js` definiert `window.WebBuilderState` – die einzige Quelle der Wahrheit für Elemente, Produkte, Warenkorb, Header/Footer, Hintergrund, Zoom, History.
+- **Pub/Sub statt direkter Kopplung**: Module ändern den State und rufen `state.notify(domain, action, payload)` auf; andere Module hören per `state.subscribe(fn)` auf Domains, die sie betreffen (`"elements"`, `"products"`, `"cart"`, `"header"`, `"footer"`, `"preview"`, `"background"`, `"selection"`).
+- **Eine Serialisierungsform für alles**: `js/storage.js` → `createSnapshot()` / `applySnapshot()`. Wird von lokalem Speichern, Undo/Redo **und** Supabase-Cloud-Speichern gemeinsam genutzt. Wer eine neue speicherbare Eigenschaft einführt, muss sie **hier** ergänzen, sonst geht sie beim Speichern/Laden verloren.
+- **Ein Modul pro Fachbereich**, das sich selbst beim Laden initialisiert (`DOMContentLoaded`) und seine API unter `window.WebBuilderXxx` bereitstellt. Details: siehe `js/README.md`.
+- **Ladereihenfolge ist wichtig**: `js/builder.js` lädt alle Module nacheinander per `document.write`. `products.js` **muss vor** `cart.js` stehen (cart.js referenziert Produkte nur über `window.WebBuilderProducts`).
 
-## Offene Punkte (Stand aktuelle Runde)
+## Supabase-Schema
 
-Diese Liste wird von KI zu KI weitergeführt und nach jedem Schritt aktualisiert. Bereits erledigte Punkte werden hier NICHT mehr aufgeführt (siehe Git-/Chatverlauf für die Historie) — nur was noch offen ist.
+```text
+projects (id, user_id, name, slug, updated_at)
+   └── pages (id, project_id, name, slug, content JSON, updated_at)
+```
 
-Aktuell keine offenen Bug-/Reparaturpunkte und keine vorgesehene Strukturmaßnahme. Die zuvor geplante Aufteilung von `cart.js` in `products.js` + `cart.js` ist umgesetzt (siehe Abschnitt "Verantwortlichkeiten" oben).
+`content` in `pages` ist exakt das Ergebnis von `WebBuilderStorage.createSnapshot()` – niemals ein eigenes, abweichendes Format bauen.
 
-Nur Beobachtungen/bewusste Design-Entscheidungen (keine Aktion nötig):
+## Sicherheit
 
-1. Rabattcode ist Demo-only (`DEMO10`) — entspricht dem Sollzustand.
-2. Eigene Icons (Palette-Feature) werden bewusst nicht im Projekt-Speicherstand persistiert und gehen beim Neuladen/Projekt-Laden verloren. Kein Bug, sondern bewusste Design-Entscheidung — nur nachrüsten, falls der Nutzer das ausdrücklich wünscht (Größenlimits bei Supabase/`localStorage` durch potenziell große SVG-Strings beachten, falls doch persistiert werden soll).
-3. `supabase.js`-Größe im Auge behalten — aktuell noch eine klare Domäne, keine Aufteilung nötig (siehe Regel 15).
+- Im Client (`js/supabase-config.js`) darf **ausschließlich** der Publishable Key stehen, niemals ein Secret/Service-Role-Key.
+- Zugriffsrechte laufen über Supabase Row Level Security (RLS) auf DB-Ebene, nicht über Client-Logik.
 
-Wichtig: Immer zuerst betroffene Datei(en) + direkte Abhängigkeiten lesen (Regel 1/11), nicht das ganze Projekt neu schreiben.
+## Für die Weiterentwicklung (auch für KI-Assistenten)
+
+1. Vor jeder Änderung: nur die tatsächlich betroffenen Dateien lesen (siehe `js/README.md` für "wer macht was").
+2. Keine Refactorings "nebenbei" – wenn eine strukturelle Verbesserung sinnvoll erscheint, vorschlagen statt ungefragt umsetzen.
+3. Neue speicherbare State-Felder immer auch in `storage.js` (`createSnapshot`/`applySnapshot`) ergänzen.
+4. Neue Kommentare bitte kurz halten (Warum, nicht Bug-Historie). Die Historie gehört in Commit-Messages.
+
+## Bekannte technische Schulden
+
+Eine ausführliche, kategorisierte Liste (tote Funktionen, doppelte Logik, Formatierungs-Inkonsistenzen, veraltete Dokumentation, Architekturvorschläge) wurde im Rahmen eines Code-Reviews erstellt und im Chat-Verlauf mit dem Entwickler dokumentiert. Kurzfassung:
+
+- Ein paar exportierte Funktionen werden nirgends aufgerufen (`WebBuilderElements.createLegacyProxy`, `WebBuilderCanvas.makeDraggable`-Alias, `WebBuilderCart`-Produkt-Delegationsmethoden) – Kandidaten zum Entfernen.
+- Die "Array in-place statt komplett neu erzeugen"-Normalisierung ist in `cart.js`, `products.js` und `header-footer.js` dreimal fast identisch implementiert – Kandidat für eine gemeinsame Utility-Funktion.
+- Icon-Map wird in `elements.js`, `canvas.js` und `export.js` dreimal unabhängig zusammengebaut (`canvas.js` dupliziert sogar die Icon-SVGs) – auf eine zentrale Funktion reduzieren.
+- `inspector.js`, `cart.js`, `elements.js`, `preview.js` sind stark verdichtet (viele Anweisungen pro Zeile) – schwerer zu lesen als der Rest des Projekts, sollte bei nächster Berührung auf den übrigen Stil (mehrzeilig, eine Anweisung pro Zeile) vereinheitlicht werden.
+- `supabase.js` ist die größte Datei und vermischt Daten-CRUD mit UI-Rendering des Cloud-Modals – Kandidat für einen Split analog zu `products.js`/`cart.js`.
