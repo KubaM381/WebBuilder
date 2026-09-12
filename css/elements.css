@@ -1,5 +1,5 @@
 .palette-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 8px; }
-.draggable-item { background: #f9fafb; border: 1px dashed #d1d5db; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: grab; font-size: 0.825rem; font-weight: 500; transition: all 0.2s ease; user-select: none; }
+.draggable-item { background: #f9fafb; border: 1px dashed var(--border-muted); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: grab; font-size: 0.825rem; font-weight: 500; transition: all 0.2s ease; user-select: none; }
 .draggable-item:hover { border-color: var(--primary); background: var(--primary-light); transform: translateY(-2px); color: var(--primary); }
 .icon-svg { width: 28px; height: 28px; }
 .item-icon { font-size: 1.5rem; line-height: 1; }
