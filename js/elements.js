@@ -158,6 +158,14 @@
     return Object.assign({}, icons);
   }
 
+  // Zentraler Merge-Punkt: alle registrierten Icons plus die optionale,
+  // extern befüllbare window.WebBuilderIconMap-Erweiterung. Genutzt von
+  // canvas.js (Editor-Rendering) und export.js (statischer HTML-Export),
+  // damit die Merge-Logik nicht mehrfach dupliziert wird.
+  function getMergedMap() {
+    return Object.assign({}, getAllIcons(), window.WebBuilderIconMap || {});
+  }
+
   // Custom icons (added at runtime via the sidebar form) are intentionally
   // NOT persisted — not part of storage.js's snapshot — so they only last
   // for the current session, same as the pre-modular builder behaved.
@@ -183,6 +191,7 @@
     register,
     get: getIcon,
     getAll: getAllIcons,
+    getMergedMap,
     addCustom: addCustomIcon,
     getCustomNames: getCustomIconNames
   };
