@@ -1,37 +1,58 @@
-# CSS-Architektur
+# CSS Architecture
 
-Die CSS-Struktur ist nach Verantwortlichkeit modularisiert. Jede Datei deckt genau einen Bereich der UI ab. Die Aufteilung ist **abgeschlossen** – `styles.css` ist kein "noch aktives Monolith-Übergangsformat" mehr, sondern nur noch der zentrale Einstiegspunkt.
+The CSS is split by responsibility. Each file covers exactly one UI area.
+`styles.css` is just the central entry point (`@import` of all modules)
+plus the `body.preview-mode` overrides.
 
-## Dateien
+## Files
 
-| Datei | Verantwortlich für |
+| File | Responsible for |
 |---|---|
-| `styles.css` | Zentraler Einstiegspunkt (`@import` aller Module) **plus** die `body.preview-mode`-Overrides. Diese Overrides sind bewusst hier zentral gesammelt statt in einer eigenen Datei, weil sie quer über mehrere Bereiche (Sidebar, Inspector, Canvas, Zoom-Controls) hinweg wirken – siehe Regel "keine unnötigen Mini-Dateien". |
-| `base.css` | CSS-Variablen (Farben, Schatten), Reset, Grundtypografie, `.hidden`, `.divider`. |
-| `layout.css` | Grobes Grundgerüst (`.app-body`). |
-| `toolbar.css` | Obere Toolbar + alle `.btn*`-Button-Varianten (werden projektweit wiederverwendet). |
-| `sidebar.css` | Linke Seitenleiste: Tabs, Paletten-Grid, Formular-Reihen (`.item-row`), Produktkarten. |
-| `inspector.css` | Rechter Eigenschaften-Bereich, Textformat-Toolbar. |
-| `canvas.css` | Zeichenfläche, Zoom-Controls, Header-/Footer-Leisten (`.builder-bar`), Bar-Item-Interaktion. |
-| `elements.css` | Elementpalette (`.draggable-item`) und auf der Fläche platzierte Elemente (`.placed-element`). |
-| `modals.css` | Toasts, Drawer (Warenkorb), generisches Modal. |
-| `responsive.css` | Anpassungen für kleinere Bildschirme (≤1024px). |
+| `styles.css` | Central entry point (`@import` of all modules) plus `body.preview-mode` overrides. Kept centralized here (not its own file) since they cut across sidebar, inspector, canvas and zoom controls. |
+| `base.css` | CSS variables (colors, shadows), reset, base typography, `.hidden`, `.divider`. |
+| `layout.css` | Coarse app skeleton (`.app-body`). |
+| `toolbar.css` | Top toolbar + all `.btn*` button variants (reused project-wide). |
+| `sidebar.css` | Left sidebar: tabs, palette grid, form rows (`.item-row`), product cards, item-row text/width helpers. |
+| `inspector.css` | Right-hand properties panel, text-format toolbar. |
+| `canvas.css` | Canvas area, zoom controls, header/footer bars (`.builder-bar`), bar-item interaction. |
+| `elements.css` | Element palette (`.draggable-item`) and placed canvas elements (`.placed-element`). |
+| `modals.css` | Toasts, drawer (cart), generic modal, and reusable modal-body layout helpers (`.modal-stack`, `.modal-row`, `.pick-list`, ...) used by `js/Supabase/supabase-ui.js` and `cart.js`. |
+| `responsive.css` | Small-screen adjustments (≤1024px). |
 
-## Regeln
+## Rules
 
-1. Vor jeder Änderung prüfen, ob die Regel schon in einer bestehenden Datei existiert – keine doppelten Selektoren/Overrides.
-2. Keine neue CSS-Datei anlegen, wenn eine bestehende Datei fachlich passt (z. B. gehören produktspezifische Klassen wie `.product-card` bewusst in `sidebar.css`, weil sie Teil des Produkte-Tabs in der Sidebar sind).
-3. Selektoren/Klassennamen nicht ohne Grund umbenennen – sie werden aus JavaScript heraus per `className`/`classList` gesetzt.
-4. `!important` ist im Projekt bewusst als Escape-Hatch für `body.preview-mode`-Overrides genutzt (Vorschau muss zuverlässig alle Editor-Chrome ausblenden, egal welche Spezifität die Grundregel hat). Außerhalb von Preview-Mode-Overrides sollte `!important` vermieden werden.
-5. Responsive-Regeln zentral in `responsive.css` halten, nicht in den einzelnen Modul-Dateien verteilen.
+1. Before any change, check whether the rule already exists somewhere —
+   no duplicate selectors/overrides.
+2. Don't create a new CSS file if an existing one fits topically (e.g.
+   product-specific classes belong in `sidebar.css` since they're part of
+   the products tab).
+3. Don't rename selectors/class names without reason — JS sets them via
+   `className`/`classList`.
+4. `!important` is intentionally used only as an escape hatch for
+   `body.preview-mode` overrides. Avoid it elsewhere.
+5. Keep responsive rules centralized in `responsive.css`, not scattered
+   across module files.
+6. New JS-driven UI should use CSS classes, not inline `style="..."`
+   strings in template literals — add the class here (`modals.css` for
+   modal/layout helpers, `sidebar.css` for sidebar components) instead.
 
-## Zu prüfen (unsicher, ob noch benötigt)
+## To review (usage unclear)
 
-Diese Klassen sind definiert, aber es konnte keine aktive Verwendung im aktuellen JavaScript gefunden werden. Vor dem Löschen bitte per Volltextsuche im ganzen Repo verifizieren:
+Defined but no confirmed active use in current JS. Verify via full-repo
+search before deleting:
 
 - `.mini-check` (`sidebar.css`)
-- `.item-row-drag-handle` (`sidebar.css`) – vermutlich für ein nie fertiggestelltes Drag-Reorder-Feature (z. B. Meilensteine/Empfehlungen sortierbar machen) vorbereitet.
+- `.item-row-drag-handle` (`sidebar.css`) — likely prepared for an
+  unfinished drag-reorder feature (e.g. sortable milestones/recommendations).
 
-## Empfehlung für später
+## Known gap (found during inline-style cleanup, not yet fixed)
 
-Viele UI-Strings, die aus JavaScript heraus per `innerHTML` gebaut werden (z. B. Cloud-Modal in `supabase.js`, Warenkorb-Items in `cart.js`, Produktkarten in `products.js`), enthalten aktuell viele Inline-`style="..."`-Attribute statt CSS-Klassen. Das bläht die JS-Dateien auf und verteilt Design-Entscheidungen über zwei Sprachen. Mittelfristig sinnvoll: diese Inline-Styles in feste Klassen in `modals.css`/`sidebar.css` überführen.
+`js/products.js`'s product-card markup (`renderProducts()`) uses classes
+`.product-card-header`, `.product-card-icon`, `.product-card-title`,
+`.product-delete`, `.product-card-fields`, `.product-card-description`,
+`.product-card-price` — **none of these are defined anywhere in
+`sidebar.css`** (only `.product-card`, `.product-card-row`,
+`.product-icon-preview` exist). The product tab currently renders with no
+styling for its internal structure. This is a missing-CSS bug, not an
+inline-style issue, so it wasn't fixed as part of the inline-style cleanup
+task — needs its own small task to add the missing rules to `sidebar.css`.
