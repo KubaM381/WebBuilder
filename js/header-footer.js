@@ -11,44 +11,11 @@
 
   function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||"none",actionUrl:item.actionUrl||"",actionMsg:item.actionMsg||"",productId:item.productId||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
 
-  // FIX (Kern-Bug: Bar-Item springt nach Drag zurück): normalizeState()
-  // wird u. a. von storage.js -> normalizeRuntimeState() aufgerufen, und
-  // DAS wiederum von window.WebBuilderHistory.arm() bei JEDEM Drag-Start
-  // (sobald die Bewegungsschwelle in attachInteraction() überschritten
-  // wird — siehe canvas.js). Vorher schrieb normalizeState() das komplette
-  // Array per `.map(normalizeItem)` neu — normalizeItem() erzeugt dabei
-  // IMMER ein brandneues Objekt. Der Drag-Closure hatte zu diesem
-  // Zeitpunkt aber bereits eine Referenz auf das ALTE Item-Objekt erhalten
-  // (aus dem Render-Durchlauf vor dem Klick) und schrieb alle folgenden
-  // item.x/item.y-Änderungen während der Bewegung auf dieses jetzt aus dem
-  // Array "ausgehängte" alte Objekt. Die eigentlichen Daten in
-  // state.headerItems/footerItems (die frischen Kopien) blieben dadurch
-  // während des gesamten Drags komplett unverändert an ihrer
-  // ursprünglichen Position — nach dem Loslassen wurde aus genau diesen
-  // unveränderten Daten neu gerendert, wodurch das Element sichtbar auf
-  // seine alte Position zurücksprang.
-  //
-  // Fix: normalizeItemsInPlace() erzeugt für bereits bestehende,
-  // valide Items KEIN neues Objekt mehr, sondern schreibt die
-  // normalisierten Werte per Object.assign() in dasselbe Objekt zurück.
-  // Die Objektreferenz bleibt dadurch über beliebig viele
-  // normalizeState()-Aufrufe hinweg stabil — exakt wie es bei
-  // state.elements (WebBuilderElements) schon immer der Fall war, da
-  // dessen Domäne in storage.js' normalizeRuntimeState() gar nicht erst
-  // renormalisiert wird. Nur für tatsächlich neue/ungültige Einträge (kein
-  // Objekt oder ohne id, z. B. direkt nach dem Laden eines alten
-  // Speicherstands) wird weiterhin ein frisches Objekt über normalizeItem()
-  // erzeugt — dort existiert ohnehin noch keine aktive Referenz, die
-  // brechen könnte.
+  // In-place normalisieren (siehe WebBuilderUtils.normalizeInPlace,
+  // state.js) — hält Objektreferenzen während eines aktiven Bar-Item-Drags
+  // stabil.
   function normalizeItemsInPlace(list){
-    if(!Array.isArray(list))return[];
-    return list.map(item=>{
-      if(item&&typeof item==="object"&&item.id){
-        Object.assign(item,normalizeItem(item));
-        return item;
-      }
-      return normalizeItem(item);
-    });
+    return window.WebBuilderUtils.normalizeInPlace(list, normalizeItem);
   }
 
   function normalizeState(){
@@ -225,25 +192,11 @@
     byId(`${target}-bg-image-group`)?.classList.toggle("hidden",type!=="image");
   }
 
-  // FIX (Icon/Element springt nach Loslassen zurück): render() reißt in
-  // renderBars() sämtliche .bar-item-DOM-Knoten ab und baut sie komplett
-  // neu auf. Wird render() mitten in einem aktiven Drag ausgelöst — z. B.
-  // durch ein state.subscribe()-Event aus einer völlig anderen Domäne wie
-  // "products" oder "preview", das zufällig während der Bewegung feuert —
-  // verliert der gerade gezogene Knoten seine Pointer-Capture UND seine
-  // dynamisch gebundenen pointermove/pointerup-Listener (die werden erst
-  // beim jeweiligen pointerdown neu gesetzt, siehe attachInteraction() in
-  // canvas.js). Die Maus "zieht" danach nur noch optisch weiter, ohne dass
-  // item.x/item.y sich noch ändern, und finish() (Commit + echtes
-  // Re-Render mit der finalen Position) läuft nie sauber durch. Ergebnis:
-  // das Element wirkt beim Ziehen bewegt, springt beim Loslassen aber auf
-  // die alte Position zurück.
-  //
-  // canvas.js löst genau dieses Problem für normale Canvas-Elemente
-  // bereits über state.dragLock (siehe dortige scheduleRender()) — dieser
-  // Schutz fehlte bisher hier. render() verschiebt sich jetzt einfach auf
-  // den nächsten Frame, solange ein Drag aktiv ist, statt das DOM
-  // währenddessen umzubauen.
+  // render() reißt in renderBars() sämtliche .bar-item-DOM-Knoten ab und
+  // baut sie komplett neu auf. Ein Rendering mitten in einem aktiven Drag
+  // würde dessen Pointer-Capture/Event-Listener zerstören (analog zu
+  // scheduleRender() in canvas.js). Deshalb verschiebt sich render() so
+  // lange auf den nächsten Frame, wie state.dragLock aktiv ist.
   function render(){
     if(state.dragLock){
       if(window.requestAnimationFrame)window.requestAnimationFrame(render);else window.setTimeout(render,16);
