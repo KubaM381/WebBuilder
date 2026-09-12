@@ -21,7 +21,9 @@
   function duplicate(id,recordHistory=true){const target=id==null?state.selectedElementId:id;if(!target||!elements.getById(target))return null;if(recordHistory)window.WebBuilderHistory?.arm();const copy=elements.duplicate(target);if(copy)elements.setSelected(copy.id);if(recordHistory)window.WebBuilderHistory?.commit();if(copy)refreshCanvas();return copy;}
   window.WebBuilderInspector={getSelected,select,update,updateField,remove,duplicate};
 
-  const byId=id=>document.getElementById(id), esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
+  // NEU: esc zentralisiert in state.js (WebBuilderUtils.escapeHtml) —
+  // vorher eine von 7 unabhängigen, identischen Kopien im Projekt.
+  const byId=id=>document.getElementById(id), esc=window.WebBuilderUtils.escapeHtml;
   function renderCore(){
     const form=byId("inspector-form"),empty=byId("no-selection"),item=getSelected();
     if(!form||!empty)return;
