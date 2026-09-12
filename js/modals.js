@@ -56,8 +56,8 @@
   // ausgewählt werden kann. Bewusst hier in modals.js statt in toast.js,
   // da toast.js strukturell an #toast-container (fester Stapel) gebunden
   // ist und dieses Feature keinen Stapel, sondern freie Positionierung
-  // braucht. Wiederverwendet die bestehenden .toast/.toast-info-Styles aus
-  // modals.css für ein konsistentes Erscheinungsbild.
+  // braucht. Das eigentliche Toast-Markup (Icon + Text) kommt aber aus
+  // WebBuilderToast.buildToastNode() — keine eigene Kopie mehr hier.
   const POSITION_STYLES = {
     "top-right": { top: "24px", right: "24px" },
     "top-left": { top: "24px", left: "24px" },
@@ -67,14 +67,10 @@
   };
 
   function openPositionedMessage(message, position = "bottom-right") {
-    const safeMessage = String(message == null ? "" : message)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    const toastHelper = window.WebBuilderToast;
+    if (!toastHelper?.buildToastNode) { console.error("WebBuilderModals: WebBuilderToast.buildToastNode fehlt."); return false; }
 
-    const msgEl = document.createElement("div");
-    msgEl.className = "toast toast-info";
-    msgEl.innerHTML = `<span>💬</span> <span>${safeMessage}</span>`;
+    const msgEl = toastHelper.buildToastNode(message, "info", "💬");
     msgEl.style.position = "fixed";
     msgEl.style.zIndex = "9999";
 
