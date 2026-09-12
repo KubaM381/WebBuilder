@@ -16,7 +16,7 @@
   const CANVAS_MIN_HEIGHT = 400;
   const DEFAULT_ZOOM = 0.85;
   const DEFAULT_CANVAS_HEIGHT = 1100;
-  let callbacks = { onSelect: null, onAction: null };
+  let callbacks = { onAction: null };
   let renderQueued = false;
   let rendering = false;
 
@@ -88,46 +88,17 @@
   }
 
   // ------------------------------------------------------------------
-  // Vereinheitlichter Interaktions-Controller (Klick + Drag)
-  // ------------------------------------------------------------------
-  // FIX (Architektur-Vereinheitlichung, siehe README/Chatverlauf): Vorher
-  // liefen zwei komplett unabhängige Interaktionssysteme parallel:
-  //   - normale Canvas-Elemente: mousedown-basiertes makeDraggable() PLUS
-  //     ein separater "click"-Listener zur Selektion (verließ sich auf das
-  //     native Klick-Event nach mouseup).
-  //   - Header-/Footer-Elemente: eigene, unabhängige Pointer-Events-Logik.
-  // Diese unterschiedlichen Mechanismen kollidierten miteinander und
-  // hatten keine Koordination mit dem Re-Rendering. Jetzt nutzen BEIDE
-  // Domänen exakt diese eine Funktion.
-  //
-  // - EIN pointerdown startet die Interaktion mit Pointer-Capture (das
-  //   Element bekommt garantiert alle folgenden Events, unabhängig davon,
-  //   wohin sich der Cursor bewegt).
-  // - Erst wenn die Bewegung einen kleinen Schwellwert überschreitet, gilt
-  //   die Interaktion als "Drag" (verhindert, dass Handzittern beim
-  //   Klicken versehentlich als Verschieben gewertet wird).
-  // - opts.onClick(event, wasDragging) wird IMMER beim Loslassen
-  //   aufgerufen (reine Selektion — wie zuvor das native Klick-Event bei
-  //   jedem mouseup, ob mit oder ohne vorherige Bewegung).
-  // - opts.onDragStart()/onDragEnd() laufen nur bei echter Bewegung; die
-  //   History-Transaktion (arm/commit) läuft ebenfalls nur dann, damit ein
-  //   reiner Klick keinen unnötigen Undo-Schritt erzeugt.
-  // - FIX (Kern-Bug, Render-vs-Interaktion-Race): Während einer aktiven
-  //   Bewegung wird state.dragLock gesetzt. scheduleRender() weiter unten
-  //   UND header-footer.js respektieren dieses Flag und verschieben ein
-  //   anstehendes Re-Rendering, bis die Bewegung beendet ist. Vorher konnte
-  //   ein durch requestAnimationFrame verzögertes Rendering (z. B. nach
-  //   einer Selektion einen Frame zuvor) genau den DOM-Knoten wegreißen,
-  //   den man gerade zu ziehen begonnen hatte — Pointer-Capture ging
-  //   verloren, der Drag brach mitten in der Bewegung ab. Das erklärte
-  //   sowohl "Elemente lassen sich teilweise verschieben, aber nicht
-  //   zuverlässig anklicken" als auch das entsprechende Verhalten bei
-  //   Header/Footer.
-  // - opts.minX/minY/maxX/maxY (oder eine opts.getBounds()-Funktion, die
-  //   bei Bewegungsstart ausgewertet wird) begrenzen die Bewegung — damit
-  //   z. B. Header-/Footer-Elemente ihre Leiste nicht verlassen können,
-  //   während normale Canvas-Elemente unbegrenzt bleiben (Standard:
-  //   0/0/Infinity/Infinity, wie zuvor bei makeDraggable).
+  // Gemeinsamer Interaktions-Controller für Klick + Drag (Pointer Events),
+  // genutzt von Canvas-Elementen UND Header-/Footer-Bar-Items
+  // (header-footer.js). Ein Klick ohne Bewegung über DRAG_THRESHOLD löst
+  // opts.onClick() aus; erst bei Bewegung darüber gilt es als Drag
+  // (opts.onDragStart/onDragEnd + History-Transaktion nur dann). Während
+  // eines Drags wird state.dragLock gesetzt — jedes Modul, das bei
+  // State-Änderungen neu rendert, muss das respektieren (siehe
+  // scheduleRender() unten, render() in header-footer.js), sonst reißt ein
+  // Re-Render den gerade gezogenen DOM-Knoten weg und bricht den Drag ab.
+  // opts.getBounds()/minX/minY/maxX/maxY begrenzen die Bewegung (Standard:
+  // unbegrenzt).
   const DRAG_THRESHOLD = 4;
 
   function attachInteraction(domEl, item, containerEl, opts = {}) {
@@ -198,19 +169,13 @@
     }[c]));
   }
 
-  const FALLBACK_ICONS = {
-    cart: '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1z"/></svg>',
-    'arrow-up': '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>',
-    'arrow-down': '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>',
-    'arrow-left': '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>',
-    'arrow-right': '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>',
-    settings: '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>'
-  };
-
+  // Zentraler Merge-Punkt für alle Icons (Registry + optionale
+  // window.WebBuilderIconMap-Erweiterung) — siehe elements.js
+  // WebBuilderIconRegistry.getMergedMap(). Keine eigene Icon-Kopie mehr
+  // hier (vorher FALLBACK_ICONS, dupliziert dieselben Icons aus
+  // elements.js).
   function getIconMap() {
-    const registry = window.WebBuilderIconRegistry && typeof window.WebBuilderIconRegistry.getAll === "function"
-      ? window.WebBuilderIconRegistry.getAll() : {};
-    return Object.assign({}, FALLBACK_ICONS, registry, window.WebBuilderIconMap || {});
+    return window.WebBuilderIconRegistry?.getMergedMap?.() || {};
   }
 
   function renderShapeInner(item) {
@@ -268,16 +233,17 @@
       badge.innerText = "⚡ Logik";
       el.appendChild(badge);
 
-      // FIX: einziger Interaktionspfad für Klick UND Drag (siehe
-      // attachInteraction() weiter oben) statt vorher getrennter
-      // click-Listener + makeDraggable()-mousedown-Logik.
+      // Einziger Interaktionspfad für Klick UND Drag (siehe
+      // attachInteraction() weiter oben).
       attachInteraction(el, item, canvas, {
         onClick: () => {
           if (state.isPreviewMode) {
-            if (typeof callbacks.onAction === "function") callbacks.onAction(item, el);
-          } else if (typeof callbacks.onSelect === "function") callbacks.onSelect(item.id);
-          else if (window.WebBuilderInspector && typeof window.WebBuilderInspector.select === "function") window.WebBuilderInspector.select(item.id);
-          else elementsService.setSelected(item.id);
+            callbacks.onAction?.(item, el);
+          } else if (window.WebBuilderInspector?.select) {
+            window.WebBuilderInspector.select(item.id);
+          } else {
+            elementsService.setSelected(item.id);
+          }
         }
       });
 
@@ -499,14 +465,9 @@
     }
   }
 
-  // FIX (Kern-Bug): scheduleRender() lief bisher IMMER nach genau einem
-  // requestAnimationFrame, unabhängig davon, ob der Nutzer inzwischen
-  // begonnen hat, das gerade selektierte/gerenderte Element zu ziehen.
-  // Ein Rendering mitten in einer aktiven Bewegung ersetzt den DOM-Knoten
-  // unter dem Cursor und bricht Pointer-Capture/Drag ab. Jetzt wird ein
-  // anstehendes Rendering so lange verschoben (nächster Frame), bis
-  // state.dragLock (siehe attachInteraction oben) wieder false ist —
-  // nichts geht dabei verloren, es läuft nur etwas später.
+  // Verschiebt ein anstehendes Rendering, solange state.dragLock aktiv ist
+  // (siehe attachInteraction oben) — sonst würde ein Re-Render mitten in
+  // einer Bewegung den gezogenen DOM-Knoten ersetzen und den Drag abbrechen.
   function scheduleRender() {
     if (renderQueued) return;
     renderQueued = true;
@@ -521,20 +482,11 @@
     if (window.requestAnimationFrame) window.requestAnimationFrame(run); else window.setTimeout(run, 0);
   }
 
-  // FIX (MutationObserver entfernt): Der bisherige MutationObserver auf
-  // #canvas versuchte, "reine Bar-Mutationen" von echten Element-Änderungen
-  // zu unterscheiden, um kein unnötiges Re-Rendering auszulösen — ein
-  // fragiler Mechanismus, der eine weitere Quelle für Timing-Probleme war.
-  // Das ist unnötig: .builder-bar hat bereits explizites z-index:300/250
-  // (siehe header-footer.js buildBarElement), während .placed-element
-  // z-index:auto hat. Für positionierte Geschwisterelemente stapeln
-  // Elemente mit explizitem, positivem z-index PER CSS-SPEZIFIKATION immer
-  // über z-index:auto-Elementen — unabhängig von der DOM-Reihenfolge. Die
-  // visuelle Stapelung UND das Hit-Testing (welches Element Klicks
-  // empfängt) sind dadurch bereits robust und deterministisch über CSS
-  // gelöst; ein DOM-Mutationen beobachtender Re-Render-Trigger ist dafür
-  // nicht mehr nötig. Alle für Canvas-Elemente relevanten Zustandsänderungen
-  // laufen weiterhin zuverlässig über state.subscribe()/state-change unten.
+  // Kein MutationObserver nötig: .builder-bar hat explizites z-index
+  // (300/250, siehe header-footer.js), .placed-element hat z-index:auto —
+  // die Stapelreihenfolge UND das Hit-Testing sind dadurch bereits per CSS
+  // deterministisch gelöst. Relevante Zustandsänderungen laufen über
+  // state.subscribe()/state-change unten.
   state.subscribe?.(event => {
     const domain = event?.domain;
     if (["elements", "selection", "preview", "canvas", "background"].includes(domain)) scheduleRender();
@@ -560,11 +512,9 @@
   window.WebBuilderCanvas = {
     getCanvas, getCanvasColumn, normalizeState, applyZoom, setZoom, zoomIn, zoomOut,
     resetZoom, setCanvasHeight, extendCanvas, syncDom, toLocalCoords,
-    // NEU: gemeinsamer Interaktions-Controller, auch von header-footer.js
-    // genutzt (siehe dort bindBarItemInteraction). makeDraggable bleibt als
-    // rückwärtskompatibler Alias erhalten, falls andere Stellen ihn noch
-    // referenzieren.
-    attachInteraction, makeDraggable: attachInteraction,
+    // Gemeinsamer Interaktions-Controller, auch von header-footer.js
+    // genutzt (siehe dort bindBarItemInteraction).
+    attachInteraction,
     renderCanvas, render: renderOwnedCanvas,
     setBackground, setRendererCallbacks, bindPaletteDragAndDrop, bindBackgroundEditor,
     constants: { ZOOM_MIN, ZOOM_MAX, CANVAS_MIN_HEIGHT, DEFAULT_ZOOM, DEFAULT_CANVAS_HEIGHT },
