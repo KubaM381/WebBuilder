@@ -123,5 +123,14 @@ window.WebBuilderUtils = window.WebBuilderUtils || {
     return String(str == null ? "" : str).replace(/[&<>"']/g, c => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
+  },
+  // Shared text-style CSS (font-weight/font-style/text-decoration/
+  // font-family) for button/headline/paragraph elements — was duplicated
+  // per element type in both canvas.js (editor rendering) and export.js
+  // (static HTML export), 6 nearly identical spots total. normalWeight
+  // covers the differing non-bold default per element type (buttons use
+  // "600", headlines "400", plain text/paragraphs "normal").
+  buildTextStyleCss(item = {}, normalWeight = "normal") {
+    return `font-weight:${item.bold ? "bold" : normalWeight};font-style:${item.italic ? "italic" : "normal"};text-decoration:${item.underline ? "underline" : "none"};font-family:${item.fontFamily || "inherit"};`;
   }
 };
