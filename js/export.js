@@ -1,12 +1,8 @@
 // WebBuilder export module
-// Owns turning the current live builder state into a static HTML export.
-//
-// Bewusst ein eigenes Modul statt Teil von preview.js oder toolbar.js:
-// preview.js besitzt den Preview-Modus + die interaktive Klick-Action-
-// Runtime, toolbar.js besitzt Zoom/History/Speichern. Export erzeugt einen
-// statischen Snapshot des aktuellen State — ein eigenständiges Feature mit
-// eigenem Wachstumspfad (z.B. später "Als Datei herunterladen" oder
-// Netlify-Deploy), siehe README & Projektregel 5/6.
+// Turns the current builder state into a static HTML export. Kept
+// separate from preview.js (preview mode + click-action runtime) and
+// toolbar.js (zoom/history/save) since export is its own growth path
+// (e.g. a future "download as file" feature).
 (() => {
   const state = window.WebBuilderState;
   const elementsService = window.WebBuilderElements;
@@ -17,25 +13,18 @@
     return;
   }
 
-  // NEU: zentralisiert in state.js (WebBuilderUtils.escapeHtml) — vorher
-  // eine von 7 unabhängigen, identischen Kopien im Projekt.
   const escapeHtml = window.WebBuilderUtils.escapeHtml;
-
-  // Shared text-style CSS (bold/italic/underline/font-family) — see
-  // state.js WebBuilderUtils.buildTextStyleCss (was duplicated per
-  // element type here and again in canvas.js).
+  // See state.js WebBuilderUtils.buildTextStyleCss (shared with canvas.js).
   const buildTextStyleCss = window.WebBuilderUtils.buildTextStyleCss;
 
-  // Zentraler Merge-Punkt für alle Icons (siehe elements.js
-  // WebBuilderIconRegistry.getMergedMap()) — keine eigene Merge-Kopie mehr
-  // hier.
+  // Icons come from the shared registry, see elements.js
+  // WebBuilderIconRegistry.getMergedMap().
   function getIconMap() {
     return window.WebBuilderIconRegistry?.getMergedMap?.() || {};
   }
 
-  // Nutzt dieselbe Markup-Funktion, die header-footer.js für das Live-
-  // Rendering der Bar-Items verwendet (siehe dortiger itemInnerHtml-Export),
-  // damit Editor-Ansicht und Export niemals visuell auseinanderlaufen.
+  // Reuses header-footer.js's itemInnerHtml() so the editor view and the
+  // export never visually diverge.
   function renderBarItemExport(item) {
     const runtime = window.WebBuilderHeaderFooterRuntime;
     const inner = runtime && typeof runtime.itemInnerHtml === "function"
@@ -74,8 +63,7 @@
     } else if (item.type === "box") {
       inner = `<div style="width:140px; height:90px; background:${item.color}; border-radius:8px;"></div>`;
     } else if (item.type === "shape") {
-      // Wiederverwendung der Shape-Rendering-Logik aus canvas.js — siehe
-      // dortiger renderShapeInner-Export.
+      // Reuses canvas.js's renderShapeInner() for the same shape markup.
       inner = typeof canvas.renderShapeInner === "function" ? canvas.renderShapeInner(item) : "";
     } else {
       inner = `<p style="font-size:${item.size}px; color:${item.color}; margin:0; ${buildTextStyleCss(item)} text-align:${align};">${escapeHtml(item.text)}</p>`;
