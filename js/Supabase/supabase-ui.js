@@ -10,8 +10,7 @@ import {
   createPage, renamePage, deletePage, loadRef, clearRef
 } from "./supabase-data.js";
 
-// NEU: esc zentralisiert in state.js (WebBuilderUtils.escapeHtml) —
-// vorher eine von 7 unabhängigen, identischen Kopien im Projekt.
+// esc centralized in state.js (WebBuilderUtils.escapeHtml).
 const esc = window.WebBuilderUtils.escapeHtml;
 
 let cachedUser = null;
@@ -19,16 +18,19 @@ let cachedProjects = [];
 let cachedPages = [];
 let activeProjectName = "";
 
+// Layout classes (.modal-stack, .modal-row, .modal-btn-row, ...) live in
+// css/modals.css — see the "Reusable modal-body layout helpers" section
+// there for what each one does.
 function loginFormHtml() {
   return `
-    <div style="display:flex; flex-direction:column; gap:10px;">
+    <div class="modal-stack">
       <p class="help-text">Melde dich an oder registriere dich, um Projekte in der Cloud zu speichern.</p>
       <div class="form-group"><label for="cloud-email">E-Mail</label><input type="email" id="cloud-email" placeholder="du@beispiel.de"></div>
       <div class="form-group"><label for="cloud-password">Passwort</label><input type="password" id="cloud-password" placeholder="••••••••"></div>
-      <button type="button" id="cloud-link-forgot-password" style="align-self:flex-start; background:none; border:none; padding:0; margin-top:-4px; color:inherit; text-decoration:underline; cursor:pointer; font-size:13px; opacity:0.8;">Passwort vergessen?</button>
-      <div style="display:flex; gap:8px;">
-        <button type="button" class="btn btn-primary" id="cloud-btn-signin" style="flex:1;">Anmelden</button>
-        <button type="button" class="btn btn-secondary" id="cloud-btn-signup" style="flex:1;">Registrieren</button>
+      <button type="button" id="cloud-link-forgot-password" class="modal-link-btn">Passwort vergessen?</button>
+      <div class="modal-btn-row">
+        <button type="button" class="btn btn-primary modal-btn-flex" id="cloud-btn-signin">Anmelden</button>
+        <button type="button" class="btn btn-secondary modal-btn-flex" id="cloud-btn-signup">Registrieren</button>
       </div>
     </div>
   `;
@@ -36,20 +38,20 @@ function loginFormHtml() {
 
 function projectListHtml() {
   const rows = cachedProjects.map(p => `
-    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-      <button type="button" class="btn btn-secondary cloud-project-pick" data-id="${esc(p.id)}" data-name="${esc(p.name)}" style="flex:1; justify-content:flex-start;">${esc(p.name)}</button>
-      <button type="button" class="btn btn-secondary cloud-project-rename" data-id="${esc(p.id)}" data-name="${esc(p.name)}" title="Umbenennen" style="padding:6px 10px;">✏️</button>
-      <button type="button" class="btn btn-danger-outline cloud-project-delete" data-id="${esc(p.id)}" data-name="${esc(p.name)}" title="Löschen" style="padding:6px 10px;">🗑️</button>
+    <div class="modal-row">
+      <button type="button" class="btn btn-secondary cloud-project-pick modal-row-btn" data-id="${esc(p.id)}" data-name="${esc(p.name)}">${esc(p.name)}</button>
+      <button type="button" class="btn btn-secondary cloud-project-rename modal-icon-btn" data-id="${esc(p.id)}" data-name="${esc(p.name)}" title="Umbenennen">✏️</button>
+      <button type="button" class="btn btn-danger-outline cloud-project-delete modal-icon-btn" data-id="${esc(p.id)}" data-name="${esc(p.name)}" title="Löschen">🗑️</button>
     </div>
   `).join("");
   return `
-    <div style="display:flex; flex-direction:column; gap:10px;">
+    <div class="modal-stack">
       <p class="help-text">Angemeldet als <strong>${esc(cachedUser?.email || "")}</strong>.</p>
       ${cachedProjects.length ? `<div>${rows}</div>` : '<p class="help-text">Noch keine Projekte vorhanden.</p>'}
-      <hr class="divider" style="margin:6px 0;">
+      <hr class="divider modal-divider-tight">
       <div class="form-group"><label for="cloud-new-project-name">Neues Projekt</label><input type="text" id="cloud-new-project-name" placeholder="Projektname"></div>
       <button type="button" class="btn btn-primary" id="cloud-btn-create-project">+ Projekt erstellen &amp; aktuellen Stand speichern</button>
-      <hr class="divider" style="margin:6px 0;">
+      <hr class="divider modal-divider-tight">
       <button type="button" class="btn btn-danger-outline" id="cloud-btn-signout">Abmelden</button>
     </div>
   `;
@@ -60,18 +62,18 @@ function pagesListHtml(activePageId) {
   const rows = cachedPages.map(p => {
     const isActive = activePageId ? p.id === activePageId : p.slug === "startseite";
     return `
-      <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-        <button type="button" class="btn ${isActive ? "btn-primary" : "btn-secondary"} cloud-page-pick" data-id="${esc(p.id)}" style="flex:1; justify-content:flex-start;" ${isActive ? "disabled" : ""}>${isActive ? "✓ " : ""}${esc(p.name)}</button>
-        <button type="button" class="btn btn-secondary cloud-page-rename" data-id="${esc(p.id)}" data-name="${esc(p.name)}" title="Seite umbenennen" style="padding:6px 10px;">✏️</button>
-        ${cachedPages.length > 1 ? `<button type="button" class="btn btn-danger-outline cloud-page-delete" data-id="${esc(p.id)}" data-name="${esc(p.name)}" title="Seite löschen" style="padding:6px 10px;">🗑️</button>` : ""}
+      <div class="modal-row">
+        <button type="button" class="btn ${isActive ? "btn-primary" : "btn-secondary"} cloud-page-pick modal-row-btn" data-id="${esc(p.id)}" ${isActive ? "disabled" : ""}>${isActive ? "✓ " : ""}${esc(p.name)}</button>
+        <button type="button" class="btn btn-secondary cloud-page-rename modal-icon-btn" data-id="${esc(p.id)}" data-name="${esc(p.name)}" title="Seite umbenennen">✏️</button>
+        ${cachedPages.length > 1 ? `<button type="button" class="btn btn-danger-outline cloud-page-delete modal-icon-btn" data-id="${esc(p.id)}" data-name="${esc(p.name)}" title="Seite löschen">🗑️</button>` : ""}
       </div>
     `;
   }).join("");
   return `
-    <hr class="divider" style="margin:6px 0;">
-    <div class="section-title" style="margin:0 0 6px;">Seiten</div>
+    <hr class="divider modal-divider-tight">
+    <div class="section-title tight">Seiten</div>
     ${rows || '<p class="help-text">Noch keine Seiten vorhanden.</p>'}
-    <div style="display:flex; gap:8px; margin-top:4px;">
+    <div class="modal-add-row">
       <input type="text" id="cloud-new-page-name" placeholder="Neue Seite">
       <button type="button" class="btn btn-secondary" id="cloud-btn-add-page">+ Seite</button>
     </div>
@@ -80,18 +82,18 @@ function pagesListHtml(activePageId) {
 
 function projectActiveHtml(activePageId) {
   return `
-    <div style="display:flex; flex-direction:column; gap:10px;">
+    <div class="modal-stack">
       <p class="help-text">Angemeldet als <strong>${esc(cachedUser?.email || "")}</strong>.</p>
       <p class="help-text">Aktives Projekt: <strong>${esc(activeProjectName || "Unbenannt")}</strong></p>
       <button type="button" class="btn btn-primary" id="cloud-btn-save">☁️ Jetzt in Supabase speichern</button>
       <button type="button" class="btn btn-secondary" id="cloud-btn-load">🔄 Aus Supabase neu laden</button>
-      <div style="display:flex; gap:8px;">
-        <button type="button" class="btn btn-secondary" id="cloud-btn-rename-project" style="flex:1;">✏️ Umbenennen</button>
-        <button type="button" class="btn btn-danger-outline" id="cloud-btn-delete-project" style="flex:1;">🗑️ Löschen</button>
+      <div class="modal-btn-row">
+        <button type="button" class="btn btn-secondary modal-btn-flex" id="cloud-btn-rename-project">✏️ Umbenennen</button>
+        <button type="button" class="btn btn-danger-outline modal-btn-flex" id="cloud-btn-delete-project">🗑️ Löschen</button>
       </div>
       <button type="button" class="btn btn-secondary" id="cloud-btn-switch">Anderes Projekt wählen</button>
       ${pagesListHtml(activePageId)}
-      <hr class="divider" style="margin:6px 0;">
+      <hr class="divider modal-divider-tight">
       <button type="button" class="btn btn-danger-outline" id="cloud-btn-signout">Abmelden</button>
     </div>
   `;
@@ -101,7 +103,7 @@ function projectActiveHtml(activePageId) {
 // auf den Recovery-Link.
 function newPasswordFormHtml() {
   return `
-    <div style="display:flex; flex-direction:column; gap:10px;">
+    <div class="modal-stack">
       <p class="help-text">Bitte lege ein neues Passwort für dein Konto fest.</p>
       <div class="form-group"><label for="cloud-new-password">Neues Passwort</label><input type="password" id="cloud-new-password" placeholder="••••••••"></div>
       <div class="form-group"><label for="cloud-new-password-confirm">Passwort bestätigen</label><input type="password" id="cloud-new-password-confirm" placeholder="••••••••"></div>
