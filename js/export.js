@@ -21,6 +21,11 @@
   // eine von 7 unabhängigen, identischen Kopien im Projekt.
   const escapeHtml = window.WebBuilderUtils.escapeHtml;
 
+  // Shared text-style CSS (bold/italic/underline/font-family) — see
+  // state.js WebBuilderUtils.buildTextStyleCss (was duplicated per
+  // element type here and again in canvas.js).
+  const buildTextStyleCss = window.WebBuilderUtils.buildTextStyleCss;
+
   // Zentraler Merge-Punkt für alle Icons (siehe elements.js
   // WebBuilderIconRegistry.getMergedMap()) — keine eigene Merge-Kopie mehr
   // hier.
@@ -54,8 +59,6 @@
 
   function renderElementExport(item) {
     const iconMap = getIconMap();
-    const textDeco = item.underline ? "underline" : "none";
-    const fontFam = item.fontFamily || "inherit";
     const align = item.align || "left";
     let inner = "";
     if (item.type === "icon" && iconMap[item.iconName]) {
@@ -63,9 +66,9 @@
         ? `<span style="display:inline-flex;align-items:center;justify-content:center;border:1.5px solid rgba(255,255,255,0.55);border-radius:50%;padding:10px;background:rgba(255,255,255,0.12);backdrop-filter:blur(10px) saturate(180%);">${iconMap[item.iconName]}</span>`
         : iconMap[item.iconName];
     } else if (item.type === "button") {
-      inner = `<button style="font-size:${item.size}px; background:${item.color}; color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:${item.bold ? "bold" : "600"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam};">${escapeHtml(item.text)}</button>`;
+      inner = `<button style="font-size:${item.size}px; background:${item.color}; color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; ${buildTextStyleCss(item, "600")}">${escapeHtml(item.text)}</button>`;
     } else if (item.type === "headline") {
-      inner = `<h2 style="font-size:${item.size}px; color:${item.color}; margin:0; font-weight:${item.bold ? "bold" : "400"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam}; text-align:${align};">${escapeHtml(item.text)}</h2>`;
+      inner = `<h2 style="font-size:${item.size}px; color:${item.color}; margin:0; ${buildTextStyleCss(item, "400")} text-align:${align};">${escapeHtml(item.text)}</h2>`;
     } else if (item.type === "image") {
       inner = `<img src="${escapeHtml(item.imageUrl)}" style="width:${item.size}px; height:auto; display:block;" alt="Exportiertes Bild" />`;
     } else if (item.type === "box") {
@@ -75,7 +78,7 @@
       // dortiger renderShapeInner-Export.
       inner = typeof canvas.renderShapeInner === "function" ? canvas.renderShapeInner(item) : "";
     } else {
-      inner = `<p style="font-size:${item.size}px; color:${item.color}; margin:0; font-weight:${item.bold ? "bold" : "normal"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam}; text-align:${align};">${escapeHtml(item.text)}</p>`;
+      inner = `<p style="font-size:${item.size}px; color:${item.color}; margin:0; ${buildTextStyleCss(item)} text-align:${align};">${escapeHtml(item.text)}</p>`;
     }
     return `  <!-- Element: ${item.id} (${item.type}) -->\n  <div style="position:absolute; left:${item.x}px; top:${item.y}px; color:${item.color};">\n    ${inner}\n  </div>\n`;
   }
