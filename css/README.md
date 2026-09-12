@@ -51,16 +51,7 @@ search before deleting:
 
 ## Known gaps (not yet fixed)
 
-1. `js/products.js`'s product-card markup (`renderProducts()`) uses classes
-   `.product-card-header`, `.product-card-icon`, `.product-card-title`,
-   `.product-delete`, `.product-card-fields`, `.product-card-description`,
-   `.product-card-price` — **none of these are defined anywhere in
-   `sidebar.css`** (only `.product-card`, `.product-card-row`,
-   `.product-icon-preview` exist). The product tab currently renders with no
-   styling for its internal structure. This is a missing-CSS bug, not
-   duplication — needs its own small task to add the missing rules to
-   `sidebar.css`.
-2. `sidebar.css`'s `.sidebar-bg-controls select, .sidebar-bg-controls
+1. `sidebar.css`'s `.sidebar-bg-controls select, .sidebar-bg-controls
    input[type="text"]` overlaps with `inspector.css`'s `.form-group input,
    .form-group select` — both target the same background-editor form
    fields with slightly different padding (6px 8px vs 8px 10px). Equal
