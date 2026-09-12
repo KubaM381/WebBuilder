@@ -1,26 +1,16 @@
 // WebBuilder products domain
-// Owns product data (CRUD, normalization) and the product-tab editor UI
-// (Tab "📦 Produkte" in der linken Seitenleiste).
-//
-// Ausgelagert aus cart.js (siehe README "Geplante Strukturmaßnahme"):
-// cart.js enthielt bisher zwei unabhängige Domänen (Produkte + Warenkorb)
-// und war die größte Einzeldatei im Projekt. Andere Module referenzierten
-// Produkte bereits ausschließlich über window.WebBuilderProducts /
-// window.WebBuilderProductsRuntime (inspector.js, header-footer.js,
-// preview.js, storage.js, toolbar.js) — diese Schnittstellen bleiben
-// unverändert erhalten, nur die Implementierung zieht hierher um.
+// Owns product data (CRUD, normalization) and the product-tab editor UI.
+// Other modules reference products only via window.WebBuilderProducts /
+// window.WebBuilderProductsRuntime, never their own copies.
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderProducts: WebBuilderState is not available."); return; }
   const clone = value => JSON.parse(JSON.stringify(value));
   function notify(domain, action, payload) { if (typeof state.notify === "function") state.notify(domain, action, payload); }
 
-  // FIX (README Offener Punkt #4, ursprünglich in cart.js behoben):
-  // `compareAtPrice` war ein totes Datenfeld ohne jede UI — die
-  // tatsächliche Rabattlogik läuft vollständig über `discountPrice`.
-  // Bereits gespeicherte alte Projekte mit `compareAtPrice` laden weiterhin
-  // problemlos, das Feld wird beim Normalisieren einfach nicht mehr
-  // übernommen.
+  // `compareAtPrice` is intentionally dropped here — discount logic runs
+  // entirely on `discountPrice`. Old saved projects still load fine, the
+  // field is just no longer carried over.
   function normalizeProduct(product = {}) {
     const price = Number(product.price) || 0;
     const discountPrice = product.discountPrice != null && product.discountPrice !== "" ? Number(product.discountPrice) || 0 : null;
@@ -33,9 +23,8 @@
       description: product.description || ""
     };
   }
-  // In-place normalisieren (siehe WebBuilderUtils.normalizeInPlace,
-  // state.js) — hält Objektreferenzen stabil, damit Eingaben im
-  // Produkt-Editor nicht durch eine History-Transaktion verworfen werden.
+  // Normalizes in place (WebBuilderUtils.normalizeInPlace) so references
+  // stay stable during active edits in the product editor.
   function normalizeProducts() {
     state.products = window.WebBuilderUtils.normalizeInPlace(state.products, normalizeProduct);
     return state.products;
@@ -50,11 +39,7 @@
   normalizeProducts();
   window.WebBuilderProducts = { normalize: normalizeProduct, normalizeState: normalizeProducts, getAll: getProducts, getById: getProduct, add: addProduct, update: updateProduct, remove: removeProduct, replaceAll: replaceProducts };
 
-  // ------------------------------------------------------------------
-  // Produkt-Tab-Editor-UI (linke Seitenleiste, Tab "📦 Produkte")
-  // ------------------------------------------------------------------
-  // NEU: esc zentralisiert in state.js (WebBuilderUtils.escapeHtml) —
-  // vorher eine von 7 unabhängigen, identischen Kopien im Projekt.
+  // Product-tab editor UI (sidebar "📦 Produkte" tab).
   const esc = window.WebBuilderUtils.escapeHtml;
 
   function renderProducts() {
@@ -96,10 +81,8 @@
       document.querySelector(`[data-product-id="${CSS.escape(p.id)}"] [data-product-field="name"]`)?.focus();
     }, true);
 
-    // Reine Produkt-Tab-Darstellung reagiert nur auf die eigene Domäne;
-    // andere Module (Warenkorb-Empfehlungen/Demo-Vorschau), die ebenfalls
-    // von Produktänderungen abhängen, abonnieren "products" selbst
-    // (siehe cart.js) — keine Duplikation der Render-Logik hier.
+    // Only re-renders this tab; cart.js subscribes to "products"
+    // separately for its own recommendation/demo preview.
     state.subscribe?.(e => { if (e?.domain === "products") renderProducts(); });
     renderProducts();
   }
