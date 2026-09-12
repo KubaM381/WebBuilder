@@ -87,18 +87,12 @@
     return { zoomLevel: state.zoomLevel, canvasHeight: state.canvasHeight };
   }
 
-  // ------------------------------------------------------------------
-  // Gemeinsamer Interaktions-Controller für Klick + Drag (Pointer Events),
-  // genutzt von Canvas-Elementen UND Header-/Footer-Bar-Items
-  // (header-footer.js). Ein Klick ohne Bewegung über DRAG_THRESHOLD löst
-  // opts.onClick() aus; erst bei Bewegung darüber gilt es als Drag
-  // (opts.onDragStart/onDragEnd + History-Transaktion nur dann). Während
-  // eines Drags wird state.dragLock gesetzt — jedes Modul, das bei
-  // State-Änderungen neu rendert, muss das respektieren (siehe
-  // scheduleRender() unten, render() in header-footer.js), sonst reißt ein
-  // Re-Render den gerade gezogenen DOM-Knoten weg und bricht den Drag ab.
-  // opts.getBounds()/minX/minY/maxX/maxY begrenzen die Bewegung (Standard:
-  // unbegrenzt).
+  // Shared click+drag controller (Pointer Events), used by canvas elements
+  // and header/footer bar items (header-footer.js). Movement below
+  // DRAG_THRESHOLD counts as a click (opts.onClick); above it, a drag
+  // (opts.onDragStart/onDragEnd, wrapped in a history transaction) and sets
+  // state.dragLock so re-renders don't replace the dragged DOM node mid-move.
+  // opts.getBounds() can restrict movement (minX/minY/maxX/maxY).
   const DRAG_THRESHOLD = 4;
 
   function attachInteraction(domEl, item, containerEl, opts = {}) {
@@ -151,9 +145,8 @@
           if (recordHistory) window.WebBuilderHistory?.commit();
           opts.onDragEnd?.();
         }
-        // Sowohl ein reiner Klick als auch das Ende eines Ziehvorgangs
-        // sollen das Element auswählen bzw. die Klick-Aktion ausführen —
-        // genau wie zuvor das native "click"-Event bei jedem mouseup.
+        // A plain click and the end of a drag both trigger onClick, same
+        // as the native "click" event used to on mouseup.
         opts.onClick?.(upEvent, dragging);
       }
 
@@ -163,20 +156,13 @@
     });
   }
 
-  // NEU: zentralisiert in state.js (WebBuilderUtils.escapeHtml) — vorher
-  // eine von 7 unabhängigen, identischen Kopien im Projekt.
   const escapeHtml = window.WebBuilderUtils.escapeHtml;
-
-  // Shared text-style CSS (bold/italic/underline/font-family) — see
-  // state.js WebBuilderUtils.buildTextStyleCss (was duplicated per
-  // element type here and again in export.js).
+  // See state.js WebBuilderUtils.buildTextStyleCss (shared with export.js).
   const buildTextStyleCss = window.WebBuilderUtils.buildTextStyleCss;
 
-  // Zentraler Merge-Punkt für alle Icons (Registry + optionale
-  // window.WebBuilderIconMap-Erweiterung) — siehe elements.js
-  // WebBuilderIconRegistry.getMergedMap(). Keine eigene Icon-Kopie mehr
-  // hier (vorher FALLBACK_ICONS, dupliziert dieselben Icons aus
-  // elements.js).
+  // Icons come from the shared registry (elements.js
+  // WebBuilderIconRegistry.getMergedMap()) plus optional
+  // window.WebBuilderIconMap overrides.
   function getIconMap() {
     return window.WebBuilderIconRegistry?.getMergedMap?.() || {};
   }
@@ -234,8 +220,7 @@
       badge.innerText = "⚡ Logik";
       el.appendChild(badge);
 
-      // Einziger Interaktionspfad für Klick UND Drag (siehe
-      // attachInteraction() weiter oben).
+      // Single interaction path for click + drag (see attachInteraction above).
       attachInteraction(el, item, canvas, {
         onClick: () => {
           if (state.isPreviewMode) {
@@ -466,9 +451,8 @@
     }
   }
 
-  // Verschiebt ein anstehendes Rendering, solange state.dragLock aktiv ist
-  // (siehe attachInteraction oben) — sonst würde ein Re-Render mitten in
-  // einer Bewegung den gezogenen DOM-Knoten ersetzen und den Drag abbrechen.
+  // Delays a pending render while state.dragLock is active (see
+  // attachInteraction) so it can't replace the DOM node mid-drag.
   function scheduleRender() {
     if (renderQueued) return;
     renderQueued = true;
@@ -483,11 +467,8 @@
     if (window.requestAnimationFrame) window.requestAnimationFrame(run); else window.setTimeout(run, 0);
   }
 
-  // Kein MutationObserver nötig: .builder-bar hat explizites z-index
-  // (300/250, siehe header-footer.js), .placed-element hat z-index:auto —
-  // die Stapelreihenfolge UND das Hit-Testing sind dadurch bereits per CSS
-  // deterministisch gelöst. Relevante Zustandsänderungen laufen über
-  // state.subscribe()/state-change unten.
+  // Stacking order is handled by CSS z-index (see header-footer.js), so no
+  // MutationObserver is needed here — just re-render on relevant changes.
   state.subscribe?.(event => {
     const domain = event?.domain;
     if (["elements", "selection", "preview", "canvas", "background"].includes(domain)) scheduleRender();
@@ -513,8 +494,7 @@
   window.WebBuilderCanvas = {
     getCanvas, getCanvasColumn, normalizeState, applyZoom, setZoom, zoomIn, zoomOut,
     resetZoom, setCanvasHeight, extendCanvas, syncDom, toLocalCoords,
-    // Gemeinsamer Interaktions-Controller, auch von header-footer.js
-    // genutzt (siehe dort bindBarItemInteraction).
+    // Also used by header-footer.js (bindBarItemInteraction).
     attachInteraction,
     renderCanvas, render: renderOwnedCanvas,
     setBackground, setRendererCallbacks, bindPaletteDragAndDrop, bindBackgroundEditor,
