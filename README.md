@@ -9,6 +9,9 @@ and a cart, and save projects locally or to Supabase.
 ```text
 WebBuilder/
 ├── web.html              single HTML entry page (editor UI)
+├── index.html             marketing/landing page — intentionally kept,
+│                          not part of the builder app itself (confirmed
+│                          by the project owner, not a "maybe delete" item)
 ├── README.md              this document
 ├── css/
 │   ├── README.md          CSS architecture, see there for details
@@ -20,10 +23,6 @@ WebBuilder/
     └── Supabase/           Supabase client, auth, project/page CRUD, cloud modal UI
 ```
 
-> `index.html` is currently unused / not part of the running builder. If it
-> still exists in the repo: check before the next major rework whether it
-> can be removed.
-
 ## Core architecture at a glance
 
 - **One central state**: `js/state.js` defines `window.WebBuilderState` — the
@@ -32,8 +31,9 @@ WebBuilder/
 - **Pub/sub instead of direct coupling**: modules change state and call
   `state.notify(domain, action, payload)`; other modules listen via
   `state.subscribe(fn)` for the domains they care about (`"elements"`,
-  `"products"`, `"cart"`, `"header"`, `"footer"`, `"preview"`,
-  `"background"`, `"selection"`).
+  `"products"`, `"cart"`, `"preview"`, `"background"`, `"selection"`).
+  Header/footer changes are the one exception — see `js/README.md`'s
+  "Event conventions" section.
 - **One serialization format for everything**: `js/storage.js` →
   `createSnapshot()` / `applySnapshot()`. Shared by local save, undo/redo
   **and** Supabase cloud save. A new persistable property must be added
@@ -75,6 +75,15 @@ format.
    commit messages.
 5. Comments and READMEs are written in English; chat with the developer
    stays in German.
+6. Before editing any file, make sure you actually have its complete,
+   untruncated current content — if you're unsure, say so instead of
+   guessing or reconstructing from memory. A truncated file that gets
+   pasted back into the repo as-is causes a silent JS syntax error: the
+   whole script fails to run, its `window.WebBuilderXxx` API is never
+   defined, and every other module's optional-chaining call into it
+   (`window.WebBuilderXxx?.method?.()`) fails silently with no console
+   error. This exact issue previously made the header/footer bars
+   disappear completely (see `js/header-footer.js` fix history in git).
 
 ## Known technical debt
 
