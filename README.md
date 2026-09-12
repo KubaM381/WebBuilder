@@ -1,58 +1,101 @@
 # WebBuilder
 
-Visueller Drag-and-Drop-Website-Baukasten (Vanilla JS, kein Build-Tool/Framework). Nutzer platzieren Elemente per Drag-and-Drop, gestalten Header/Footer, verwalten Produkte und einen Warenkorb, und speichern Projekte lokal oder in Supabase.
+Visual drag-and-drop website builder (vanilla JS, no build tool/framework).
+Users place elements via drag & drop, style header/footer, manage products
+and a cart, and save projects locally or to Supabase.
 
-## Projektstruktur
+## Project structure
 
 ```text
 WebBuilder/
-├── web.html              # einzige HTML-Einstiegsseite (Editor-UI)
-├── README.md             # dieses Dokument
+├── web.html              single HTML entry page (editor UI)
+├── README.md              this document
 ├── css/
-│   ├── README.md         # CSS-Architektur, Details siehe dort
+│   ├── README.md          CSS architecture, see there for details
 │   └── *.css
 └── js/
-    ├── README.md         # Modulübersicht, Details siehe dort
-    └── *.js
+    ├── README.md          module overview, see there for details
+    ├── builder.js          bootstrap / load order
+    ├── *.js                domain modules (state, canvas, cart, products, ...)
+    └── Supabase/           Supabase client, auth, project/page CRUD, cloud modal UI
 ```
 
-> `index.html` wird aktuell nicht mehr aktiv genutzt/ist nicht Teil des laufenden Builders. Falls sie im Repo noch existiert: vor dem nächsten größeren Umbau prüfen, ob sie gelöscht werden kann.
+> `index.html` is currently unused / not part of the running builder. If it
+> still exists in the repo: check before the next major rework whether it
+> can be removed.
 
-## Kernarchitektur in Kürze
+## Core architecture at a glance
 
-- **Ein zentraler State**: `js/state.js` definiert `window.WebBuilderState` – die einzige Quelle der Wahrheit für Elemente, Produkte, Warenkorb, Header/Footer, Hintergrund, Zoom, History.
-- **Pub/Sub statt direkter Kopplung**: Module ändern den State und rufen `state.notify(domain, action, payload)` auf; andere Module hören per `state.subscribe(fn)` auf Domains, die sie betreffen (`"elements"`, `"products"`, `"cart"`, `"header"`, `"footer"`, `"preview"`, `"background"`, `"selection"`).
-- **Eine Serialisierungsform für alles**: `js/storage.js` → `createSnapshot()` / `applySnapshot()`. Wird von lokalem Speichern, Undo/Redo **und** Supabase-Cloud-Speichern gemeinsam genutzt. Wer eine neue speicherbare Eigenschaft einführt, muss sie **hier** ergänzen, sonst geht sie beim Speichern/Laden verloren.
-- **Ein Modul pro Fachbereich**, das sich selbst beim Laden initialisiert (`DOMContentLoaded`) und seine API unter `window.WebBuilderXxx` bereitstellt. Details: siehe `js/README.md`.
-- **Ladereihenfolge ist wichtig**: `js/builder.js` lädt alle Module nacheinander per `document.write`. `products.js` **muss vor** `cart.js` stehen (cart.js referenziert Produkte nur über `window.WebBuilderProducts`).
+- **One central state**: `js/state.js` defines `window.WebBuilderState` — the
+  single source of truth for elements, products, cart, header/footer,
+  background, zoom, history.
+- **Pub/sub instead of direct coupling**: modules change state and call
+  `state.notify(domain, action, payload)`; other modules listen via
+  `state.subscribe(fn)` for the domains they care about (`"elements"`,
+  `"products"`, `"cart"`, `"header"`, `"footer"`, `"preview"`,
+  `"background"`, `"selection"`).
+- **One serialization format for everything**: `js/storage.js` →
+  `createSnapshot()` / `applySnapshot()`. Shared by local save, undo/redo
+  **and** Supabase cloud save. A new persistable property must be added
+  **here**, or it's lost on save/load.
+- **One module per domain**, self-initializing on load
+  (`DOMContentLoaded`), exposing its API under `window.WebBuilderXxx`.
+  Details: see `js/README.md`.
+- **Load order matters**: `js/builder.js` loads all modules in sequence via
+  `document.write`. `products.js` **must load before** `cart.js` (cart.js
+  references products only via `window.WebBuilderProducts`).
 
-## Supabase-Schema
+## Supabase schema
 
 ```text
 projects (id, user_id, name, slug, updated_at)
    └── pages (id, project_id, name, slug, content JSON, updated_at)
 ```
 
-`content` in `pages` ist exakt das Ergebnis von `WebBuilderStorage.createSnapshot()` – niemals ein eigenes, abweichendes Format bauen.
+`content` in `pages` is exactly the result of
+`WebBuilderStorage.createSnapshot()` — never build a separate, different
+format.
 
-## Sicherheit
+## Security
 
-- Im Client (`js/supabase-config.js`) darf **ausschließlich** der Publishable Key stehen, niemals ein Secret/Service-Role-Key.
-- Zugriffsrechte laufen über Supabase Row Level Security (RLS) auf DB-Ebene, nicht über Client-Logik.
+- The client (`js/Supabase/supabase-config.js`) may contain **only** the
+  publishable key, never a secret/service-role key.
+- Access control runs through Supabase Row Level Security (RLS) at the DB
+  level, not client-side logic.
 
-## Für die Weiterentwicklung (auch für KI-Assistenten)
+## For further development (including AI assistants)
 
-1. Vor jeder Änderung: nur die tatsächlich betroffenen Dateien lesen (siehe `js/README.md` für "wer macht was").
-2. Keine Refactorings "nebenbei" – wenn eine strukturelle Verbesserung sinnvoll erscheint, vorschlagen statt ungefragt umsetzen.
-3. Neue speicherbare State-Felder immer auch in `storage.js` (`createSnapshot`/`applySnapshot`) ergänzen.
-4. Neue Kommentare bitte kurz halten (Warum, nicht Bug-Historie). Die Historie gehört in Commit-Messages.
+1. Before any change: read only the files actually affected (see
+   `js/README.md` for "who does what").
+2. No drive-by refactors — if a structural improvement seems useful,
+   propose it instead of doing it unasked.
+3. Always add new persistable state fields to `storage.js` too
+   (`createSnapshot`/`applySnapshot`).
+4. Keep new comments short (why, not bug history). History belongs in
+   commit messages.
+5. Comments and READMEs are written in English; chat with the developer
+   stays in German.
 
-## Bekannte technische Schulden
+## Known technical debt
 
-Eine ausführliche, kategorisierte Liste (tote Funktionen, doppelte Logik, Formatierungs-Inkonsistenzen, veraltete Dokumentation, Architekturvorschläge) wurde im Rahmen eines Code-Reviews erstellt und im Chat-Verlauf mit dem Entwickler dokumentiert. Kurzfassung:
+A detailed, categorized list (dead functions, duplicated logic, formatting
+inconsistencies, outdated docs, architecture proposals) was produced during
+a code review and is documented in the chat history with the developer.
+Short version:
 
-- Ein paar exportierte Funktionen werden nirgends aufgerufen (`WebBuilderElements.createLegacyProxy`, `WebBuilderCanvas.makeDraggable`-Alias, `WebBuilderCart`-Produkt-Delegationsmethoden) – Kandidaten zum Entfernen.
-- Die "Array in-place statt komplett neu erzeugen"-Normalisierung ist in `cart.js`, `products.js` und `header-footer.js` dreimal fast identisch implementiert – Kandidat für eine gemeinsame Utility-Funktion.
-- Icon-Map wird in `elements.js`, `canvas.js` und `export.js` dreimal unabhängig zusammengebaut (`canvas.js` dupliziert sogar die Icon-SVGs) – auf eine zentrale Funktion reduzieren.
-- `inspector.js`, `cart.js`, `elements.js`, `preview.js` sind stark verdichtet (viele Anweisungen pro Zeile) – schwerer zu lesen als der Rest des Projekts, sollte bei nächster Berührung auf den übrigen Stil (mehrzeilig, eine Anweisung pro Zeile) vereinheitlicht werden.
-- `supabase.js` ist die größte Datei und vermischt Daten-CRUD mit UI-Rendering des Cloud-Modals – Kandidat für einen Split analog zu `products.js`/`cart.js`.
+- A few exported functions are never called
+  (`WebBuilderElements.createLegacyProxy`, `WebBuilderCanvas.makeDraggable`
+  alias, `WebBuilderCart` product-delegation methods) — candidates for
+  removal.
+- The "normalize array in place instead of rebuilding it" logic is
+  implemented three times, nearly identically, in `cart.js`, `products.js`
+  and `header-footer.js` — candidate for a shared utility function.
+  `elements.js` now has a similar, lighter migration step of its own
+  (legacy click-action fields) — could eventually be unified too.
+- The icon map is assembled independently three times in `elements.js`,
+  `canvas.js` and `export.js` (`canvas.js` even duplicates the icon SVGs) —
+  should be reduced to one central function.
+- `inspector.js`, `cart.js`, `elements.js`, `preview.js` are densely
+  written (many statements per line) — harder to read than the rest of the
+  project; should be unified to the rest of the codebase's style
+  (multi-line, one statement per line) next time they're touched.
