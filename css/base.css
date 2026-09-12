@@ -2,9 +2,11 @@
   --bg-main: #f3f4f6;
   --bg-panel: #ffffff;
   --border-color: #e5e7eb;
+  --border-muted: #d1d5db;
   --primary: #4f46e5;
   --primary-hover: #4338ca;
   --primary-light: #e0e7ff;
+  --primary-light-hover: #c7d2fe;
   --danger: #ef4444;
   --danger-hover: #dc2626;
   --danger-light: #fee2e2;
