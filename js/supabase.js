@@ -1,29 +1,6 @@
 // WebBuilder — Supabase integration
 // Auth (Login/Registrierung/Logout), Projekt-Verwaltung und die
 // Konto-/Cloud-UI (Modal über den Toolbar-Button #btn-cloud).
-//
-// FIX: Diese Datei importierte vorher `{ state, renderCanvas } from
-// "./builder.js"`. builder.js ist ein einfaches, nicht-modulares
-// Bootstrap-Script (per document.write geladen) OHNE jede export-Anweisung
-// — dieser Import konnte im Browser nie auflösen und hätte beim Ausführen
-// als ES-Modul einen SyntaxError geworfen. Diese Datei lief also faktisch
-// nie korrekt. Wie jedes andere Modul in diesem Projekt greift sie jetzt
-// über window.WebBuilderState auf den State zu.
-//
-// FIX: Das bisherige Speicherformat ({ elements, headerConfig, footerConfig,
-// canvasMinHeight }) passte nicht zum tatsächlichen state.js-Schema (flache
-// Felder wie headerEnabled/headerItems/..., canvasHeight statt
-// canvasMinHeight). Header, Footer und Hintergrund wären beim Cloud-
-// Speichern nie mitgespeichert worden. Speichern/Laden nutzt jetzt
-// WebBuilderStorage.createSnapshot()/applySnapshot() — dieselbe, bereits
-// getestete Logik, die auch lokales Speichern/Laden und Undo/Redo
-// verwenden (Projektregel 12: Wiederverwendung statt Duplikation).
-//
-// NEU (dieses Bündel, README-Punkt 1): Passwort-Reset, Projekte
-// löschen/umbenennen, echte Mehrseiten-Verwaltung über getProjectPages()
-// und ein dynamischer Bestätigungs-Hinweistext beim Registrieren. Alles
-// weiterhin ohne neues Modal-Markup — dieselbe generische
-// WebBuilderModals.open()-Technik wie bisher.
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm";
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js";
 
@@ -57,11 +34,8 @@ function slugify(name) {
   return slug || `projekt-${Date.now()}`;
 }
 
-// NEU: Reagiert auf den Supabase-Recovery-Link. Klickt der Nutzer auf den
-// Link aus der Passwort-Reset-Mail, leitet Supabase mit einem Recovery-
-// Token zurück auf diese Seite und feuert automatisch das
-// PASSWORD_RECOVERY-Event — unabhängig davon, ob das Cloud-Modal gerade
-// offen ist. Wir öffnen dafür direkt das "Neues Passwort setzen"-Modal.
+// Reagiert auf den Supabase-Recovery-Link (Passwort-Reset), unabhängig
+// davon, ob das Cloud-Modal gerade offen ist.
 supabaseClient.auth.onAuthStateChange((event) => {
   if (event === "PASSWORD_RECOVERY") openSetNewPasswordModal();
 });
@@ -78,11 +52,8 @@ export async function getCurrentUser() {
 export async function signUp(email, password) {
   const { data, error } = await supabaseClient.auth.signUp({ email, password });
   if (error) { toast(`Registrierung fehlgeschlagen: ${error.message}`, "danger"); return { data: null, error }; }
-  // NEU: Hinweistext hängt jetzt vom tatsächlichen Supabase-Auth-Setting ab
-  // statt pauschal "ggf. E-Mails prüfen" zu sagen. Ist E-Mail-Bestätigung
-  // in den Supabase-Auth-Einstellungen aktiviert, liefert signUp() KEINE
-  // Session zurück (Konto existiert, ist aber noch nicht bestätigt). Ist
-  // sie deaktiviert, ist die Session sofort vorhanden.
+  // Hinweistext hängt vom tatsächlichen Supabase-Auth-Setting ab: ist
+  // E-Mail-Bestätigung aktiviert, liefert signUp() keine Session zurück.
   if (data.session) {
     toast("Registrierung erfolgreich – du bist jetzt angemeldet! ⚡", "success");
   } else {
@@ -106,7 +77,7 @@ export async function signOut() {
   return true;
 }
 
-// NEU: Passwort-Reset per E-Mail.
+// Passwort-Reset per E-Mail.
 export async function resetPassword(email) {
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
     redirectTo: window.location.origin + window.location.pathname
@@ -116,8 +87,8 @@ export async function resetPassword(email) {
   return { error: null };
 }
 
-// NEU: Setzt nach Klick auf den Reset-Link das neue Passwort (Supabase
-// erstellt dabei automatisch eine kurzlebige Recovery-Session).
+// Setzt nach Klick auf den Reset-Link das neue Passwort (Supabase erstellt
+// dabei automatisch eine kurzlebige Recovery-Session).
 export async function updatePassword(newPassword) {
   const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
   if (error) { toast(`Fehler beim Setzen des neuen Passworts: ${error.message}`, "danger"); return { error }; }
@@ -164,7 +135,7 @@ export async function createProject(name = "Mein Projekt") {
   return { data, error };
 }
 
-// NEU: Projekt umbenennen.
+// Projekt umbenennen.
 export async function renameProject(projectId, newName) {
   const { data, error } = await supabaseClient
     .from("projects")
@@ -177,10 +148,9 @@ export async function renameProject(projectId, newName) {
   return { data, error: null };
 }
 
-// NEU: Projekt (inkl. aller zugehörigen Seiten) löschen. Seiten werden
-// bewusst zuerst explizit gelöscht, statt uns auf eine evtl. konfigurierte
-// ON DELETE CASCADE-Fremdschlüsselregel zu verlassen — funktioniert so
-// unabhängig vom DB-Setup, ohne das Schema anfassen zu müssen (Regel 17).
+// Projekt (inkl. aller zugehörigen Seiten) löschen. Seiten werden bewusst
+// zuerst explizit gelöscht, statt uns auf eine evtl. konfigurierte
+// ON DELETE CASCADE-Fremdschlüsselregel zu verlassen.
 export async function deleteProject(projectId) {
   const { error: pagesError } = await supabaseClient.from("pages").delete().eq("project_id", projectId);
   if (pagesError) { toast(`Fehler beim Löschen der Seiten: ${pagesError.message}`, "danger"); return { error: pagesError }; }
@@ -190,13 +160,11 @@ export async function deleteProject(projectId) {
   return { error: null };
 }
 
-// FIX/NEU: pageName/pageSlug sind jetzt Parameter statt fest verdrahtet auf
-// "Startseite"/"startseite", damit dieselbe, bereits getestete Save-Logik
-// auch fürs Anlegen weiterer Seiten wiederverwendet werden kann (Regel 12).
-// Wichtig: Ist eine pageId bekannt (bestehende Seite wird aktualisiert),
-// werden Name/Slug bewusst NICHT mitgeschickt — sonst hätte ein normaler
-// Speichervorgang (Toolbar "Speichern") eine umbenannte Seite bei jedem
-// Speichern stillschweigend wieder auf "Startseite" zurückgesetzt.
+// pageName/pageSlug sind Parameter, damit dieselbe Save-Logik auch fürs
+// Anlegen weiterer Seiten wiederverwendet werden kann. Ist eine pageId
+// bekannt (bestehende Seite wird aktualisiert), werden Name/Slug bewusst
+// NICHT mitgeschickt — sonst würde ein normaler Speichervorgang eine
+// umbenannte Seite bei jedem Speichern stillschweigend zurücksetzen.
 export async function saveProjectToSupabase(projectId, pageId = null, pageName = "Startseite", pageSlug = "startseite") {
   const user = await getCurrentUser();
   if (!user) {
@@ -270,10 +238,8 @@ export async function loadProjectFromSupabase(projectId, pageId = null) {
   }
 
   window.WebBuilderStorage.applySnapshot(data.content || {});
-  // FIX (siehe toolbar.js Undo/Redo): das Anwenden eines Snapshots auf den
-  // State allein rendert nichts neu. Wiederverwendung derselben
-  // Refresh-Routine, die toolbar.js nach Undo/Redo aufruft, statt sie ein
-  // drittes Mal zu implementieren.
+  // Wiederverwendung derselben Refresh-Routine, die toolbar.js nach
+  // Undo/Redo aufruft (Regel 12).
   window.WebBuilderToolbar?.refreshAllDomains?.();
   window.WebBuilderCanvas?.refreshBackgroundEditor?.();
   saveRef({ projectId, pageId: data.id });
@@ -289,7 +255,7 @@ export async function getProjectPages(projectId) {
     .order("updated_at", { ascending: false });
 }
 
-// NEU: Weitere Seite in einem Projekt anlegen. Slug wird gegen die bereits
+// Weitere Seite in einem Projekt anlegen. Slug wird gegen die bereits
 // geladenen Seiten geprüft, damit eine Namenskollision NICHT versehentlich
 // per upsert(onConflict "project_id,slug") eine bestehende Seite
 // überschreibt, sondern stattdessen einen eindeutigen Slug bekommt.
@@ -301,7 +267,7 @@ export async function createPage(projectId, name) {
   return saveProjectToSupabase(projectId, null, name, slug);
 }
 
-// NEU: Seite umbenennen (Slug bleibt bewusst unverändert, um bestehende
+// Seite umbenennen (Slug bleibt bewusst unverändert, um bestehende
 // Referenzen/Links auf die Seite nicht zu brechen).
 export async function renamePage(pageId, newName) {
   const { data, error } = await supabaseClient
@@ -315,7 +281,7 @@ export async function renamePage(pageId, newName) {
   return { data, error: null };
 }
 
-// NEU: Seite löschen.
+// Seite löschen.
 export async function deletePage(pageId) {
   const { error } = await supabaseClient.from("pages").delete().eq("id", pageId);
   if (error) { toast(`Fehler beim Löschen: ${error.message}`, "danger"); return { error }; }
@@ -337,7 +303,9 @@ window.WebBuilderSupabase = {
 // analog zum bereits bestehenden Muster in cart.js (Produktempfehlung
 // wählen) — kein neues Modal-Markup nötig.
 // ------------------------------------------------------------------
-const esc = v => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+// NEU: esc zentralisiert in state.js (WebBuilderUtils.escapeHtml) —
+// vorher eine von 7 unabhängigen, identischen Kopien im Projekt.
+const esc = window.WebBuilderUtils.escapeHtml;
 
 let cachedUser = null;
 let cachedProjects = [];
@@ -380,7 +348,7 @@ function projectListHtml() {
   `;
 }
 
-// NEU: Seiten-Liste innerhalb des aktiven Projekts (Mehrseiten-Verwaltung).
+// Seiten-Liste innerhalb des aktiven Projekts (Mehrseiten-Verwaltung).
 function pagesListHtml(activePageId) {
   const rows = cachedPages.map(p => {
     const isActive = activePageId ? p.id === activePageId : p.slug === "startseite";
@@ -422,8 +390,8 @@ function projectActiveHtml(activePageId) {
   `;
 }
 
-// NEU: Eigenes kleines Formular fürs Setzen eines neuen Passworts nach
-// Klick auf den Recovery-Link.
+// Eigenes kleines Formular fürs Setzen eines neuen Passworts nach Klick
+// auf den Recovery-Link.
 function newPasswordFormHtml() {
   return `
     <div style="display:flex; flex-direction:column; gap:10px;">
