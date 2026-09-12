@@ -1,6 +1,5 @@
 // WebBuilder modal service
-// Owns generic modal behaviour so the editor can migrate modal logic out of
-// builder-legacy.js without changing the existing DOM contract.
+// Owns the generic modal (open/close) plus freely positioned messages.
 
 (() => {
   function getElements() {
@@ -36,27 +35,15 @@
     return true;
   }
 
-  // esc centralized in state.js (WebBuilderUtils.escapeHtml) — this used
-  // to be its own, incomplete escape copy (no quote handling) here.
   function openMessage(title, message) {
     const esc = window.WebBuilderUtils.escapeHtml;
     const safeMessage = esc(message).replace(/\n/g, "<br>");
     return open(title, `<div>${safeMessage}</div>`);
   }
 
-  // ------------------------------------------------------------------
-  // Positionierte Benutzer-Meldung (Offener Punkt #3, siehe README).
-  //
-  // Anders als das zentrale Modal (open/openMessage) und der zentrale
-  // Toast-Stack (toast.js, immer unten rechts gestapelt), erscheint diese
-  // Meldung frei an einer der vier Bildschirmecken bzw. zentriert — genau
-  // die Position, die im Inspector unter "Meldungsposition"
-  // (item.messagePosition) für die Aktion "Benutzerdefinierte Meldung"
-  // ausgewählt werden kann. Bewusst hier in modals.js statt in toast.js,
-  // da toast.js strukturell an #toast-container (fester Stapel) gebunden
-  // ist und dieses Feature keinen Stapel, sondern freie Positionierung
-  // braucht. Das eigentliche Toast-Markup (Icon + Text) kommt aber aus
-  // WebBuilderToast.buildToastNode() — keine eigene Kopie mehr hier.
+  // Freely positioned message (any screen corner or centered), set via
+  // the inspector's "Meldungsposition" field — unlike the stacked toasts
+  // in toast.js. Reuses WebBuilderToast.buildToastNode() for the markup.
   const POSITION_STYLES = {
     "top-right": { top: "24px", right: "24px" },
     "top-left": { top: "24px", left: "24px" },
@@ -81,8 +68,7 @@
       msgEl.classList.add("toast-leaving");
       const remove = () => msgEl.remove();
       msgEl.addEventListener("animationend", remove, { once: true });
-      // Fallback, falls die Animation aus irgendeinem Grund nicht feuert
-      // (z. B. reduzierte Bewegung / Browser-Einstellungen).
+      // Fallback in case the animation never fires (e.g. reduced motion).
       setTimeout(remove, 600);
     }, 2800);
 
