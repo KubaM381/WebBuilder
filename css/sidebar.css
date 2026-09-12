@@ -35,6 +35,22 @@
 .product-card-row input[type="color"] { flex: none; width: 30px; height: 30px; padding: 0; border: none; cursor: pointer; }
 .product-icon-preview { font-size: 1.3rem; width: 30px; text-align: center; flex: none; }
 
+/* Product-card sub-elements used by js/products.js renderProducts(). */
+.product-card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.product-card-icon { font-size: 1.4rem; width: 32px; text-align: center; flex: none; }
+.product-card-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.product-card-title strong { font-size: 0.9rem; font-weight: 700; }
+.product-card-title span { font-size: 0.78rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.product-delete { flex: none; background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+.product-delete:hover { background: var(--danger-light); }
+.product-card-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.product-card-fields label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+.product-card-fields input, .product-card-fields textarea { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.825rem; font-weight: 400; color: var(--text-main); }
+.product-card-description { grid-column: 1 / -1; }
+.product-card-description textarea { resize: vertical; }
+.product-card-price { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); font-size: 0.85rem; }
+.product-card-price s { color: var(--text-muted); margin-right: 4px; }
+
 /* Fixed-width overrides for the milestone row (js/cart.js
    renderMilestoneList): win over the generic .item-row input[type=...]
    flex:1 rule above via equal specificity + later source order. */
