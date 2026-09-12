@@ -366,24 +366,8 @@
         <!-- Kombinierte Textformat-Leiste: Fett, Kursiv, Unterstrichen, Farbe, Schriftart, Ausrichtung -->
         <div class="form-group" id="group-color">
           <label>Textformat</label>
-          <div class="text-toolbar" id="prop-text-toolbar">
-            <button type="button" class="ttb-btn" id="ttb-bold" title="Fett"><b>F</b></button>
-            <button type="button" class="ttb-btn" id="ttb-italic" title="Kursiv"><i>K</i></button>
-            <button type="button" class="ttb-btn" id="ttb-underline" title="Unterstrichen"><u>U</u></button>
-            <span class="ttb-sep"></span>
-            <button type="button" class="ttb-btn" id="ttb-align-left" title="Linksbündig">⬅</button>
-            <button type="button" class="ttb-btn" id="ttb-align-center" title="Zentriert">↔</button>
-            <button type="button" class="ttb-btn" id="ttb-align-right" title="Rechtsbündig">➡</button>
-            <span class="ttb-sep"></span>
-            <input type="color" id="prop-color" value="#000000" title="Textfarbe">
-            <select id="prop-font-family" title="Schriftart">
-              <option value="inherit">Standard</option>
-              <option value="'Georgia', serif">Serif</option>
-              <option value="'Courier New', monospace">Monospace</option>
-              <option value="'Segoe UI', sans-serif">Sans-Serif</option>
-              <option value="'Comic Sans MS', cursive">Verspielt</option>
-            </select>
-          </div>
+          <!-- Inhalt wird von js/ui/shared-markup.js injiziert (gemeinsam mit #bar-item-text-toolbar) -->
+          <div class="text-toolbar" id="prop-text-toolbar"></div>
         </div>
 
         <hr class="divider">
@@ -391,18 +375,8 @@
         <p class="help-text">Wähle eine Aktion aus, die beim Anklicken des Elements ausgeführt werden soll:</p>
         <div class="form-group">
           <label for="prop-action-type">Aktion beim Klick</label>
-          <select id="prop-action-type">
-            <option value="none">Keine Aktion</option>
-            <option value="scroll-top">Nach ganz oben scrollen ⬆️</option>
-            <option value="scroll-bottom">Nach ganz unten scrollen ⬇️</option>
-            <option value="history-back">Zurück (Browser-Verlauf) ↩️</option>
-            <option value="history-forward">Vorwärts (Browser-Verlauf) ↪️</option>
-            <option value="open-url">Neue Seite / URL öffnen 🌐</option>
-            <option value="cart-add">Produkt in den Warenkorb legen 🛒</option>
-            <option value="open-cart-drawer">Warenkorb Drawer öffnen 🛍️</option>
-            <option value="open-custom-modal">Eigenes Modal öffnen 🪧</option>
-            <option value="alert-msg">Benutzerdefinierte Meldung anzeigen 💬</option>
-          </select>
+          <!-- Options werden von js/ui/shared-markup.js injiziert (gemeinsam mit #bar-prop-action-type) -->
+          <select id="prop-action-type"></select>
         </div>
         <div class="form-group hidden" id="group-action-url"><label for="prop-action-url">Ziel-URL / Link</label><input type="url" id="prop-action-url" placeholder="https://beispiel.de"></div>
         <div class="form-group hidden" id="group-action-msg"><label for="prop-action-msg">Meldungstext</label><input type="text" id="prop-action-msg" placeholder="Aktion erfolgreich!"></div>
@@ -435,42 +409,16 @@
         </div>
         <div class="form-group">
           <label>Textformat</label>
-          <div class="text-toolbar" id="bar-item-text-toolbar">
-            <button type="button" class="ttb-btn" id="bar-ttb-bold" title="Fett"><b>F</b></button>
-            <button type="button" class="ttb-btn" id="bar-ttb-italic" title="Kursiv"><i>K</i></button>
-            <button type="button" class="ttb-btn" id="bar-ttb-underline" title="Unterstrichen"><u>U</u></button>
-            <span class="ttb-sep"></span>
-            <button type="button" class="ttb-btn" id="bar-ttb-align-left" title="Linksbündig">⬅</button>
-            <button type="button" class="ttb-btn" id="bar-ttb-align-center" title="Zentriert">↔</button>
-            <button type="button" class="ttb-btn" id="bar-ttb-align-right" title="Rechtsbündig">➡</button>
-            <span class="ttb-sep"></span>
-            <input type="color" id="bar-prop-color" value="#ffffff" title="Textfarbe">
-            <select id="bar-prop-font-family" title="Schriftart">
-              <option value="inherit">Standard</option>
-              <option value="'Georgia', serif">Serif</option>
-              <option value="'Courier New', monospace">Monospace</option>
-              <option value="'Segoe UI', sans-serif">Sans-Serif</option>
-              <option value="'Comic Sans MS', cursive">Verspielt</option>
-            </select>
-          </div>
+          <!-- Inhalt wird von js/ui/shared-markup.js injiziert (gemeinsam mit #prop-text-toolbar) -->
+          <div class="text-toolbar" id="bar-item-text-toolbar"></div>
         </div>
 
         <hr class="divider">
         <h4>⚡ Verbindungsfunktion &amp; Logik</h4>
         <div class="form-group">
           <label for="bar-prop-action-type">Aktion beim Klick</label>
-          <select id="bar-prop-action-type">
-            <option value="none">Keine Aktion</option>
-            <option value="scroll-top">Nach ganz oben scrollen ⬆️</option>
-            <option value="scroll-bottom">Nach ganz unten scrollen ⬇️</option>
-            <option value="history-back">Zurück (Browser-Verlauf) ↩️</option>
-            <option value="history-forward">Vorwärts (Browser-Verlauf) ↪️</option>
-            <option value="open-url">Neue Seite / URL öffnen 🌐</option>
-            <option value="cart-add">Produkt in den Warenkorb legen 🛒</option>
-            <option value="open-cart-drawer">Warenkorb Drawer öffnen 🛍️</option>
-            <option value="open-custom-modal">Eigenes Modal öffnen 🪧</option>
-            <option value="alert-msg">Benutzerdefinierte Meldung anzeigen 💬</option>
-          </select>
+          <!-- Options werden von js/ui/shared-markup.js injiziert (gemeinsam mit #prop-action-type) -->
+          <select id="bar-prop-action-type"></select>
         </div>
         <div class="form-group hidden" id="bar-group-action-url"><label>Ziel-URL / Link</label><input type="url" id="bar-prop-action-url" placeholder="https://beispiel.de"></div>
         <div class="form-group hidden" id="bar-group-action-msg"><label>Meldungstext</label><input type="text" id="bar-prop-action-msg" placeholder="Aktion erfolgreich!"></div>
