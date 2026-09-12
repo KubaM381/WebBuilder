@@ -1,11 +1,11 @@
 .canvas-container { flex: 1; min-width: 0; background-color: #cbd5e1; padding: 30px; overflow: auto; display: flex; justify-content: center; align-items: flex-start; position: relative; }
 .canvas-column { display: flex; flex-direction: column; width: 100%; max-width: 1400px; }
-.canvas-area { width: 100%; min-height: 1100px; background-color: #ffffff; border-radius: 8px; box-shadow: var(--shadow-lg); position: relative; transition: background 0.3s ease, min-height 0.25s ease; background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px; overflow: hidden; }
+.canvas-area { width: 100%; min-height: 1100px; background-color: #ffffff; border-radius: 8px; box-shadow: var(--shadow-lg); position: relative; transition: background 0.3s ease, min-height 0.25s ease; background-image: radial-gradient(var(--border-muted) 1px, transparent 1px); background-size: 20px 20px; overflow: hidden; }
 .canvas-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #9ca3af; font-size: 1.15rem; font-weight: 500; pointer-events: none; text-align: center; }
 .canvas-extend-wrap { display: flex; justify-content: center; padding: 14px 0 4px; }
 .zoom-controls { position: absolute; top: 14px; right: 18px; z-index: 60; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 999px; padding: 5px 8px; display: flex; align-items: center; gap: 6px; box-shadow: var(--shadow-md); }
 .zoom-controls button { width: 26px; height: 26px; border: none; background: var(--primary-light); color: var(--primary); border-radius: 50%; cursor: pointer; font-weight: 700; font-size: 0.9rem; line-height: 1; }
-.zoom-controls button:hover { background: #c7d2fe; }
+.zoom-controls button:hover { background: var(--primary-light-hover); }
 .zoom-controls #zoom-reset { width: auto; border-radius: 999px; padding: 0 10px; font-size: 0.72rem; }
 #zoom-level { font-size: 0.75rem; color: var(--text-muted); min-width: 38px; text-align: center; }
 .builder-bar { position: relative; box-sizing: border-box; width: 100%; }
