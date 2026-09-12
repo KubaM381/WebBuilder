@@ -62,8 +62,8 @@ provides the event system:
 
 Every other module reads/writes exclusively through this `state` object —
 no module keeps its own parallel state. Also exposes
-`window.WebBuilderUtils` (`normalizeInPlace`, `escapeHtml`) as shared,
-project-wide helpers.
+`window.WebBuilderUtils` (`normalizeInPlace`, `escapeHtml`,
+`buildTextStyleCss`) as shared, project-wide helpers.
 
 ### `storage.js`
 Exposes `window.WebBuilderStorage` and `window.WebBuilderHistory`.
@@ -88,7 +88,10 @@ toast markup, also reused by `modals.js` (`openPositionedMessage()`).
 ### `modals.js`
 `window.WebBuilderModals` — generic central modal (`open`, `openMessage`,
 `close`) plus `openPositionedMessage()` for freely positioned messages
-(top/bottom/left/right/center, configurable in the inspector).
+(top/bottom/left/right/center, configurable in the inspector). Both
+message-building paths (`openMessage`'s escaping, `openPositionedMessage`'s
+toast markup) reuse the shared `WebBuilderUtils.escapeHtml` /
+`WebBuilderToast.buildToastNode` — no own copies.
 
 ## Domain modules
 
@@ -108,7 +111,9 @@ Rendering of canvas elements, zoom, canvas size, drag-and-drop from the
 palette, background-editor binding, palette UI for custom icons. Also owns
 the **shared interaction controller** `attachInteraction()` (click + drag
 via Pointer Events, with a movement threshold and `state.dragLock`), which
-`header-footer.js` reuses for bar elements.
+`header-footer.js` reuses for bar elements. Text-style CSS (bold/italic/
+underline/font-family) for rendered elements comes from the shared
+`WebBuilderUtils.buildTextStyleCss()` helper, also used by `export.js`.
 
 ### `inspector.js`
 Right-hand properties panel for normal canvas elements: text content,
@@ -184,19 +189,11 @@ UI layer (`supabase-ui.js`) — **details and rationale in
   `Supabase/supabase-ui.js` listens and opens the password modal. Same
   pattern as `webbuilder:state-change` in `state.js`.
 
-## Known technical debt (short version, details in chat review)
+## Known technical debt
 
-- Dead exports: `WebBuilderElements.createLegacyProxy`,
-  `WebBuilderCanvas.makeDraggable` alias, `callbacks.onSelect` in
-  `canvas.js`, `WebBuilderCart` product-delegation methods.
-- Triple-duplicated "normalize in place" logic in `cart.js`/`products.js`/
-  `header-footer.js` (`elements.js` now has a similar but lighter
-  migration step — candidate to unify later).
-- Triple-duplicated icon-map merge logic in `elements.js`/`canvas.js`/
-  `export.js` (`canvas.js` even duplicates the icon SVGs).
 - Densely written files (`inspector.js`, `cart.js`, `elements.js`,
   `preview.js`) should eventually match the rest of the project's more
-  readable style.
-- Inline `style="..."` attributes in `Supabase/supabase-ui.js` (cloud modal
-  HTML), `cart.js` (cart item HTML) and `products.js` (product cards)
-  should move into fixed CSS classes (see `css/README.md`).
+  readable style (multi-line, one statement per line).
+- See root `README.md` "Known technical debt" for the `web.html`
+  action-type-dropdown/text-toolbar markup duplication between the normal
+  element inspector and the bar-item inspector — not fixed, structural.
