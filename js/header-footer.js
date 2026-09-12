@@ -9,7 +9,12 @@
 
   function numOr(v,fallback){const n=Number(v);return(v!=null&&v!==""&&Number.isFinite(n))?n:fallback;}
 
-  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||"none",actionUrl:item.actionUrl||"",actionMsg:item.actionMsg||"",productId:item.productId||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
+  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",
+    // Legacy fallback: migrates bar items saved before the actionType/
+    // actionUrl/actionMsg/productId rename. No-op once the canonical field
+    // holds any truthy value (including "none"), so this only ever fires once.
+    actionType:item.actionType||item.action||item.action_type||"none",actionUrl:item.actionUrl||item.action_url||item.url||"",actionMsg:item.actionMsg||item.actionMessage||item.message||"",productId:item.productId||item.product_id||item.product||null,
+    modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
 
   // In-place normalisieren (siehe WebBuilderUtils.normalizeInPlace,
   // state.js) — hält Objektreferenzen während eines aktiven Bar-Item-Drags
