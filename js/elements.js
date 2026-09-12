@@ -14,19 +14,14 @@
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  // state.notify expects positional args (domain, action, payload) — always
-  // call it through this wrapper so the "elements" domain name is correct.
+  // Wraps state.notify with the fixed "elements" domain name.
   function notify(type = "update") {
     state.notify?.("elements", type);
   }
 
-  // Migrates click-action fields from before the actionType/actionUrl/
-  // actionMsg/productId rename (old names: action, action_type, action_url,
-  // url, actionMessage, message, product_id, product). Unlike products.js/
-  // cart.js/header-footer.js, canvas elements had no normalize step at all,
-  // so any element saved under the old names would never get fixed up.
-  // Runs once per load via normalizeState(); safe to call repeatedly since
-  // it's a no-op once actionType/actionUrl/actionMsg/productId are set.
+  // Migrates legacy click-action field names (action, action_type, url,
+  // message, product_id, ...) to actionType/actionUrl/actionMsg/productId.
+  // No-op once the canonical fields are set, so safe to call repeatedly.
   function migrateActionFields(item) {
     if (!item || typeof item !== "object") return item;
     if (item.actionType == null) item.actionType = item.action || item.action_type || "none";
@@ -155,10 +150,8 @@
     duplicate, replaceAll, setSelected, getSelected, clear, normalizeState
   };
 
-  // ------------------------------------------------------------------
-  // Icon registry — pure data, no DOM access. The UI for the "eigene
-  // Icons"-Palette lives in canvas.js (builds on its drag & drop code).
-  // ------------------------------------------------------------------
+  // Icon registry — pure data, no DOM access. The custom-icon palette UI
+  // lives in canvas.js.
   const icons = {
     cart: '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1z"/></svg>',
     'arrow-up': '<svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>',
@@ -182,17 +175,14 @@
     return Object.assign({}, icons);
   }
 
-  // Central merge point: all registered icons plus the optional, externally
-  // fillable window.WebBuilderIconMap extension. Used by canvas.js (editor
-  // rendering) and export.js (static HTML export) so the merge logic isn't
-  // duplicated.
+  // Merges registered icons with the optional window.WebBuilderIconMap
+  // extension. Used by canvas.js and export.js.
   function getMergedMap() {
     return Object.assign({}, getAllIcons(), window.WebBuilderIconMap || {});
   }
 
-  // Custom icons (added at runtime via the sidebar form) are intentionally
-  // NOT persisted — not part of storage.js's snapshot — so they only last
-  // for the current session, same as the pre-modular builder behaved.
+  // Custom icons are intentionally NOT persisted (not part of storage.js's
+  // snapshot) — session-only, matching the original builder's behavior.
   const customIconOrder = [];
 
   function addCustomIcon(name, source) {
