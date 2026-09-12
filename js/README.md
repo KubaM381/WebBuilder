@@ -19,6 +19,8 @@ js/
 ├── products.js             product management (CRUD + tab UI)
 ├── cart.js                 cart (data + drawer + config UI)
 ├── canvas.js               rendering, zoom, drag & drop, background
+├── ui/
+│   └── shared-markup.js    shared HTML for #prop-*/#bar-prop-* (see below)
 ├── inspector.js            properties panel for canvas elements
 ├── toolbar.js               zoom buttons, undo/redo buttons, save
 ├── header-footer.js        header/footer (data + rendering + inspector)
@@ -37,16 +39,24 @@ js/
 
 ```text
 state.js → toast.js → storage.js → elements.js → products.js → cart.js
-→ canvas.js → inspector.js → toolbar.js → header-footer.js → export.js
-→ modals.js → preview.js
+→ canvas.js → ui/shared-markup.js → inspector.js → toolbar.js
+→ header-footer.js → export.js → modals.js → preview.js
 → Supabase/supabase-config.js (module)
 → Supabase/supabase-data.js (module)
 → Supabase/supabase-ui.js (module)
 ```
 
-Most important dependency: **`products.js` before `cart.js`**, since
-`cart.js` references products exclusively via `window.WebBuilderProducts`
-(no own product data).
+Two dependencies matter most:
+
+- **`products.js` before `cart.js`**, since `cart.js` references products
+  exclusively via `window.WebBuilderProducts` (no own product data).
+- **`ui/shared-markup.js` before `inspector.js` and `header-footer.js`**:
+  it fills the action-type `<select>` options and the text-format toolbar
+  buttons that those two modules read `.value` from / bind id-based click
+  listeners to, right after `DOMContentLoaded`. Both register their
+  `DOMContentLoaded` listener, so as long as `shared-markup.js`'s listener
+  is registered first (i.e. its `<script>` tag loads first), its markup is
+  in place before either panel renders or binds.
 
 ## Core building blocks
 
@@ -93,6 +103,20 @@ message-building paths (`openMessage`'s escaping, `openPositionedMessage`'s
 toast markup) reuse the shared `WebBuilderUtils.escapeHtml` /
 `WebBuilderToast.buildToastNode` — no own copies.
 
+### `ui/shared-markup.js`
+Builds and injects HTML that `web.html` used to duplicate verbatim between
+the normal element inspector (`#prop-*`) and the header/footer bar-item
+inspector (`#bar-prop-*`): the 10-option click-action `<select>`, the
+5-option font-family `<select>`, and the text-format toolbar (bold/
+italic/underline/align buttons + color input + font-family select).
+Builds strings only — no event binding, no state access. `web.html` now
+ships `#prop-text-toolbar`/`#bar-item-text-toolbar` and
+`#prop-action-type`/`#bar-prop-action-type` empty; this module fills them
+in on load. All ids stay exactly what `inspector.js`/`header-footer.js`
+already expect (`ttb-bold`, `prop-color`, `bar-ttb-bold`,
+`bar-prop-color`, …), so neither of those two modules needed to change.
+See "Load order" above for why this must load before both.
+
 ## Domain modules
 
 ### `elements.js`
@@ -120,13 +144,16 @@ Right-hand properties panel for normal canvas elements: text content,
 image, size, text formatting, click actions
 (`actionType`/`actionUrl`/`actionMsg`/`productId`), advanced properties
 (icon frame, shape style, modal content, message position),
-duplicate/delete.
+duplicate/delete. The `<select>` options and toolbar buttons it binds to
+are injected by `ui/shared-markup.js` (see above) — `inspector.js` itself
+never builds that markup.
 
 ### `header-footer.js`
 Standalone domain for header/footer: state, rendering of the bars with
 their elements on the canvas, resize handle, and its **own right-hand
 inspector panel** for bar elements (separate from the normal element
-inspector, since both panels are mutually exclusive).
+inspector, since both panels are mutually exclusive). Like `inspector.js`,
+its `<select>` options and toolbar buttons come from `ui/shared-markup.js`.
 
 ### `products.js`
 Product management: CRUD + normalization + rendering/handling of the
@@ -194,6 +221,3 @@ UI layer (`supabase-ui.js`) — **details and rationale in
 - Densely written files (`inspector.js`, `cart.js`, `elements.js`,
   `preview.js`) should eventually match the rest of the project's more
   readable style (multi-line, one statement per line).
-- See root `README.md` "Known technical debt" for the `web.html`
-  action-type-dropdown/text-toolbar markup duplication between the normal
-  element inspector and the bar-item inspector — not fixed, structural.
