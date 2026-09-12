@@ -1,7 +1,5 @@
-// WebBuilder header/footer domain
-// Owns header/footer data, canvas rendering (bar + items + resize handle),
-// and the editor UI (left sidebar list/background controls + right
-// inspector panel for the selected bar item).
+// WebBuilder header/footer domain: header/footer data, canvas rendering
+// (bar + items + resize handle), and its own sidebar/inspector editor UI.
 (() => {
   const state=window.WebBuilderState;if(!state){console.error("WebBuilderHeaderFooter: shared state missing.");return;}
   const clone=v=>JSON.parse(JSON.stringify(v));
@@ -9,13 +7,10 @@
 
   function numOr(v,fallback){const n=Number(v);return(v!=null&&v!==""&&Number.isFinite(n))?n:fallback;}
 
-  // Legacy fallback: migrates bar items saved before the actionType/
-  // actionUrl/actionMsg/productId rename (same pattern as elements.js's
-  // migrateActionFields()). No-op once the canonical field is set.
+  // Legacy field migration — same pattern as elements.js migrateActionFields().
   function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||item.action||item.action_type||"none",actionUrl:item.actionUrl||item.action_url||item.url||"",actionMsg:item.actionMsg||item.actionMessage||item.message||"",productId:item.productId||item.product_id||item.product||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
 
-  // Normalizes in place (WebBuilderUtils.normalizeInPlace, state.js) so
-  // object references stay stable during an active bar-item drag.
+  // In-place normalize keeps refs stable during an active drag (see state.js normalizeInPlace).
   function normalizeItemsInPlace(list){
     return window.WebBuilderUtils.normalizeInPlace(list, normalizeItem);
   }
@@ -42,8 +37,7 @@
   function updateFooter(p={},h=true){if(h)window.WebBuilderHistory?.arm();if(p.enabled!=null)state.footerEnabled=!!p.enabled;if(p.height!=null)state.footerHeight=Math.max(40,Number(p.height)||70);if(p.bgType!=null)state.footerBgType=p.bgType==="image"?"image":"solid";if(p.bgColor!=null)state.footerBgColor=String(p.bgColor);if(p.bgImage!=null)state.footerBgImage=String(p.bgImage);if(Array.isArray(p.items))state.footerItems=p.items.map(normalizeItem);if(h)window.WebBuilderHistory?.commit();const r=getFooter();emitChange("footer",r);return r;}
   function addItem(type,target="header",patch={},h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=normalizeItem({...patch,type,text:patch.text||(type==="icon"?"":"Neuer Text")});if(h)window.WebBuilderHistory?.arm();items.push(item);if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
   function removeItem(id,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,i=items.findIndex(x=>x?.id===id);if(i<0)return false;if(h)window.WebBuilderHistory?.arm();items.splice(i,1);if(state.selectedBarItemRef?.id===id)state.selectedBarItemRef=null;if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return true;}
-  // Merge patch into item before normalizing (order matters: normalizing
-  // first would let stale item fields overwrite the incoming patch).
+  // Merge patch into item before normalizing, not after (order matters).
   function updateItem(id,patch,target="header",h=true){const items=target==="footer"?state.footerItems:state.headerItems,item=items.find(x=>x?.id===id);if(!item)return null;if(h)window.WebBuilderHistory?.arm();const merged=normalizeItem(Object.assign({},item,clone(patch||{})));Object.assign(item,merged);if(h)window.WebBuilderHistory?.commit();emitChange(target,target==="footer"?getFooter():getHeader());return item;}
   normalizeState();
   window.WebBuilderHeaderFooter={normalizeState,normalizeItem,getHeader,getFooter,updateHeader,updateFooter,addItem,removeItem,updateItem,onChange(cb){if(typeof cb!=="function")return()=>{};const h=e=>cb(e.detail);window.addEventListener("webbuilder:header-footer-change",h);return()=>window.removeEventListener("webbuilder:header-footer-change",h);}};
@@ -58,9 +52,7 @@
     const item=items.find(x=>x.id===ref.id);
     return item?{ref,item}:null;
   }
-  // Selecting a bar item must deselect any canvas element (mirrors the
-  // reverse case in inspector.js's select()) — only one right-hand panel
-  // is visible at a time.
+  // Deselect canvas element too — mirrors inspector.js select(); panels are mutually exclusive.
   function selectItem(target,id){
     state.selectedBarItemRef={target,id};
     if(window.WebBuilderInspector?.select) window.WebBuilderInspector.select(null);
@@ -117,8 +109,7 @@
     });
   }
 
-  // Reuses the shared click+drag controller from canvas.js so bar items
-  // behave identically to canvas elements (see attachInteraction() there).
+  // Reuses canvas.js's attachInteraction() so bar items drag/click like canvas elements.
   function bindBarItemInteraction(domEl,item,barEl,target,cfg){
     const canvasHelper=window.WebBuilderCanvas;
     if(!canvasHelper?.attachInteraction){console.error("WebBuilderHeaderFooter: WebBuilderCanvas.attachInteraction missing.");return;}
@@ -202,9 +193,8 @@
     byId(`${target}-bg-image-group`)?.classList.toggle("hidden",type!=="image");
   }
 
-  // renderBars() below rebuilds every .bar-item DOM node, which would break
-  // an active drag's pointer capture (same reasoning as scheduleRender() in
-  // canvas.js). Defer to the next frame while state.dragLock is true.
+  // Defers while dragLock is true: renderBars() rebuilds DOM nodes and would
+  // break an active drag's pointer capture (see canvas.js scheduleRender()).
   function render(){
     if(state.dragLock){
       if(window.requestAnimationFrame)window.requestAnimationFrame(render);else window.setTimeout(render,16);
@@ -334,9 +324,7 @@
     byId("btn-delete-bar-item")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();const sel=currentSelection();if(sel)transact(()=>removeItem(sel.ref.id,sel.ref.target,false));},true);
 
     onChangeInternal();
-    // Header/footer changes are pushed via WebBuilderHeaderFooter.onChange()
-    // above, not via state.notify() — only "products" and "preview" need to
-    // trigger a re-render here.
+    // header/footer changes arrive via onChange() below; state.notify() only covers products/preview here.
     state.subscribe?.(e=>{if(["products","preview"].includes(e?.domain))render();});
     render();
   }
