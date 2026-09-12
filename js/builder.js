@@ -10,6 +10,11 @@ document.write('<script src="js/elements.js"><\/script>');
 document.write('<script src="js/products.js"><\/script>');
 document.write('<script src="js/cart.js"><\/script>');
 document.write('<script src="js/canvas.js"><\/script>');
+// ui/shared-markup.js must load before inspector.js and header-footer.js:
+// it fills the action-type <select> options and the text-format toolbar
+// buttons (shared markup for #prop-*/#bar-prop-*, see its own header
+// comment) that those two modules read/bind right after DOMContentLoaded.
+document.write('<script src="js/ui/shared-markup.js"><\/script>');
 document.write('<script src="js/inspector.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 document.write('<script src="js/header-footer.js"><\/script>');
