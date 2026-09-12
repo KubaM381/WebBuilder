@@ -20,6 +20,7 @@ WebBuilder/
     ├── README.md          module overview, see there for details
     ├── builder.js          bootstrap / load order
     ├── *.js                domain modules (state, canvas, cart, products, ...)
+    ├── ui/                 shared HTML builders (see js/README.md)
     └── Supabase/           Supabase client, auth, project/page CRUD, cloud modal UI
 ```
 
@@ -43,7 +44,9 @@ WebBuilder/
   Details: see `js/README.md`.
 - **Load order matters**: `js/builder.js` loads all modules in sequence via
   `document.write`. `products.js` **must load before** `cart.js` (cart.js
-  references products only via `window.WebBuilderProducts`).
+  references products only via `window.WebBuilderProducts`), and
+  `js/ui/shared-markup.js` **must load before** `inspector.js`/
+  `header-footer.js` (see `js/README.md`).
 
 ## Supabase schema
 
@@ -91,13 +94,6 @@ format.
   written (many statements per line) — harder to read than the rest of the
   project; should be unified to the rest of the codebase's style
   (multi-line, one statement per line) next time they're touched.
-- `web.html` duplicates the click-action `<select>` option list (10
-  options) and the text-format toolbar markup once for normal elements
-  (`#prop-*`) and once for header/footer bar items (`#bar-prop-*`),
-  because `inspector.js` and `header-footer.js` render two separate,
-  mutually exclusive panels. Not unified — would need a shared HTML/
-  templating step across both files plus a `web.html` change, so treat it
-  as a structural task (plan first, see rule 2 above) if ever tackled.
 
 > Note for future AI sessions: this list reflects only what is genuinely
 > still open. Items that get fixed should be removed here, not left
