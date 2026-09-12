@@ -51,12 +51,5 @@ search before deleting:
 
 ## Known gaps (not yet fixed)
 
-1. `sidebar.css`'s `.sidebar-bg-controls select, .sidebar-bg-controls
-   input[type="text"]` overlaps with `inspector.css`'s `.form-group input,
-   .form-group select` — both target the same background-editor form
-   fields with slightly different padding (6px 8px vs 8px 10px). Equal
-   specificity plus `inspector.css` loading after `sidebar.css` means
-   `<select>` fields silently fall back to `.form-group`'s padding while
-   `<input type="text">` fields (more specific selector) keep their own.
-   Cosmetic-only and easy to miss; left as-is here since fixing it changes
-   rendered spacing and wasn't part of the current task.
+None currently tracked. Resolved items stay in git/chat history instead of
+being marked "done" here.
