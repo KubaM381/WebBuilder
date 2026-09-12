@@ -102,6 +102,12 @@ WebBuilderState.notify = function notify(domain, action, payload) {
 // "aushängen" und nachfolgende Änderungen gingen beim nächsten Rendern
 // wieder verloren.
 // Genutzt von cart.js, products.js, header-footer.js.
+//
+// NEU: escapeHtml() zentralisiert dieselbe HTML-Escape-Logik, die zuvor
+// unabhängig als "esc"/"escapeHtml" in canvas.js, export.js, inspector.js,
+// header-footer.js, cart.js, products.js und supabase.js definiert war
+// (7-fache Duplikation, siehe Projekt-Review). Alle genannten Module
+// referenzieren jetzt ausschließlich diese eine Implementierung.
 window.WebBuilderUtils = window.WebBuilderUtils || {
   normalizeInPlace(list, normalizeFn) {
     if (!Array.isArray(list)) return [];
@@ -112,5 +118,10 @@ window.WebBuilderUtils = window.WebBuilderUtils || {
       }
       return normalizeFn(item);
     });
+  },
+  escapeHtml(str) {
+    return String(str == null ? "" : str).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
   }
 };
