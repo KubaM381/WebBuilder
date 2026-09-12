@@ -163,11 +163,9 @@
     });
   }
 
-  function escapeHtml(str) {
-    return String(str == null ? "" : str).replace(/[&<>"']/g, c => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[c]));
-  }
+  // NEU: zentralisiert in state.js (WebBuilderUtils.escapeHtml) — vorher
+  // eine von 7 unabhängigen, identischen Kopien im Projekt.
+  const escapeHtml = window.WebBuilderUtils.escapeHtml;
 
   // Zentraler Merge-Punkt für alle Icons (Registry + optionale
   // window.WebBuilderIconMap-Erweiterung) — siehe elements.js
