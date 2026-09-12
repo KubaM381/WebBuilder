@@ -93,7 +93,9 @@
     getItems, getConfig, getCount, getSubtotal, getEffectivePrice, addItem, updateQty, changeQty, updatePrice, updateDiscountPrice, removeItem, clear, setConfig, setItemDisplay, setButtonLabel, normalizeCartItem, normalizeState, applyDiscountCode, addRecommendation, removeRecommendation, addMilestone, removeMilestone
   };
 
-  const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
+  // NEU: esc zentralisiert in state.js (WebBuilderUtils.escapeHtml) —
+  // vorher eine von 7 unabhängigen, identischen Kopien im Projekt.
+  const esc=window.WebBuilderUtils.escapeHtml;
   const eur=v=>`${Number(v||0).toFixed(2).replace(".",",")} €`;
 
   // ------------------------------------------------------------------
