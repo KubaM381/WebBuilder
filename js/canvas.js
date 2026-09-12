@@ -167,6 +167,11 @@
   // eine von 7 unabhängigen, identischen Kopien im Projekt.
   const escapeHtml = window.WebBuilderUtils.escapeHtml;
 
+  // Shared text-style CSS (bold/italic/underline/font-family) — see
+  // state.js WebBuilderUtils.buildTextStyleCss (was duplicated per
+  // element type here and again in export.js).
+  const buildTextStyleCss = window.WebBuilderUtils.buildTextStyleCss;
+
   // Zentraler Merge-Punkt für alle Icons (Registry + optionale
   // window.WebBuilderIconMap-Erweiterung) — siehe elements.js
   // WebBuilderIconRegistry.getMergedMap(). Keine eigene Icon-Kopie mehr
@@ -205,17 +210,15 @@
       el.style.top = `${item.y}px`;
       el.style.color = item.color;
       el.dataset.id = item.id;
-      const textDeco = item.underline ? "underline" : "none";
-      const fontFam = item.fontFamily || "inherit";
       const align = item.align || "left";
       if (item.type === "icon" && iconMap[item.iconName]) {
         el.innerHTML = item.iconFrame ? `<span class="icon-frame-wrap" style="border-color:${item.iconFrameColor || "#111827"};">${iconMap[item.iconName]}</span>` : iconMap[item.iconName];
         const svg = el.querySelector("svg, img");
         if (svg) { svg.style.width = `${item.size}px`; svg.style.height = `${item.size}px`; }
       } else if (item.type === "button") {
-        el.innerHTML = `<button class="btn btn-primary" style="font-size:${item.size}px; background-color:${item.color}; font-weight:${item.bold ? "bold" : "600"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam};">${escapeHtml(item.text)}</button>`;
+        el.innerHTML = `<button class="btn btn-primary" style="font-size:${item.size}px; background-color:${item.color}; ${buildTextStyleCss(item, "600")}">${escapeHtml(item.text)}</button>`;
       } else if (item.type === "headline") {
-        el.innerHTML = `<h2 style="font-size:${item.size}px; color:${item.color}; font-weight:${item.bold ? "bold" : "400"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam}; text-align:${align};">${escapeHtml(item.text)}</h2>`;
+        el.innerHTML = `<h2 style="font-size:${item.size}px; color:${item.color}; ${buildTextStyleCss(item, "400")} text-align:${align};">${escapeHtml(item.text)}</h2>`;
       } else if (item.type === "box") {
         el.innerHTML = `<div style="width:140px; height:90px; background:${item.color}; border-radius:8px; box-shadow: var(--shadow-md);"></div>`;
       } else if (item.type === "shape") {
@@ -224,7 +227,7 @@
         const src = item.imageUrl || "https://via.placeholder.com/200";
         el.innerHTML = `<img src="${escapeHtml(src)}" class="canvas-img" style="width:${item.size}px; height:auto;" alt="Bild Element" draggable="false" />`;
       } else {
-        el.innerHTML = `<p style="font-size:${item.size}px; color:${item.color}; font-weight:${item.bold ? "bold" : "normal"}; font-style:${item.italic ? "italic" : "normal"}; text-decoration:${textDeco}; font-family:${fontFam}; text-align:${align};">${escapeHtml(item.text)}</p>`;
+        el.innerHTML = `<p style="font-size:${item.size}px; color:${item.color}; ${buildTextStyleCss(item)} text-align:${align};">${escapeHtml(item.text)}</p>`;
       }
       const badge = document.createElement("span");
       badge.className = "element-badge";
