@@ -33,7 +33,37 @@
       description: product.description || ""
     };
   }
-  function normalizeProducts() { state.products = Array.isArray(state.products) ? state.products.map(normalizeProduct) : []; return state.products; }
+  // FIX (Kern-Bug: Produktänderungen gehen sofort wieder verloren):
+  // Vorher schrieb normalizeProducts() das komplette Array per
+  // `.map(normalizeProduct)` neu — normalizeProduct() erzeugt dabei IMMER
+  // ein brandneues Objekt. updateProduct() (siehe unten) holt sich aber
+  // ZUERST eine Referenz auf das bestehende Produkt-Objekt und ruft ERST
+  // DANACH window.WebBuilderHistory.arm() auf — und genau das löst über
+  // normalizeRuntimeState() einen normalizeProducts()-Aufruf aus, der
+  // state.products komplett durch neue Objekte ersetzt. Die anschließenden
+  // Object.assign()-Änderungen von updateProduct() landeten dadurch auf
+  // einem bereits aus dem Array "ausgehängten" alten Objekt — die
+  // eigentlichen (frischen, aber unveränderten) Objekte in state.products
+  // blieben unangetastet. Ergebnis: Eingaben im Produkt-Editor wirkten kurz,
+  // wurden aber beim nächsten Rendern wieder verworfen.
+  //
+  // Fix (analog zu header-footer.js normalizeItemsInPlace): für bereits
+  // bestehende, valide Produkte (mit id) wird KEIN neues Objekt mehr
+  // erzeugt, sondern die normalisierten Werte werden per Object.assign()
+  // in dasselbe Objekt zurückgeschrieben. Die Objektreferenz bleibt dadurch
+  // über beliebig viele normalizeProducts()-Aufrufe hinweg stabil. Nur für
+  // tatsächlich neue/ungültige Einträge (kein Objekt oder ohne id) wird
+  // weiterhin ein frisches Objekt über normalizeProduct() erzeugt.
+  function normalizeProducts() {
+    state.products = Array.isArray(state.products) ? state.products.map(item => {
+      if (item && typeof item === "object" && item.id) {
+        Object.assign(item, normalizeProduct(item));
+        return item;
+      }
+      return normalizeProduct(item);
+    }) : [];
+    return state.products;
+  }
   function getProducts() { return state.products; }
   function getProduct(id) { return state.products.find(p => p?.id === id) || null; }
   function addProduct(product = {}, recordHistory = true) { if (recordHistory) window.WebBuilderHistory?.arm(); const item = normalizeProduct(product); state.products.push(item); if (recordHistory) window.WebBuilderHistory?.commit(); notify("products", "add", item); return item; }
