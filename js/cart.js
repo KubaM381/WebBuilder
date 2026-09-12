@@ -11,25 +11,13 @@
   function notify(domain, action, payload) { if (typeof state.notify === "function") state.notify(domain, action, payload); }
   function normalizeCartItem(item = {}) { const price = Number(item.price) || 0; const discountPrice = item.discountPrice != null && item.discountPrice !== "" ? Number(item.discountPrice) || 0 : null; return { id: item.id || `cart_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, name: item.name || "Produkt", price, discountPrice: discountPrice != null && discountPrice > 0 && discountPrice < price ? discountPrice : null, qty: Math.max(1, Number(item.qty) || 1), icon: item.icon || "📦", description: item.description || "" }; }
   function getEffectivePrice(item) { const discount = Number(item?.discountPrice); return Number.isFinite(discount) && discount > 0 && discount < (Number(item?.price) || 0) ? discount : Number(item?.price) || 0; }
-  // FIX (gleicher Bug wie in products.js normalizeProducts, siehe dortiger
-  // Kommentar): normalizeState() ersetzte state.cartItems bisher komplett
-  // per `.map(normalizeCartItem)` durch brandneue Objekte. Da updateQty(),
-  // updatePrice(), updateDiscountPrice() usw. zuerst eine Referenz auf das
-  // bestehende Cart-Item holen und ERST DANACH window.WebBuilderHistory.arm()
-  // aufrufen (was normalizeState() auslöst), landeten Mengen-/Preisänderungen
-  // im Warenkorb-Drawer auf einem bereits "ausgehängten" alten Objekt und
-  // gingen beim nächsten Rendern wieder verloren. Fix: bestehende Items (mit
-  // id) werden per Object.assign() in-place aktualisiert statt ersetzt —
-  // Objektreferenzen bleiben stabil.
+  // In-place normalisieren (siehe WebBuilderUtils.normalizeInPlace,
+  // state.js) — hält Objektreferenzen stabil, damit laufende Mengen-/
+  // Preisänderungen im Warenkorb nicht durch eine History-Transaktion
+  // verworfen werden.
   function normalizeState() {
     window.WebBuilderProducts?.normalizeState?.();
-    state.cartItems = Array.isArray(state.cartItems) ? state.cartItems.map(item => {
-      if (item && typeof item === "object" && item.id) {
-        Object.assign(item, normalizeCartItem(item));
-        return item;
-      }
-      return normalizeCartItem(item);
-    }) : [];
+    state.cartItems = window.WebBuilderUtils.normalizeInPlace(state.cartItems, normalizeCartItem);
     if (!Array.isArray(state.cartConfig.recommendations)) state.cartConfig.recommendations = [];
     if (!Array.isArray(state.cartConfig.milestones)) state.cartConfig.milestones = [];
     return state;
@@ -102,18 +90,7 @@
 
   normalizeState();
   window.WebBuilderCart = {
-    getItems, getConfig, getCount, getSubtotal, getEffectivePrice, addItem, updateQty, changeQty, updatePrice, updateDiscountPrice, removeItem, clear, setConfig, setItemDisplay, setButtonLabel, normalizeCartItem, normalizeState, applyDiscountCode, addRecommendation, removeRecommendation, addMilestone, removeMilestone,
-    // Rückwärtskompatible Delegation an js/products.js — window.WebBuilderCart
-    // besaß diese Methoden bisher direkt; die Schnittstelle bleibt bewusst
-    // erhalten (Projektregel 7), auch wenn die Implementierung jetzt in
-    // products.js liegt.
-    getProducts: () => window.WebBuilderProducts?.getAll?.() || [],
-    getProduct: id => window.WebBuilderProducts?.getById?.(id) || null,
-    normalizeProduct: p => window.WebBuilderProducts?.normalize?.(p),
-    addProduct: (...args) => window.WebBuilderProducts?.add?.(...args),
-    updateProduct: (...args) => window.WebBuilderProducts?.update?.(...args),
-    removeProduct: (...args) => window.WebBuilderProducts?.remove?.(...args),
-    replaceProducts: (...args) => window.WebBuilderProducts?.replaceAll?.(...args)
+    getItems, getConfig, getCount, getSubtotal, getEffectivePrice, addItem, updateQty, changeQty, updatePrice, updateDiscountPrice, removeItem, clear, setConfig, setItemDisplay, setButtonLabel, normalizeCartItem, normalizeState, applyDiscountCode, addRecommendation, removeRecommendation, addMilestone, removeMilestone
   };
 
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
