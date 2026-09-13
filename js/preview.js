@@ -3,7 +3,13 @@
 (() => {
   const state=window.WebBuilderState;if(!state){console.error("WebBuilderPreview: WebBuilderState is not available.");return;}
   const isPreview=()=>!!state.isPreviewMode;
-  function apply(mode=state.isPreviewMode){state.isPreviewMode=!!mode;document.body.classList.toggle("preview-mode",state.isPreviewMode);const b=document.getElementById("btn-mode-toggle");if(b)b.innerHTML=state.isPreviewMode?"✏️ Editor-Modus":"👁️ Vorschau";window.WebBuilderCanvas?.applyZoom(state.isPreviewMode);window.WebBuilderCanvas?.render?.();
+  function apply(mode=state.isPreviewMode){
+    // Mutually exclusive with the cart editor stage — the top-right
+    // preview toggle should always show the real page, never the cart
+    // editor's stage (see js/cart.js enterFocusMode() for the other
+    // direction).
+    if(mode&&state.cartFocusMode)window.WebBuilderCartFocus?.exit?.();
+    state.isPreviewMode=!!mode;document.body.classList.toggle("preview-mode",state.isPreviewMode);const b=document.getElementById("btn-mode-toggle");if(b)b.innerHTML=state.isPreviewMode?"✏️ Editor-Modus":"👁️ Vorschau";window.WebBuilderCanvas?.applyZoom(state.isPreviewMode);window.WebBuilderCanvas?.render?.();
     // state.notify expects positional args (domain, action, payload).
     state.notify?.("preview", state.isPreviewMode ? "enter" : "exit");
     return state.isPreviewMode;}
