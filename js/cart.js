@@ -9,6 +9,12 @@
   const clone = value => JSON.parse(JSON.stringify(value));
   function notify(domain, action, payload) { if (typeof state.notify === "function") state.notify(domain, action, payload); }
 
+  // Fixed palette for the quantity +/- buttons (task 5) — deliberately a
+  // closed set (not a free color picker) so the buttons stay legible
+  // against any item background.
+  const QUANTITY_BUTTON_COLORS = { green: "#10b981", red: "#ef4444", black: "#111827", gray: "#6b7280" };
+  function quantityColorHex(key) { return QUANTITY_BUTTON_COLORS[key] || QUANTITY_BUTTON_COLORS.black; }
+
   function normalizeCartItem(item = {}) {
     const price = Number(item.price) || 0;
     const discountPrice = item.discountPrice != null && item.discountPrice !== "" ? Number(item.discountPrice) || 0 : null;
@@ -114,6 +120,11 @@
     if (!state.cartConfig.itemDisplay.layout || typeof state.cartConfig.itemDisplay.layout !== "object") state.cartConfig.itemDisplay.layout = {};
     if (state.cartConfig.discountButtonColor == null) state.cartConfig.discountButtonColor = "#4f46e5";
     if (state.cartConfig.discountButtonShape == null) state.cartConfig.discountButtonShape = "rounded";
+    // Task 5: quantity selector "group" variant shape + the closed
+    // +/- color palette. Defaults keep existing projects' look
+    // unchanged (stepper style, black buttons) until explicitly edited.
+    if (state.cartConfig.itemDisplay.quantityGroupShape == null) state.cartConfig.itemDisplay.quantityGroupShape = "rounded";
+    if (state.cartConfig.itemDisplay.quantityButtonColor == null) state.cartConfig.itemDisplay.quantityButtonColor = "black";
     // Cart editor rework: per-component position offsets (progress,
     // discount, recommend, checkout — keyed like itemDisplay.layout) plus
     // "Artikel-Darstellung" background/size overrides. Empty string /
@@ -266,14 +277,23 @@
     const removeShapeClass = disp.removeShape === "circle" ? "remove-shape-circle" : (disp.removeShape === "square" ? "remove-shape-square" : "");
     const removeBtn = wrapPart(`<button type="button" class="cart-item-remove ${removeShapeClass}"${idAttr} title="Entfernen" style="color:${config.removeButtonColor || "#ef4444"};">${removeInner}</button>`, "remove");
 
+    // Task 5: quantity selector variants. "stepper" = individual +/-
+    // blocks (unchanged default look), "group" = one connected control
+    // with a configurable border-radius. Both draw the +/- color from the
+    // same closed palette (quantityColorHex()) so switching variants
+    // keeps the chosen color.
+    const qtyColor = quantityColorHex(disp.quantityButtonColor);
     let qtyHtml;
     if (disp.quantityStyle === "dropdown") {
       const opts = Array.from({ length: 10 }, (_, i) => i + 1).map(n => `<option value="${n}" ${n === Number(item.qty) ? "selected" : ""}>${n}</option>`).join("");
       qtyHtml = `<select class="cart-qty-select"${idAttr}>${opts}</select>`;
     } else if (disp.quantityStyle === "static") {
       qtyHtml = `<span class="cart-qty-static">× ${Number(item.qty) || 1}</span>`;
+    } else if (disp.quantityStyle === "group") {
+      const groupShapeClass = "cart-qty-group-" + (disp.quantityGroupShape === "square" ? "square" : (disp.quantityGroupShape === "pill" ? "pill" : "rounded"));
+      qtyHtml = `<span class="cart-qty-group ${groupShapeClass}" style="border-color:${qtyColor}; color:${qtyColor};"><button type="button" class="cart-qty-minus cart-qty-group-btn"${idAttr}>−</button><span class="cart-qty-group-value">${Number(item.qty) || 1}</span><button type="button" class="cart-qty-plus cart-qty-group-btn"${idAttr}>+</button></span>`;
     } else {
-      qtyHtml = `<span class="cart-qty-stepper"><button type="button" class="cart-qty-minus"${idAttr}>−</button><span>${Number(item.qty) || 1}</span><button type="button" class="cart-qty-plus"${idAttr}>+</button></span>`;
+      qtyHtml = `<span class="cart-qty-stepper"><button type="button" class="cart-qty-minus" style="border-color:${qtyColor}; color:${qtyColor};"${idAttr}>−</button><span>${Number(item.qty) || 1}</span><button type="button" class="cart-qty-plus" style="border-color:${qtyColor}; color:${qtyColor};"${idAttr}>+</button></span>`;
     }
     qtyHtml = wrapPart(qtyHtml, "qty");
 
@@ -829,6 +849,9 @@
       const rs = document.getElementById("cid-remove-style"); if (rs) rs.value = config.itemDisplay.removeStyle || "x";
       const rsh = document.getElementById("cid-remove-shape"); if (rsh) rsh.value = config.itemDisplay.removeShape || "circle";
       const qs = document.getElementById("cid-quantity-style"); if (qs) qs.value = config.itemDisplay.quantityStyle || "stepper";
+      // Task 5: quantity "group" shape + +/- color palette.
+      const qgs = document.getElementById("cid-quantity-shape"); if (qgs) qgs.value = config.itemDisplay.quantityGroupShape || "rounded";
+      const qbc = document.getElementById("cid-quantity-color"); if (qbc) qbc.value = config.itemDisplay.quantityButtonColor || "black";
       const ps = document.getElementById("cid-price-style"); if (ps) ps.value = config.itemDisplay.priceStyle || "simple";
       const sd = document.getElementById("cid-show-description"); if (sd) sd.checked = !!config.itemDisplay.showDescription;
     }
@@ -1139,6 +1162,15 @@
     }, true);
     document.getElementById("cid-quantity-style")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); setItemDisplay({ quantityStyle: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    // Task 5: quantity "group" shape + +/- color palette.
+    document.getElementById("cid-quantity-shape")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setItemDisplay({ quantityGroupShape: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cid-quantity-color")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setItemDisplay({ quantityButtonColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
     document.getElementById("cid-price-style")?.addEventListener("change", e => {
