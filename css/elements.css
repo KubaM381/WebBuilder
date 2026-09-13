@@ -13,6 +13,11 @@
 .placed-element { position: absolute; cursor: move; user-select: none; padding: 6px; border: 2px transparent dashed; border-radius: 6px; transition: border-color 0.15s ease, box-shadow 0.15s ease; display: inline-block; max-width: 100%; z-index: 1; touch-action: none; }
 .placed-element:hover { border-color: #a5b4fc; }
 .placed-element.selected { border-color: var(--selection-color) !important; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25); }
+/* Per-icon hover highlight toggle (inspector "Hervorhebung bei Hover
+   anzeigen", nur für Icon-Elemente sichtbar — siehe js/inspector.js
+   renderSpecial()). Zwei Klassen schlagen die einfache :hover-Regel oben
+   an Spezifität, unabhängig von der Reihenfolge in dieser Datei. */
+.placed-element.no-hover-highlight:hover { border-color: transparent; }
 .placed-element .element-badge { position: absolute; top: -10px; right: -10px; background: var(--primary); color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; display: none; box-shadow: var(--shadow-sm); z-index: 5; }
 .placed-element.has-action .element-badge { display: block; }
 .canvas-img { display: block; pointer-events: none; object-fit: cover; border-radius: 4px; }
