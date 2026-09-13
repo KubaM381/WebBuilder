@@ -19,7 +19,16 @@
 body.preview-mode .sidebar,
 body.preview-mode .inspector { display: none !important; }
 body.preview-mode .canvas-container { padding: 0; }
-body.preview-mode .canvas-area { background-image: none !important; box-shadow: none; border-radius: 0; }
+/* overflow: visible (added) — .canvas-area has overflow:hidden in canvas.css
+   for the editor view. Per the CSS spec, any overflow value other than
+   "visible" makes an element a sticky-positioning scroll-context boundary
+   for its descendants. Since .canvas-area itself never scrolls (it just
+   grows with min-height), a sticky header nested inside it "stuck" to
+   .canvas-area instead of the actually-scrolling .canvas-container and
+   never moved. Safe to drop in preview mode: border-radius/box-shadow are
+   already zeroed out here, so overflow:hidden had no remaining visual
+   purpose in preview anyway. */
+body.preview-mode .canvas-area { background-image: none !important; box-shadow: none; border-radius: 0; overflow: visible; }
 body.preview-mode .placed-element { cursor: pointer; border-color: transparent !important; box-shadow: none !important; }
 body.preview-mode .element-badge { display: none !important; }
 body.preview-mode .zoom-controls { display: none !important; }
