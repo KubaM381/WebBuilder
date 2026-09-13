@@ -182,6 +182,8 @@ through `window.WebBuilderProducts`.
 > (`render`, `renderRecommendList`, `renderMilestoneList`,
 > `renderCartItemDemo` for the sidebar config tab).
 
+cart.js — Cart domain: items, drawer rendering, discount code (demo: DEMO10), recommendations, milestones/progress bar, and the cart editor (state.cartFocusMode). Every top-level block (progress bar, discount field, recommendation, checkout button) is individually selectable/draggable via cartConfig.componentLayout; the article box as a whole ("Artikel-Darstellung") is selectable via its background and resizable via a drag handle (itemWidth/itemMinHeight/itemBackgroundColor); the card background is selectable too (cardBackgroundColor). The sidebar only holds the three enable/disable toggles + a shortcut into the article representation — everything else lives in #cart-inspector-form. window.WebBuilderCartConfigRuntime no longer exposes renderCartItemDemo (removed together with the sidebar demo-preview it belonged to).
+
 ### `toolbar.js`
 Top toolbar: zoom controls (delegates to `canvas.js`), undo/redo (uses
 `storage.js`/history), local save binding. Exposes `refreshAllDomains()` —
