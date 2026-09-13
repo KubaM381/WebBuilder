@@ -136,6 +136,14 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    .cart-item-transparent above for the "no lines" real-preview state). */
 .cart-focus-stage .cart-item.cart-item-transparent { border: 1px dashed var(--border-muted); }
 
+/* Aufgabe D: konfigurierbare Trennlinie zwischen Warenkorb-Artikeln bei
+   durchsichtiger Artikel-Form (cartConfig.itemShape === "transparent" &&
+   itemDisplay.showItemDividers). Wird in buildCartHtml() (js/cart.js)
+   zwischen jedem Artikel eingefügt, nicht vor dem ersten/nach dem
+   letzten. Optisch bewusst identisch zur bestehenden .cart-totals-Border
+   oberhalb, nur pro Artikel statt einmalig vor der Summenzeile. */
+.cart-item-divider { border-top: 1px solid var(--border-color); margin: 4px 0; }
+
 /* Task 5: "Gruppe"-Variante der Mengenauswahl — ein zusammenhängender
    Container statt zweier separater Buttons (siehe .cart-qty-stepper
    oben). Border-Farbe kommt aus der geschlossenen Farbpalette in
