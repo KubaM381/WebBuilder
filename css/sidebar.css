@@ -61,3 +61,24 @@
 .item-row input.ms-icon { flex: none; width: 44px; text-align: center; }
 .item-row input.ms-amount { flex: none; width: 70px; }
 .item-row input.ms-label { flex: none; width: 100px; }
+
+/* Recommendation rows (js/cart.js renderRecommendList) — unlike the
+   generic single-line .item-row, each recommendation needs several
+   stacked fields (text, alternative product, display condition), so the
+   row switches to a column layout with full-width fields. */
+.cart-recommend-row { display: flex; flex-direction: column; align-items: stretch; gap: 6px; cursor: default; }
+.cart-recommend-row-header { display: flex; align-items: center; gap: 6px; }
+.cart-recommend-row-header .item-row-text { flex: 1; }
+.cart-recommend-row input[type="text"],
+.cart-recommend-row input[type="number"],
+.cart-recommend-row select {
+  flex: none;
+  width: 100%;
+}
+.rec-field-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+.rec-condition-row { display: flex; gap: 6px; }
+.cart-recommend-row select.rec-condition-type,
+.cart-recommend-row input[type="number"].rec-condition-value {
+  flex: 1;
+  width: auto;
+}
