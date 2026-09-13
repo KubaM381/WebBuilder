@@ -453,9 +453,25 @@
             <hr class="divider modal-divider-tight">
             <div class="form-group"><label>Mengenauswahl</label>
               <select id="cid-quantity-style">
-                <option value="stepper">Stepper (− 1 +)</option>
+                <option value="stepper">Einzelblöcke (− 1 +)</option>
+                <option value="group">Gruppe (zusammenhängend)</option>
                 <option value="dropdown">Dropdown-Liste</option>
                 <option value="static">Nur Anzeige (nicht änderbar)</option>
+              </select>
+            </div>
+            <div class="form-group"><label for="cid-quantity-shape">Form der Mengenauswahl (bei „Gruppe“)</label>
+              <select id="cid-quantity-shape">
+                <option value="square">Eckig</option>
+                <option value="rounded">Abgerundet</option>
+                <option value="pill">Rund (Pille)</option>
+              </select>
+            </div>
+            <div class="form-group"><label for="cid-quantity-color">Farbe der +/- Buttons</label>
+              <select id="cid-quantity-color">
+                <option value="green">Grün</option>
+                <option value="red">Rot</option>
+                <option value="black">Schwarz</option>
+                <option value="gray">Grau</option>
               </select>
             </div>
             <hr class="divider modal-divider-tight">
