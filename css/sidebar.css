@@ -1,3 +1,4 @@
+/* css/sidebar.css */
 .sidebar { width: 320px; min-width: 320px; max-width: 320px; flex-shrink: 0; background: var(--bg-panel); border-right: 1px solid var(--border-color); padding: 20px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; z-index: 10; }
 .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin: 18px 0 10px 0; letter-spacing: 0.05em; }
 .section-title.tight { margin: 0 0 6px; }
@@ -57,5 +58,6 @@
 /* Fixed-width overrides for the milestone row (js/cart.js
    renderMilestoneList): win over the generic .item-row input[type=...]
    flex:1 rule above via equal specificity + later source order. */
+.item-row input.ms-icon { flex: none; width: 44px; text-align: center; }
 .item-row input.ms-amount { flex: none; width: 70px; }
 .item-row input.ms-label { flex: none; width: 100px; }
