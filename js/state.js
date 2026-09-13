@@ -1,3 +1,4 @@
+// state.js
 // WebBuilder shared state registry
 // Canonical source of truth for the modular migration.
 
@@ -24,6 +25,10 @@ window.WebBuilderState = window.WebBuilderState || {
     buttonColor: "#4f46e5",
     buttonShape: "rounded",
     discountEnabled: false,
+    // Discount-code button style (task 7) — independent from the
+    // checkout button style above.
+    discountButtonColor: "#4f46e5",
+    discountButtonShape: "rounded",
     recommendEnabled: false,
     recommendations: [],
     progressEnabled: false,
@@ -33,7 +38,12 @@ window.WebBuilderState = window.WebBuilderState || {
       removeShape: "circle",
       quantityStyle: "stepper",
       priceStyle: "simple",
-      showDescription: false
+      showDescription: false,
+      // Free-form pixel offset per cart-item sub-part (task 4), keyed by
+      // "icon" | "qty" | "price" | "remove" | "description". Set via the
+      // cart focus editor (js/cart.js). Applied everywhere the item is
+      // rendered (drawer + focus stage), not just in the editor.
+      layout: {}
     }
   },
   appliedDiscountPercent: 0,
@@ -52,6 +62,12 @@ window.WebBuilderState = window.WebBuilderState || {
   footerBgImage: "",
   footerItems: [],
   selectedBarItemRef: null,
+  // Cart focus editor mode (task 3) — like isPreviewMode, this is pure
+  // runtime UI state, not persisted (not part of storage.js's snapshot).
+  cartFocusMode: false,
+  // Which cart-item sub-part is currently selected for editing in the
+  // focus editor's right panel (see js/cart.js). Also runtime-only.
+  cartFocusSelectedPart: null,
   background: {
     type: "solid",
     color: "#ffffff",
