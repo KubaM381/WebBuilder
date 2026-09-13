@@ -135,3 +135,15 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    dashed outline, so item bounds stay visible while editing (see
    .cart-item-transparent above for the "no lines" real-preview state). */
 .cart-focus-stage .cart-item.cart-item-transparent { border: 1px dashed var(--border-muted); }
+
+/* Task 5: "Gruppe"-Variante der Mengenauswahl — ein zusammenhängender
+   Container statt zweier separater Buttons (siehe .cart-qty-stepper
+   oben). Border-Farbe kommt aus der geschlossenen Farbpalette in
+   js/cart.js (quantityColorHex()), Form aus cartConfig.itemDisplay.
+   quantityGroupShape. */
+.cart-qty-group { display: inline-flex; align-items: center; border: 1px solid currentColor; overflow: hidden; }
+.cart-qty-group.cart-qty-group-square { border-radius: 0; }
+.cart-qty-group.cart-qty-group-rounded { border-radius: 6px; }
+.cart-qty-group.cart-qty-group-pill { border-radius: 999px; }
+.cart-qty-group-btn { background: transparent; border: none; width: 26px; height: 26px; cursor: pointer; color: inherit; font-weight: 700; font-size: 0.85rem; }
+.cart-qty-group-value { min-width: 22px; text-align: center; font-size: 0.8rem; border-left: 1px solid currentColor; border-right: 1px solid currentColor; padding: 0 8px; height: 26px; line-height: 26px; }
