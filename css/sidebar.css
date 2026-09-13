@@ -82,3 +82,10 @@
   flex: 1;
   width: auto;
 }
+
+/* Task 6: eigenes Bild als Produkt-Icon. Bild-Vorschau ersetzt die Emoji-
+   Vorschau im Karten-Header; die Icon-Typ-Auswahl spannt wie die
+   Beschreibung über die volle Kartenbreite. */
+.product-card-icon-img { width: 32px; height: 32px; object-fit: cover; border-radius: 6px; flex: none; }
+.product-card-icon-fields { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
+.product-card-fields select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.825rem; font-weight: 400; color: var(--text-main); }
