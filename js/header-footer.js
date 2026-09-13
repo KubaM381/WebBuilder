@@ -8,7 +8,10 @@
   function numOr(v,fallback){const n=Number(v);return(v!=null&&v!==""&&Number.isFinite(n))?n:fallback;}
 
   // Legacy field migration — same pattern as elements.js migrateActionFields().
-  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",actionType:item.actionType||item.action||item.action_type||"none",actionUrl:item.actionUrl||item.action_url||item.url||"",actionMsg:item.actionMsg||item.actionMessage||item.message||"",productId:item.productId||item.product_id||item.product||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
+  // hoverHighlight is not a legacy field (new), but defaults the same way:
+  // if a saved project doesn't have it yet, it defaults to true (unchanged
+  // visual behavior for existing projects).
+  function normalizeItem(item={}){return{id:item.id||`bar_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,type:item.type==="icon"?"icon":"text",text:item.text||"",iconName:item.iconName||null,x:numOr(item.x,20),y:numOr(item.y,18),color:item.color||"#ffffff",size:Number(item.size)||16,bold:!!item.bold,italic:!!item.italic,underline:!!item.underline,align:item.align||"left",fontFamily:item.fontFamily||"inherit",hoverHighlight:item.hoverHighlight!=null?!!item.hoverHighlight:true,actionType:item.actionType||item.action||item.action_type||"none",actionUrl:item.actionUrl||item.action_url||item.url||"",actionMsg:item.actionMsg||item.actionMessage||item.message||"",productId:item.productId||item.product_id||item.product||null,modalTitle:item.modalTitle||"",modalBody:item.modalBody||"",modalFooter:item.modalFooter||"",messagePosition:item.messagePosition||"bottom-right"};}
 
   // In-place normalize keeps refs stable during an active drag (see state.js normalizeInPlace).
   function normalizeItemsInPlace(list){
@@ -127,7 +130,9 @@
     });
   }
 
-  // Reuses canvas.js's attachInteraction() so bar items drag/click like canvas elements.
+  // Reuses canvas.js's attachInteraction() so bar items drag/click like canvas
+  // elements — including alignment-guide snapping. snapSelector scopes
+  // snapping to sibling bar items only (not canvas elements).
   function bindBarItemInteraction(domEl,item,barEl,target,cfg){
     const canvasHelper=window.WebBuilderCanvas;
     if(!canvasHelper?.attachInteraction){console.error("WebBuilderHeaderFooter: WebBuilderCanvas.attachInteraction missing.");return;}
@@ -138,6 +143,7 @@
         const width=rect.width/zoom;
         return{minX:0,minY:0,maxX:Math.max(0,width-10),maxY:Math.max(0,(Number(cfg.height)||0)-10)};
       },
+      snapSelector:".bar-item",
       onDragEnd(){emitChange(target,target==="footer"?getFooter():getHeader());},
       onClick(){
         if(state.isPreviewMode){window.WebBuilderActionRuntime?.execute?.(item);return;}
@@ -163,7 +169,7 @@
     cfg.items.forEach(item=>{
       const el=document.createElement("div");
       const isSelected=state.selectedBarItemRef&&state.selectedBarItemRef.target===target&&state.selectedBarItemRef.id===item.id;
-      el.className="bar-item"+(isSelected?" bar-item-selected":"")+(item.actionType&&item.actionType!=="none"?" has-action":"");
+      el.className="bar-item"+(isSelected?" bar-item-selected":"")+(item.actionType&&item.actionType!=="none"?" has-action":"")+(item.hoverHighlight===false?" no-hover-highlight":"");
       el.style.left=(Number(item.x)||0)+"px";
       el.style.top=(Number(item.y)||0)+"px";
       el.dataset.id=item.id;
@@ -261,6 +267,7 @@
     byId("bar-item-text-group")?.classList.toggle("hidden",isIcon);
     byId("bar-group-icon")?.classList.toggle("hidden",!isIcon);
     if(isIcon)populateBarIconSelect(byId("bar-prop-icon"),item.iconName);
+    if(byId("bar-prop-hover-highlight"))byId("bar-prop-hover-highlight").checked=item.hoverHighlight!==false;
     if(byId("bar-prop-text")&&document.activeElement!==byId("bar-prop-text"))byId("bar-prop-text").value=item.text||"";
     if(byId("bar-prop-size")&&document.activeElement!==byId("bar-prop-size"))byId("bar-prop-size").value=Number(item.size)||16;
     if(byId("bar-prop-color"))byId("bar-prop-color").value=item.color||"#ffffff";
@@ -335,6 +342,7 @@
 
     [["bar-prop-text","text"],["bar-prop-color","color"],["bar-prop-font-family","fontFamily"],["bar-prop-action-url","actionUrl"],["bar-prop-action-msg","actionMsg"],["bar-prop-product","productId"],["bar-prop-modal-title","modalTitle"],["bar-prop-modal-body","modalBody"],["bar-prop-modal-footer","modalFooter"],["bar-prop-message-position","messagePosition"]].forEach(([id,f])=>byId(id)?.addEventListener("change",e=>updateSelected({[f]:e.target.value}),true));
     byId("bar-prop-icon")?.addEventListener("change",e=>updateSelected({iconName:e.target.value}),true);
+    byId("bar-prop-hover-highlight")?.addEventListener("change",e=>updateSelected({hoverHighlight:e.target.checked}),true);
     byId("bar-prop-size")?.addEventListener("change",e=>updateSelected({size:Math.max(8,Math.min(300,Number(e.target.value)||16))}),true);
     byId("bar-prop-action-type")?.addEventListener("change",e=>updateSelected({actionType:e.target.value}),true);
     ["bold","italic","underline"].forEach(f=>byId(`bar-ttb-${f}`)?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();const sel=currentSelection();if(sel)updateSelected({[f]:!sel.item[f]});},true));
