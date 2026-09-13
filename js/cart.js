@@ -830,6 +830,18 @@
     renderFocusPartPanel();
   }
 
+  // Field-block IDs for the right-hand panel (renderFocusPartPanel()).
+  // Kept as one list so hiding/showing stays a single source of truth —
+  // extend here whenever a new component/part gets its own block.
+  const PART_FIELD_BLOCK_IDS = [
+    "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
+    "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
+    // Aufgabe C: Artikel-Teile "qty"/"price"/"remove" haben jetzt jeweils
+    // ihr eigenes Feld-Panel statt gemeinsam in cart-comp-item-fields zu
+    // stecken — nur sichtbar, wenn genau dieser Teil angeklickt wurde.
+    "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields"
+  ];
+
   function renderFocusPartPanel() {
     const empty = document.getElementById("cart-part-empty");
     const editor = document.getElementById("cart-part-editor");
@@ -838,7 +850,7 @@
     if (!sel) { empty.classList.remove("hidden"); editor.classList.add("hidden"); return; }
     empty.classList.add("hidden"); editor.classList.remove("hidden");
 
-    ["cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields", "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
+    PART_FIELD_BLOCK_IDS.forEach(id => document.getElementById(id)?.classList.add("hidden"));
     const positionFields = document.getElementById("cart-comp-position-fields");
     positionFields?.classList.toggle("hidden", NON_POSITIONABLE.has(sel));
 
@@ -877,6 +889,9 @@
       const colorInput = document.getElementById("cart-comp-bg-color");
       if (colorInput) colorInput.value = config.cardBackgroundColor || "#ffffff";
     } else if (sel === "component:itemRepresentation") {
+      // Aufgabe C: nur noch Form/Hintergrund/Größe/Beschreibung-Toggle —
+      // Menge/Preis/Entfernen-Button haben jetzt eigene Panels (siehe
+      // die drei else-if-Zweige unten).
       document.getElementById("cart-comp-item-fields")?.classList.remove("hidden");
       const shapeSel = document.getElementById("cart-item-shape");
       if (shapeSel) shapeSel.value = config.itemShape || "rounded";
@@ -885,17 +900,27 @@
       const wInput = document.getElementById("cart-item-width"), hInput = document.getElementById("cart-item-height");
       if (wInput && document.activeElement !== wInput) wInput.value = config.itemWidth || "";
       if (hInput && document.activeElement !== hInput) hInput.value = config.itemMinHeight || "";
+      const sd = document.getElementById("cid-show-description"); if (sd) sd.checked = !!config.itemDisplay.showDescription;
+    } else if (sel === "qty") {
+      // Aufgabe C: eigenes Panel für den Artikel-Teil "Mengenanzeige".
+      document.getElementById("cart-comp-qty-fields")?.classList.remove("hidden");
+      const qs = document.getElementById("cid-quantity-style"); if (qs) qs.value = config.itemDisplay.quantityStyle || "stepper";
+      const qgs = document.getElementById("cid-quantity-shape"); if (qgs) qgs.value = config.itemDisplay.quantityGroupShape || "rounded";
+      const qbc = document.getElementById("cid-quantity-color"); if (qbc) qbc.value = config.itemDisplay.quantityButtonColor || "black";
+    } else if (sel === "price") {
+      // Aufgabe C: eigenes Panel für den Artikel-Teil "Preis".
+      document.getElementById("cart-comp-price-fields")?.classList.remove("hidden");
+      const ps = document.getElementById("cid-price-style"); if (ps) ps.value = config.itemDisplay.priceStyle || "simple";
+    } else if (sel === "remove") {
+      // Aufgabe C: eigenes Panel für den Artikel-Teil "Entfernen-Button".
+      document.getElementById("cart-comp-remove-fields")?.classList.remove("hidden");
       const removeColor = document.getElementById("cart-remove-color");
       if (removeColor) removeColor.value = config.removeButtonColor || "#ef4444";
       const rs = document.getElementById("cid-remove-style"); if (rs) rs.value = config.itemDisplay.removeStyle || "x";
       const rsh = document.getElementById("cid-remove-shape"); if (rsh) rsh.value = config.itemDisplay.removeShape || "circle";
-      const qs = document.getElementById("cid-quantity-style"); if (qs) qs.value = config.itemDisplay.quantityStyle || "stepper";
-      // Task 5: quantity "group" shape + +/- color palette.
-      const qgs = document.getElementById("cid-quantity-shape"); if (qgs) qgs.value = config.itemDisplay.quantityGroupShape || "rounded";
-      const qbc = document.getElementById("cid-quantity-color"); if (qbc) qbc.value = config.itemDisplay.quantityButtonColor || "black";
-      const ps = document.getElementById("cid-price-style"); if (ps) ps.value = config.itemDisplay.priceStyle || "simple";
-      const sd = document.getElementById("cid-show-description"); if (sd) sd.checked = !!config.itemDisplay.showDescription;
     }
+    // sel === "icon" / "description": kein eigener Feld-Block, nur die
+    // generischen Position X/Y-Felder unten (unverändertes Verhalten).
 
     if (!NON_POSITIONABLE.has(sel)) {
       const layout = getSelectedLayout();
