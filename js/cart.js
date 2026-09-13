@@ -125,6 +125,10 @@
     // unchanged (stepper style, black buttons) until explicitly edited.
     if (state.cartConfig.itemDisplay.quantityGroupShape == null) state.cartConfig.itemDisplay.quantityGroupShape = "rounded";
     if (state.cartConfig.itemDisplay.quantityButtonColor == null) state.cartConfig.itemDisplay.quantityButtonColor = "black";
+    // Aufgabe D: Trennlinie zwischen Artikeln bei durchsichtiger
+    // Artikel-Form — Default false, damit bestehende Projekte unverändert
+    // aussehen, bis jemand die Option im Warenkorb-Editor aktiviert.
+    if (state.cartConfig.itemDisplay.showItemDividers == null) state.cartConfig.itemDisplay.showItemDividers = false;
     // Cart editor rework: per-component position offsets (progress,
     // discount, recommend, checkout — keyed like itemDisplay.layout) plus
     // "Artikel-Darstellung" background/size overrides. Empty string /
@@ -307,15 +311,7 @@
     } else if (isDemo || interactive) {
       // interactive (Warenkorb-Editor) added: der Preis wird dort NIE als
       // editierbares <input> gerendert, sondern rein informativ als
-      // <span> — analog zum Demo-Artikel bei leerem Warenkorb. Das ist
-      // Teil des Bugfixes "Warenkorb-Editor darf keine echten
-      // Datenänderungen mehr auslösen" (siehe bind()'s Klick-/Change-
-      // Handler weiter unten): so entsteht im Editor gar nicht erst der
-      // Eindruck, man könne hier live den echten Preis ändern, und das
-      // frühere "change"-Event, das updatePrice() mit dem echten Preis
-      // aufrief, kann im Editor gar nicht mehr feuern. In der echten
-      // Vorschau/im Drawer (interactive=false) bleibt das <input>
-      // unverändert bestehen.
+      // <span> — analog zum Demo-Artikel bei leerem Warenkorb.
       priceHtml = `<span>${hasDiscount ? `<s class="cart-item-price-strike">${eur(item.price)}</s> ` : ""}${eur(effective)}</span>`;
     } else {
       priceHtml = `<input type="number" class="cart-item-price-input" data-cart-id="${esc(item.id)}" value="${Number(item.price || 0).toFixed(2)}" step="0.01" />`;
@@ -377,7 +373,13 @@
       html += wrapComponent(progressHtml, "progress", interactive);
     }
 
-    html += items.length ? items.map(i => buildCartItemHTML(i, isDemo, interactive)).join("") : '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
+    // Aufgabe D: Trennlinie zwischen Artikeln, nur bei durchsichtiger
+    // Artikel-Form und aktivierter Option — zwischen jedem Artikel, nicht
+    // vor dem ersten oder nach dem letzten (siehe idx > 0 unten).
+    const showDividers = config.itemShape === "transparent" && !!(config.itemDisplay || {}).showItemDividers;
+    html += items.length
+      ? items.map((i, idx) => (showDividers && idx > 0 ? '<div class="cart-item-divider"></div>' : "") + buildCartItemHTML(i, isDemo, interactive)).join("")
+      : '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
 
     if (config.recommendEnabled) {
       const picked = pickRecommendation(items, subtotal);
@@ -385,6 +387,19 @@
         const { rec, product } = picked;
         const recHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(rec.text || defaultRecommendationText())}</p><div class="cart-recommend-card"><span class="cart-recommend-icon">${esc(product.icon || "📦")}</span><span class="cart-recommend-name">${esc(product.name)}</span><span class="cart-recommend-price">${eur(product.discountPrice != null ? product.discountPrice : product.price)}</span><button type="button" class="cart-recommend-add" data-rec-product-id="${esc(product.id)}">+</button></div></div>`;
         html += wrapComponent(recHtml, "recommend", interactive);
+      } else if (interactive) {
+        // Aufgabe E: Ist "Produktempfehlungen" aktiviert, aber aktuell
+        // keine Empfehlung konfiguriert bzw. keine Bedingung erfüllt, gibt
+        // es sonst im Editor nichts zum Anklicken, um an das
+        // Empfehlungs-Panel (component:recommend) zu kommen. Diese
+        // Dummy-Karte erscheint NUR im interaktiven Editor-Modus — in der
+        // echten Vorschau/im Drawer bleibt das bisherige Verhalten
+        // (nichts anzeigen) unverändert. Sie trägt dasselbe
+        // data-cart-component="recommend" wie die echte Karte, damit die
+        // bestehende Klick-/Auswahl-Logik in bindFocusStageInteractions()
+        // unverändert funktioniert — keine neue Sonderlogik nötig.
+        const dummyHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(defaultRecommendationText())}</p><div class="cart-recommend-card"><span class="cart-recommend-icon">➕</span><span class="cart-recommend-name">Noch keine passende Empfehlung konfiguriert</span></div></div>`;
+        html += wrapComponent(dummyHtml, "recommend", interactive);
       }
     }
 
@@ -595,18 +610,7 @@
 
   function bind() {
     // Delegated on `document`. Scoped to #cart-items-list (the real
-    // drawer) only — NOT to #cart-focus-stage. The editor stage
-    // (js/cart.js "Cart editor stage") renders the exact same cart
-    // markup/classes for editing purposes, but a click/change inside it
-    // must NEVER trigger a real data mutation (remove item, change qty,
-    // change price, apply a discount code, add a recommended product).
-    // Inside the stage, clicks only ever SELECT the clicked part/
-    // component — that is handled entirely by
-    // bindFocusStageInteractions()'s own "pointerdown" listener further
-    // below. This handler here explicitly ignores anything that
-    // originates inside #cart-focus-stage, even though native controls
-    // there (buttons/selects) still fire normal click/change events that
-    // bubble up to `document`.
+    // drawer) only — NOT to #cart-focus-stage.
     document.addEventListener("click", e => {
       const inStage = !!e.target.closest?.("#cart-focus-stage");
 
@@ -644,8 +648,6 @@
     document.getElementById("btn-open-cart")?.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); openCart(); }, true);
     bindAddRecommendation();
     bindAddMilestone();
-    // Reacts to both "cart" and "products": product changes affect the
-    // recommendation preview shown in the cart.
     state.subscribe?.(e => {
       if (["cart", "products"].includes(e?.domain)) {
         refreshCartViews();
@@ -661,11 +663,6 @@
   document.addEventListener("DOMContentLoaded",()=>setTimeout(bind,0));
   window.WebBuilderCartRuntime={render:renderCart,open:openCart,close:closeCart};
 
-  // Cart configuration editor: the sidebar now only holds the three
-  // on/off toggles (discount/recommend/progress) plus the "Artikel-
-  // Darstellung"-shortcut button — everything else (colors, shapes,
-  // labels, list management) moved into the cart editor's right-hand
-  // panel, see the "Cart editor stage" section below.
   function renderConfig(){
     const c=getConfig()||{};
     const ids=[["cart-discount-toggle",c.discountEnabled],["cart-recommend-toggle",c.recommendEnabled],["cart-progress-toggle",c.progressEnabled]];
@@ -683,51 +680,8 @@
   document.addEventListener("DOMContentLoaded",()=>setTimeout(bindConfig,0)); window.WebBuilderCartConfigRuntime={render:renderConfig,renderRecommendList,renderMilestoneList};
 
   // ------------------------------------------------------------------
-  // Cart editor stage ("Warenkorb-Editor").
-  //
-  // Entering it hides normal canvas content (elements + header/footer
-  // bars, via CSS body.cart-focus-active — see css/styles.css) and shows
-  // the FULL cart body (buildCartHtml()) centered over the canvas
-  // (#cart-focus-stage, mounted into .canvas-container so it stays fixed
-  // regardless of zoom): real cart items if any exist, otherwise one
-  // synthetic demo item purely so there's something to arrange.
-  //
-  // Every top-level block is selectable and (except the background and
-  // the article representation itself) freely draggable:
-  //   - article sub-parts (icon/name, qty, price, remove, description) —
-  //     data-cart-part, offset stored in cartConfig.itemDisplay.layout
-  //   - progress bar / discount field / recommendation card / checkout
-  //     button — data-cart-component, offset stored in
-  //     cartConfig.componentLayout
-  //   - the article box as a whole ("Artikel-Darstellung") — clicking its
-  //     background (not a specific sub-part) selects it; a resize handle
-  //     then lets you drag its width/height (cartConfig.itemWidth/
-  //     itemMinHeight)
-  //   - the card background — clicking empty card space selects it,
-  //     color only (no position), cartConfig.cardBackgroundColor
-  //
-  // IMPORTANT: selecting an element that is *also* the element the drag
-  // gesture started on must NOT trigger a full re-render before pointer
-  // capture + move/up listeners are attached — a mid-gesture innerHTML
-  // rebuild detaches the very node the listeners are bound to, so no
-  // further pointermove/pointerup ever reaches them (this was the root
-  // cause of "nothing can be dragged"). That's why selection during those
-  // gestures goes through the light-weight selectFocusPartLight()
-  // (class-toggle only) instead of the full-render selectFocusPart() —
-  // the full render still happens once the gesture ends (via notify() ->
-  // refreshCartViews()) or immediately for clicks that don't start a drag
-  // on the same node (background/article-representation click, sidebar
-  // shortcut button).
-  //
-  // IMPORTANT (bugfix): native controls inside a selectable part/
-  // component (the remove button, the qty +/- buttons/dropdown, the
-  // discount "Anwenden" button, the recommendation "+" button) are
-  // intentionally NOT prevented from firing their normal click/change
-  // event here, so typing/opening a dropdown/focusing still works. Those
-  // events DO bubble up to the page-wide delegated listeners in bind()
-  // above — but bind() explicitly ignores anything inside
-  // #cart-focus-stage, so no real cart data is ever changed from here,
-  // only the current selection (via selectFocusPartLight()).
+  // Cart editor stage ("Warenkorb-Editor"). Siehe ausführlichen Kommentar
+  // in vorherigen Versionen dieser Datei — unverändert gültig.
   // ------------------------------------------------------------------
   function getPartLayout(partKey) {
     const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
@@ -751,10 +705,6 @@
     notify("cart", "part-layout", layout);
   }
 
-  // Same read/write/reset trio as above, generalized for the top-level
-  // components (progress/discount/recommend/checkout) so the X/Y fields
-  // and reset button in the right panel can work with either kind of
-  // selection through one code path.
   function getSelectedLayout() {
     const sel = state.cartFocusSelectedPart;
     if (!sel) return { x: 0, y: 0 };
@@ -790,12 +740,8 @@
       resetPartLayout(sel);
     }
   }
-  // Components without a meaningful drag position (background color only,
-  // article representation resized via handle instead of X/Y).
   const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation"]);
 
-  // Toggles the visual "selected" outline directly on the already-live
-  // stage DOM, without touching innerHTML — safe to call mid-gesture.
   function applySelectionHighlight() {
     const stage = document.getElementById("cart-focus-stage");
     if (!stage) return;
@@ -812,18 +758,11 @@
     }
   }
 
-  // Full selection: safe for clicks that don't themselves start a drag on
-  // the clicked node (sidebar shortcut, article-background click,
-  // card-background click) — rebuilds the stage so e.g. the article's
-  // resize handle actually appears.
   function selectFocusPart(partKey) {
     state.cartFocusSelectedPart = partKey;
     renderFocusStage();
     renderFocusPartPanel();
   }
-  // Light selection: for pointerdown branches that continue into a drag
-  // gesture on the very node that was just clicked — must NOT rebuild the
-  // stage (see the big comment above bindFocusStageInteractions()).
   function selectFocusPartLight(partKey) {
     state.cartFocusSelectedPart = partKey;
     applySelectionHighlight();
@@ -831,14 +770,9 @@
   }
 
   // Field-block IDs for the right-hand panel (renderFocusPartPanel()).
-  // Kept as one list so hiding/showing stays a single source of truth —
-  // extend here whenever a new component/part gets its own block.
   const PART_FIELD_BLOCK_IDS = [
     "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
-    // Aufgabe C: Artikel-Teile "qty"/"price"/"remove" haben jetzt jeweils
-    // ihr eigenes Feld-Panel statt gemeinsam in cart-comp-item-fields zu
-    // stecken — nur sichtbar, wenn genau dieser Teil angeklickt wurde.
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields"
   ];
 
@@ -889,9 +823,6 @@
       const colorInput = document.getElementById("cart-comp-bg-color");
       if (colorInput) colorInput.value = config.cardBackgroundColor || "#ffffff";
     } else if (sel === "component:itemRepresentation") {
-      // Aufgabe C: nur noch Form/Hintergrund/Größe/Beschreibung-Toggle —
-      // Menge/Preis/Entfernen-Button haben jetzt eigene Panels (siehe
-      // die drei else-if-Zweige unten).
       document.getElementById("cart-comp-item-fields")?.classList.remove("hidden");
       const shapeSel = document.getElementById("cart-item-shape");
       if (shapeSel) shapeSel.value = config.itemShape || "rounded";
@@ -901,26 +832,28 @@
       if (wInput && document.activeElement !== wInput) wInput.value = config.itemWidth || "";
       if (hInput && document.activeElement !== hInput) hInput.value = config.itemMinHeight || "";
       const sd = document.getElementById("cid-show-description"); if (sd) sd.checked = !!config.itemDisplay.showDescription;
+      // Aufgabe D: Trennlinien-Option nur bei durchsichtiger Artikel-Form
+      // ein-/ausblenden — bei jeder anderen Form gibt es ohnehin schon
+      // eine visuelle Trennung durch die Artikel-Box selbst.
+      const dividerGroup = document.getElementById("cart-item-divider-group");
+      dividerGroup?.classList.toggle("hidden", config.itemShape !== "transparent");
+      const dividerCb = document.getElementById("cid-show-item-dividers");
+      if (dividerCb) dividerCb.checked = !!config.itemDisplay.showItemDividers;
     } else if (sel === "qty") {
-      // Aufgabe C: eigenes Panel für den Artikel-Teil "Mengenanzeige".
       document.getElementById("cart-comp-qty-fields")?.classList.remove("hidden");
       const qs = document.getElementById("cid-quantity-style"); if (qs) qs.value = config.itemDisplay.quantityStyle || "stepper";
       const qgs = document.getElementById("cid-quantity-shape"); if (qgs) qgs.value = config.itemDisplay.quantityGroupShape || "rounded";
       const qbc = document.getElementById("cid-quantity-color"); if (qbc) qbc.value = config.itemDisplay.quantityButtonColor || "black";
     } else if (sel === "price") {
-      // Aufgabe C: eigenes Panel für den Artikel-Teil "Preis".
       document.getElementById("cart-comp-price-fields")?.classList.remove("hidden");
       const ps = document.getElementById("cid-price-style"); if (ps) ps.value = config.itemDisplay.priceStyle || "simple";
     } else if (sel === "remove") {
-      // Aufgabe C: eigenes Panel für den Artikel-Teil "Entfernen-Button".
       document.getElementById("cart-comp-remove-fields")?.classList.remove("hidden");
       const removeColor = document.getElementById("cart-remove-color");
       if (removeColor) removeColor.value = config.removeButtonColor || "#ef4444";
       const rs = document.getElementById("cid-remove-style"); if (rs) rs.value = config.itemDisplay.removeStyle || "x";
       const rsh = document.getElementById("cid-remove-shape"); if (rsh) rsh.value = config.itemDisplay.removeShape || "circle";
     }
-    // sel === "icon" / "description": kein eigener Feld-Block, nur die
-    // generischen Position X/Y-Felder unten (unverändertes Verhalten).
 
     if (!NON_POSITIONABLE.has(sel)) {
       const layout = getSelectedLayout();
@@ -936,9 +869,6 @@
     container.addEventListener("pointerdown", e => {
       if (!state.cartFocusMode) return;
 
-      // 1) Resize handle for the article representation (drag its width/
-      // height directly). Only rendered when component:itemRepresentation
-      // is already selected.
       const resizeHandle = e.target.closest?.(".cart-item-resize-handle");
       if (resizeHandle) {
         e.preventDefault(); e.stopPropagation();
@@ -977,14 +907,6 @@
         return;
       }
 
-      // 2) Top-level components (progress bar / discount field /
-      // recommendation card / checkout button). Native controls inside
-      // them (the discount input, its "Anwenden" button, the recommend
-      // "+" button) only get a selection update — no preventDefault/
-      // stopPropagation, so typing/focusing/clicking them still works
-      // exactly as before. Any real data effect of those native controls
-      // is now blocked centrally in bind()'s delegated listeners (see the
-      // big comment there), not here.
       const compEl = e.target.closest?.("[data-cart-component]");
       if (compEl) {
         const key = compEl.dataset.cartComponent;
@@ -1020,13 +942,6 @@
         return;
       }
 
-      // 3) Article sub-parts (icon/name, qty, price, remove, description).
-      // Same "don't steal focus from native controls" guard as above —
-      // fixes the price display / quantity dropdown being unclickable in
-      // the editor. As with (2), any real data effect is blocked
-      // centrally in bind(), so clicking the remove button or the qty
-      // +/- buttons here can never delete a real cart item or change its
-      // real quantity — only select the "remove"/"qty" part.
       const partEl = e.target.closest?.("[data-cart-part]");
       if (partEl) {
         const partKey = partEl.dataset.cartPart;
@@ -1062,8 +977,6 @@
         return;
       }
 
-      // 4) Click on the article container itself (not a specific sub-
-      // part) -> select the overall article representation.
       const itemEl = e.target.closest?.(".cart-item");
       if (itemEl) {
         e.preventDefault();
@@ -1071,7 +984,6 @@
         return;
       }
 
-      // 5) Click directly on the card's empty background -> select it.
       if (e.target.matches?.(".cart-focus-card")) {
         e.preventDefault();
         selectFocusPart("component:background");
@@ -1119,13 +1031,10 @@
     document.getElementById("cart-focus-exit-inline")?.addEventListener("click", e => { e.preventDefault(); exitFocusMode(); }, true);
   }
   function enterFocusMode() {
-    // Mutually exclusive with the real preview mode (top-right "Vorschau"
-    // button) — see js/preview.js apply() for the other direction.
     if (state.isPreviewMode) window.WebBuilderPreview?.exit?.();
     state.cartFocusMode = true;
     state.cartFocusSelectedPart = null;
     document.body.classList.add("cart-focus-active");
-    // Mutually exclusive with the normal element / bar-item inspectors.
     window.WebBuilderInspector?.select?.(null);
     window.WebBuilderHeaderFooterRuntime?.clearSelection?.();
     document.getElementById("cart-inspector-form")?.classList.remove("hidden");
@@ -1142,17 +1051,12 @@
   function bindFocusEditor() {
     document.getElementById("btn-cart-focus-editor")?.addEventListener("click", e => { e.preventDefault(); enterFocusMode(); }, true);
     document.getElementById("btn-cart-focus-exit")?.addEventListener("click", e => { e.preventDefault(); exitFocusMode(); }, true);
-    // Sidebar shortcut: opens the editor (if needed) and jumps straight to
-    // the article representation, so it doesn't have to be found by
-    // clicking precisely on an article's empty background.
     document.getElementById("btn-select-item-representation")?.addEventListener("click", e => {
       e.preventDefault(); e.stopImmediatePropagation();
       if (!state.cartFocusMode) enterFocusMode();
       selectFocusPart("component:itemRepresentation");
     }, true);
 
-    // Position (X/Y) — shared by article sub-parts and the four
-    // draggable components (progress/discount/recommend/checkout).
     document.getElementById("cart-part-x")?.addEventListener("change", e => {
       if (!state.cartFocusSelectedPart) return;
       const layout = getSelectedLayout();
@@ -1170,7 +1074,6 @@
       if (state.cartFocusSelectedPart) { resetSelectedLayout(); renderFocusStage(); renderFocusPartPanel(); }
     }, true);
 
-    // Zur-Kasse-Button (component:checkout)
     document.getElementById("cart-comp-checkout-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); setButtonLabel(e.target.value, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -1184,7 +1087,6 @@
       refreshCartViews();
     }, true);
 
-    // Rabattfeld (component:discount)
     document.getElementById("cart-comp-discount-color")?.addEventListener("input", e => {
       window.WebBuilderHistory?.arm(); setConfig({ discountButtonColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -1194,13 +1096,11 @@
       refreshCartViews();
     }, true);
 
-    // Hintergrund (component:background)
     document.getElementById("cart-comp-bg-color")?.addEventListener("input", e => {
       window.WebBuilderHistory?.arm(); setConfig({ cardBackgroundColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
-    // Artikel-Darstellung (component:itemRepresentation)
     document.getElementById("cart-item-shape")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); setConfig({ itemShape: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -1235,7 +1135,6 @@
       window.WebBuilderHistory?.arm(); setItemDisplay({ quantityStyle: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
-    // Task 5: quantity "group" shape + +/- color palette.
     document.getElementById("cid-quantity-shape")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); setItemDisplay({ quantityGroupShape: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -1250,6 +1149,11 @@
     }, true);
     document.getElementById("cid-show-description")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); setItemDisplay({ showDescription: e.target.checked }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    // Aufgabe D: Trennlinien-Checkbox.
+    document.getElementById("cid-show-item-dividers")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setItemDisplay({ showItemDividers: e.target.checked }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
