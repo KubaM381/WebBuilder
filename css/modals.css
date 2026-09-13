@@ -20,7 +20,11 @@
 .cart-item.cart-item-square { border-radius: 0; }
 .cart-item.cart-item-rounded { border-radius: 14px; }
 .cart-item.cart-item-pill { border-radius: 999px; padding-left: 18px; padding-right: 18px; }
-.cart-item.cart-item-transparent { background: transparent; border: 1px dashed var(--border-color); }
+/* Transparent = no visible chrome at all in the real drawer/preview. A
+   dashed outline is only added inside the editor stage (see the rule
+   near the bottom of this file), so editing stays possible without
+   showing lines to real visitors. */
+.cart-item.cart-item-transparent { background: transparent; border: none; }
 .cart-item-title { font-weight: 600; font-size: 0.9rem; }
 .cart-item-desc { flex-basis: 100%; font-size: 0.75rem; color: var(--text-muted); margin-top: -4px; }
 .drawer-footer { padding: 20px; border-top: 1px solid var(--border-color); background: var(--bg-main); }
@@ -83,22 +87,27 @@
 .product-pick-btn { justify-content: flex-start; }
 
 /* ------------------------------------------------------------------
-   Cart focus editor (tasks 3 + 4, see js/cart.js).
+   Cart editor stage (formerly "focus editor", see js/cart.js
+   renderFocusStage()). Shows the full cart body (progress/items/
+   recommendation/discount/totals) centered over the canvas, editable
+   directly instead of a single fixed demo item.
    ------------------------------------------------------------------ */
-/* Sub-part wrapper around each clickable/draggable piece of a cart item
-   (icon/name, qty, price, remove button, description). Only gets the
-   dashed frame + selection outline while interactive=true (i.e. inside
-   the focus stage), but the transform offset itself is always applied,
-   see buildCartItemHTML() in cart.js. */
 .cart-item-part { display: inline-flex; align-items: center; position: relative; }
 .cart-item-part-frame { border: 1px dashed var(--border-muted); border-radius: 6px; padding: 2px 5px; }
 .cart-item-part-selected { outline: 2px solid var(--selection-color); outline-offset: 2px; border-radius: 6px; }
 body.cart-focus-active .cart-item-part { cursor: grab; touch-action: none; }
 body.cart-focus-active .cart-item-part:active { cursor: grabbing; }
 
-/* The centered stage showing the demo cart item on the canvas while the
-   focus editor is active. Mounted into .canvas-container (position:
-   relative, see css/canvas.css) so it stays fixed regardless of zoom. */
+/* The centered stage showing the cart body on the canvas while the
+   editor is active. Mounted into .canvas-container (position: relative,
+   see css/canvas.css) so it stays fixed regardless of zoom. */
 .cart-focus-stage { position: absolute; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 30px; pointer-events: none; }
-.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 100%; max-width: 420px; }
-.cart-focus-hint { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px; text-align: center; }
+.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; }
+.cart-focus-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.cart-focus-hint { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
+.cart-focus-body { display: flex; flex-direction: column; }
+.cart-focus-checkout { margin-top: 16px; }
+/* Only inside the editor stage does the transparent item shape get a
+   dashed outline, so item bounds stay visible while editing (see
+   .cart-item-transparent above for the "no lines" real-preview state). */
+.cart-focus-stage .cart-item.cart-item-transparent { border: 1px dashed var(--border-muted); }
