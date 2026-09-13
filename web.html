@@ -209,7 +209,7 @@
 
       <!-- ==================== TAB: WARENKORB ==================== -->
       <div class="sidebar-panel hidden" id="panel-cart">
-        <button type="button" id="btn-cart-focus-editor" class="btn btn-primary" style="width:100%; margin-bottom:14px;">🎯 Fokus-Editor öffnen</button>
+        <button type="button" id="btn-cart-focus-editor" class="btn btn-primary" style="width:100%; margin-bottom:14px;">🎯 Warenkorb-Editor öffnen</button>
 
         <div class="section-title">Warenkorb-Grundeinstellungen</div>
         <div class="sidebar-subsection">
@@ -323,6 +323,7 @@
           <div class="mini-btn-row" style="margin-top:6px;">
             <button type="button" id="btn-add-recommendation" class="btn btn-secondary btn-sm" style="width:100%;">+ Empfehlung aus Produkten</button>
           </div>
+          <p class="help-text" style="margin:4px 0 0;">Für jede Empfehlung lassen sich Text, Alternativprodukt &amp; Anzeigebedingung einstellen.</p>
           <div id="cart-recommend-list" class="items-list"></div>
         </div>
 
@@ -465,7 +466,7 @@
       <!-- Warenkorb-Fokus-Editor: Bearbeitung einzelner Artikel-Teile
            (task 3+4, siehe js/cart.js enterFocusMode()/exitFocusMode()) -->
       <div id="cart-inspector-form" class="inspector-form hidden">
-        <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Fokus-Editor</p>
+        <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
         <p class="help-text">Klicke im Beispiel-Artikel links auf einen Teil (Icon/Name, Menge, Preis, Entfernen-Button, Beschreibung), um ihn frei zu verschieben.</p>
         <p class="help-text" id="cart-part-empty" style="margin-top:10px;">Noch kein Element ausgewählt.</p>
         <div id="cart-part-editor" class="hidden">
@@ -481,7 +482,7 @@
           <button type="button" id="cart-part-reset" class="btn btn-secondary" style="width:100%;">↺ Position zurücksetzen</button>
         </div>
         <hr class="divider">
-        <button type="button" id="btn-cart-focus-exit" class="btn btn-danger-outline" style="width:100%;">✖ Fokus-Editor schließen</button>
+        <button type="button" id="btn-cart-focus-exit" class="btn btn-danger-outline" style="width:100%;">✖ Warenkorb-Editor schließen</button>
       </div>
     </aside>
   </div>
