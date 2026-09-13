@@ -421,11 +421,10 @@
           </div>
 
           <!-- Artikel-Darstellung (component:itemRepresentation) — nur
-               Form/Hintergrund/Größe/Beschreibung-Toggle. Menge, Preis und
-               Entfernen-Button haben seit Aufgabe C jeweils ein eigenes
-               Panel weiter unten (#cart-comp-qty-fields/-price-fields/
-               -remove-fields), sichtbar wenn genau dieser Artikel-Teil
-               angeklickt wurde. -->
+               Form/Hintergrund/Größe/Beschreibung-Toggle/Trennlinie-Toggle.
+               Menge, Preis und Entfernen-Button haben eigene Panels weiter
+               unten (#cart-comp-qty-fields/-price-fields/-remove-fields),
+               sichtbar wenn genau dieser Artikel-Teil angeklickt wurde. -->
           <div id="cart-comp-item-fields" class="hidden">
             <div class="form-group"><label for="cart-item-shape">Form</label>
               <select id="cart-item-shape">
@@ -441,6 +440,10 @@
             <p class="help-text">Tipp: Im Editor kannst du die Artikel-Box auch direkt an der Ecke unten rechts ziehen, um die Größe anzupassen.</p>
             <hr class="divider modal-divider-tight">
             <label class="checkbox-row"><input type="checkbox" id="cid-show-description"> Produktbeschreibung anzeigen</label>
+            <!-- Aufgabe D: nur sinnvoll/sichtbar bei durchsichtiger Form,
+                 siehe renderFocusPartPanel() in js/cart.js (togglet die
+                 "hidden"-Klasse abhängig von cartConfig.itemShape). -->
+            <label class="checkbox-row hidden" id="cart-item-divider-group"><input type="checkbox" id="cid-show-item-dividers"> Trennlinie zwischen Produkten anzeigen (nur bei „Durchsichtig“)</label>
           </div>
 
           <!-- Mengenanzeige (Artikel-Teil "qty") -->
