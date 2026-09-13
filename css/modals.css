@@ -1,3 +1,4 @@
+/* css/modals.css */
 #toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; pointer-events: none; }
 .toast { pointer-events: auto; min-width: 260px; max-width: 360px; background: #1e293b; color: white; padding: 12px 18px; border-radius: 8px; font-size: 0.875rem; font-weight: 500; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 10px; animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .toast.toast-success { border-left: 4px solid var(--success); }
@@ -39,6 +40,10 @@
 .cart-progress-mark { position: absolute; top: -4px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--border-color); transform: translateX(-50%); }
 .cart-progress-mark.reached { border-color: var(--success); background: var(--success); }
 .cart-progress-msg { font-size: 0.78rem; color: var(--text-muted); }
+/* Task 9: reached-milestone reward icons, shown between the progress
+   track and the progress message. */
+.cart-milestone-rewards { display: flex; gap: 6px; margin: 2px 0 6px; font-size: 1.15rem; line-height: 1; }
+.cart-milestone-reward { line-height: 1; }
 .cart-recommend { border: 1px dashed var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 16px; }
 .cart-recommend-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
 .cart-recommend-card { display: flex; align-items: center; gap: 8px; }
@@ -76,3 +81,24 @@
 .modal-divider-tight { margin: 6px 0; }
 .pick-list { display: flex; flex-direction: column; gap: 8px; }
 .product-pick-btn { justify-content: flex-start; }
+
+/* ------------------------------------------------------------------
+   Cart focus editor (tasks 3 + 4, see js/cart.js).
+   ------------------------------------------------------------------ */
+/* Sub-part wrapper around each clickable/draggable piece of a cart item
+   (icon/name, qty, price, remove button, description). Only gets the
+   dashed frame + selection outline while interactive=true (i.e. inside
+   the focus stage), but the transform offset itself is always applied,
+   see buildCartItemHTML() in cart.js. */
+.cart-item-part { display: inline-flex; align-items: center; position: relative; }
+.cart-item-part-frame { border: 1px dashed var(--border-muted); border-radius: 6px; padding: 2px 5px; }
+.cart-item-part-selected { outline: 2px solid var(--selection-color); outline-offset: 2px; border-radius: 6px; }
+body.cart-focus-active .cart-item-part { cursor: grab; touch-action: none; }
+body.cart-focus-active .cart-item-part:active { cursor: grabbing; }
+
+/* The centered stage showing the demo cart item on the canvas while the
+   focus editor is active. Mounted into .canvas-container (position:
+   relative, see css/canvas.css) so it stays fixed regardless of zoom. */
+.cart-focus-stage { position: absolute; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 30px; pointer-events: none; }
+.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 100%; max-width: 420px; }
+.cart-focus-hint { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 12px; text-align: center; }
