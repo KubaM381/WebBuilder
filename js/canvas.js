@@ -95,9 +95,101 @@
   // opts.getBounds() can restrict movement (minX/minY/maxX/maxY).
   const DRAG_THRESHOLD = 4;
 
+  // ------------------------------------------------------------------
+  // Alignment guides (Canva-style center/edge snapping while dragging).
+  // Shared by canvas elements and header/footer bar items since both go
+  // through attachInteraction() below. Guides are created at drag start
+  // and removed at drag end — they are never part of the persisted DOM,
+  // matching the same "temporary while dragging" convention as
+  // state.dragLock (see js/README.md "Event conventions").
+  // ------------------------------------------------------------------
+  const GUIDE_SNAP_PX = 6; // on-screen pixels; converted to local (unscaled) units via zoom below
+
+  function createGuideLayer(containerEl) {
+    const layer = document.createElement("div");
+    layer.className = "alignment-guides";
+    const vLine = document.createElement("div");
+    vLine.className = "alignment-guide-line alignment-guide-v";
+    const hLine = document.createElement("div");
+    hLine.className = "alignment-guide-line alignment-guide-h";
+    layer.appendChild(vLine);
+    layer.appendChild(hLine);
+    containerEl.appendChild(layer);
+    return { layer, vLine, hLine };
+  }
+
+  function removeGuideLayer(guides) {
+    guides?.layer?.remove();
+  }
+
+  function updateGuideVisibility(guides, guideX, guideY) {
+    if (!guides) return;
+    if (guideX != null) { guides.vLine.style.left = guideX + "px"; guides.vLine.style.display = "block"; }
+    else guides.vLine.style.display = "none";
+    if (guideY != null) { guides.hLine.style.top = guideY + "px"; guides.hLine.style.display = "block"; }
+    else guides.hLine.style.display = "none";
+  }
+
+  // Collects candidate snap lines — container center plus sibling edges/
+  // centers — as local (unscaled) coordinates, i.e. the same coordinate
+  // space toLocalCoords() produces and item.x/item.y already live in.
+  // siblingSelector scopes this to direct children of the same container
+  // (".placed-element" for the canvas, ".bar-item" for a header/footer bar).
+  function collectSnapTargets(containerEl, excludeEl, siblingSelector) {
+    const zoom = Number(state.zoomLevel) || 1;
+    const containerRect = containerEl.getBoundingClientRect();
+    const xTargets = [containerRect.width / zoom / 2];
+    const yTargets = [containerRect.height / zoom / 2];
+    containerEl.querySelectorAll(`:scope > ${siblingSelector}`).forEach(el => {
+      if (el === excludeEl) return;
+      const r = el.getBoundingClientRect();
+      const left = (r.left - containerRect.left) / zoom;
+      const right = (r.right - containerRect.left) / zoom;
+      const top = (r.top - containerRect.top) / zoom;
+      const bottom = (r.bottom - containerRect.top) / zoom;
+      xTargets.push(left, right, (left + right) / 2);
+      yTargets.push(top, bottom, (top + bottom) / 2);
+    });
+    return { xTargets, yTargets };
+  }
+
+  // Snaps a proposed top-left (x, y) of an item sized (w, h) against the
+  // collected targets. Checks the item's left/center/right edge against
+  // every x-target (and top/center/bottom against every y-target),
+  // keeping only the closest match per axis within the zoom-adjusted
+  // threshold. Returns the (possibly adjusted) position plus which local
+  // coordinate matched on each axis, so the caller can place guide lines.
+  function snapPosition(x, y, w, h, targets, zoom) {
+    const threshold = GUIDE_SNAP_PX / (zoom || 1);
+    const ownX = [x, x + w / 2, x + w];
+    const ownY = [y, y + h / 2, y + h];
+    let bestX = null, bestXDiff = threshold;
+    targets.xTargets.forEach(t => {
+      ownX.forEach(p => {
+        const diff = Math.abs(p - t);
+        if (diff < bestXDiff) { bestXDiff = diff; bestX = { line: t, delta: t - p }; }
+      });
+    });
+    let bestY = null, bestYDiff = threshold;
+    targets.yTargets.forEach(t => {
+      ownY.forEach(p => {
+        const diff = Math.abs(p - t);
+        if (diff < bestYDiff) { bestYDiff = diff; bestY = { line: t, delta: t - p }; }
+      });
+    });
+    return {
+      x: bestX ? x + bestX.delta : x,
+      y: bestY ? y + bestY.delta : y,
+      guideX: bestX ? bestX.line : null,
+      guideY: bestY ? bestY.line : null
+    };
+  }
+
   function attachInteraction(domEl, item, containerEl, opts = {}) {
     if (!domEl || !item || !containerEl) return;
     const recordHistory = opts.recordHistory !== false;
+    const snapEnabled = opts.snap !== false;
+    const snapSelector = opts.snapSelector || ".placed-element";
 
     domEl.addEventListener("pointerdown", event => {
       if (event.button != null && event.button !== 0) return;
@@ -117,6 +209,8 @@
       const offsetY = start.y - (Number(item.y) || 0);
       const startClientX = event.clientX, startClientY = event.clientY;
       let dragging = false;
+      let guides = null;
+      let elBox = null;
 
       function onMove(moveEvent) {
         if (!allowDrag) return;
@@ -127,10 +221,27 @@
           state.dragLock = true;
           if (recordHistory) window.WebBuilderHistory?.arm();
           opts.onDragStart?.();
+          if (snapEnabled) {
+            elBox = domEl.getBoundingClientRect();
+            guides = createGuideLayer(containerEl);
+          }
         }
         const point = toLocalCoords(containerEl, moveEvent.clientX, moveEvent.clientY);
-        item.x = Math.min(maxX, Math.max(minX, point.x - offsetX));
-        item.y = Math.min(maxY, Math.max(minY, point.y - offsetY));
+        let nextX = point.x - offsetX;
+        let nextY = point.y - offsetY;
+
+        if (guides && elBox) {
+          const zoom = Number(state.zoomLevel) || 1;
+          const w = elBox.width / zoom, h = elBox.height / zoom;
+          const targets = collectSnapTargets(containerEl, domEl, snapSelector);
+          const snapped = snapPosition(nextX, nextY, w, h, targets, zoom);
+          nextX = snapped.x;
+          nextY = snapped.y;
+          updateGuideVisibility(guides, snapped.guideX, snapped.guideY);
+        }
+
+        item.x = Math.min(maxX, Math.max(minX, nextX));
+        item.y = Math.min(maxY, Math.max(minY, nextY));
         domEl.style.left = item.x + "px";
         domEl.style.top = item.y + "px";
       }
@@ -140,6 +251,7 @@
         domEl.removeEventListener("pointerup", finish);
         domEl.removeEventListener("pointercancel", finish);
         try { domEl.releasePointerCapture(event.pointerId); } catch (e) { /* ignore */ }
+        if (guides) { removeGuideLayer(guides); guides = null; }
         if (dragging) {
           state.dragLock = false;
           if (recordHistory) window.WebBuilderHistory?.commit();
@@ -191,7 +303,7 @@
     const iconMap = getIconMap();
     state.elements.forEach(item => {
       const el = document.createElement("div");
-      el.className = ["placed-element", item.id === state.selectedElementId ? "selected" : "", item.actionType !== "none" ? "has-action" : ""].filter(Boolean).join(" ");
+      el.className = ["placed-element", item.id === state.selectedElementId ? "selected" : "", item.actionType !== "none" ? "has-action" : "", item.hoverHighlight === false ? "no-hover-highlight" : ""].filter(Boolean).join(" ");
       el.style.left = `${item.x}px`;
       el.style.top = `${item.y}px`;
       el.style.color = item.color;
