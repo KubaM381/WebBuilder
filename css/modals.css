@@ -16,7 +16,7 @@
 .close-btn { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 4px 8px; border-radius: 4px; }
 .close-btn:hover { color: var(--text-main); background: var(--bg-main); }
 .drawer-body { padding: 20px; flex: 1; overflow-y: auto; }
-.cart-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-main); flex-wrap: wrap; }
+.cart-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-main); flex-wrap: wrap; }
 .cart-item.cart-item-square { border-radius: 0; }
 .cart-item.cart-item-rounded { border-radius: 14px; }
 .cart-item.cart-item-pill { border-radius: 999px; padding-left: 18px; padding-right: 18px; }
@@ -87,16 +87,40 @@
 .product-pick-btn { justify-content: flex-start; }
 
 /* ------------------------------------------------------------------
-   Cart editor stage (formerly "focus editor", see js/cart.js
-   renderFocusStage()). Shows the full cart body (progress/items/
-   recommendation/discount/totals) centered over the canvas, editable
-   directly instead of a single fixed demo item.
+   Cart editor stage (js/cart.js renderFocusStage()). Shows the full cart
+   body (progress/items/recommendation/discount/totals) centered over the
+   canvas, editable directly instead of a single fixed demo item.
    ------------------------------------------------------------------ */
 .cart-item-part { display: inline-flex; align-items: center; position: relative; }
 .cart-item-part-frame { border: 1px dashed var(--border-muted); border-radius: 6px; padding: 2px 5px; }
-.cart-item-part-selected { outline: 2px solid var(--selection-color); outline-offset: 2px; border-radius: 6px; }
+.cart-item-part-selected,
+.cart-component-selected { outline: 2px solid var(--selection-color); outline-offset: 2px; border-radius: 6px; }
 body.cart-focus-active .cart-item-part { cursor: grab; touch-action: none; }
 body.cart-focus-active .cart-item-part:active { cursor: grabbing; }
+
+/* Top-level draggable blocks (progress bar / discount field /
+   recommendation card / checkout button) — same wrapping pattern as
+   .cart-item-part above, one level up. display:block so wrapping a block
+   element (e.g. .cart-progress) doesn't change its flex-item behavior
+   inside .cart-focus-body. */
+.cart-component-wrap { display: block; touch-action: none; }
+body.cart-focus-active [data-cart-component] { cursor: grab; }
+body.cart-focus-active [data-cart-component]:active { cursor: grabbing; }
+/* Native controls inside a draggable component (discount input/button,
+   recommend "+" button) must keep their normal cursor/behavior. */
+body.cart-focus-active [data-cart-component] input,
+body.cart-focus-active [data-cart-component] button,
+body.cart-focus-active [data-cart-component] select,
+body.cart-focus-active [data-cart-component] textarea { cursor: auto; }
+
+/* Clicking an article's empty background (not a specific sub-part)
+   selects the overall "Artikel-Darstellung". */
+body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
+
+/* Resize handle for the article representation (component:
+   itemRepresentation), shown only while that component is selected —
+   same visual language as header/footer's bar-resize-handle. */
+.cart-item-resize-handle { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; background: var(--selection-color); border: 2px solid #fff; border-radius: 3px; cursor: nwse-resize; touch-action: none; box-shadow: var(--shadow-sm); z-index: 5; }
 
 /* The centered stage showing the cart body on the canvas while the
    editor is active. Mounted into .canvas-container (position: relative,
