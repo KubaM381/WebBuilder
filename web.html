@@ -420,7 +420,12 @@
             <div id="cart-recommend-list" class="items-list"></div>
           </div>
 
-          <!-- Artikel-Darstellung -->
+          <!-- Artikel-Darstellung (component:itemRepresentation) — nur
+               Form/Hintergrund/Größe/Beschreibung-Toggle. Menge, Preis und
+               Entfernen-Button haben seit Aufgabe C jeweils ein eigenes
+               Panel weiter unten (#cart-comp-qty-fields/-price-fields/
+               -remove-fields), sichtbar wenn genau dieser Artikel-Teil
+               angeklickt wurde. -->
           <div id="cart-comp-item-fields" class="hidden">
             <div class="form-group"><label for="cart-item-shape">Form</label>
               <select id="cart-item-shape">
@@ -435,22 +440,11 @@
             <div class="form-group"><label for="cart-item-height">Mindesthöhe (px, leer = automatisch)</label><input type="number" id="cart-item-height" min="30" step="1" placeholder="automatisch"></div>
             <p class="help-text">Tipp: Im Editor kannst du die Artikel-Box auch direkt an der Ecke unten rechts ziehen, um die Größe anzupassen.</p>
             <hr class="divider modal-divider-tight">
-            <div class="form-group"><label>Entfernen-Symbol</label>
-              <select id="cid-remove-style">
-                <option value="x">✕ Kreuz</option>
-                <option value="trash">🗑️ Papierkorb</option>
-                <option value="text">Text „Entfernen“</option>
-              </select>
-            </div>
-            <div class="form-group"><label>Entfernen-Button Form</label>
-              <select id="cid-remove-shape">
-                <option value="circle">Rund</option>
-                <option value="square">Eckig</option>
-                <option value="text">Ohne Rahmen</option>
-              </select>
-            </div>
-            <div class="form-group"><label>Farbe Entfernen-Button</label><input type="color" id="cart-remove-color"></div>
-            <hr class="divider modal-divider-tight">
+            <label class="checkbox-row"><input type="checkbox" id="cid-show-description"> Produktbeschreibung anzeigen</label>
+          </div>
+
+          <!-- Mengenanzeige (Artikel-Teil "qty") -->
+          <div id="cart-comp-qty-fields" class="hidden">
             <div class="form-group"><label>Mengenauswahl</label>
               <select id="cid-quantity-style">
                 <option value="stepper">Einzelblöcke (− 1 +)</option>
@@ -474,7 +468,10 @@
                 <option value="gray">Grau</option>
               </select>
             </div>
-            <hr class="divider modal-divider-tight">
+          </div>
+
+          <!-- Preis (Artikel-Teil "price") -->
+          <div id="cart-comp-price-fields" class="hidden">
             <div class="form-group"><label>Preisanzeige</label>
               <select id="cid-price-style">
                 <option value="simple">Einfach</option>
@@ -482,8 +479,25 @@
                 <option value="perUnit">Einzelpreis + Summe</option>
               </select>
             </div>
-            <hr class="divider modal-divider-tight">
-            <label class="checkbox-row"><input type="checkbox" id="cid-show-description"> Produktbeschreibung anzeigen</label>
+          </div>
+
+          <!-- Entfernen-Button (Artikel-Teil "remove") -->
+          <div id="cart-comp-remove-fields" class="hidden">
+            <div class="form-group"><label>Entfernen-Symbol</label>
+              <select id="cid-remove-style">
+                <option value="x">✕ Kreuz</option>
+                <option value="trash">🗑️ Papierkorb</option>
+                <option value="text">Text „Entfernen“</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Entfernen-Button Form</label>
+              <select id="cid-remove-shape">
+                <option value="circle">Rund</option>
+                <option value="square">Eckig</option>
+                <option value="text">Ohne Rahmen</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Farbe Entfernen-Button</label><input type="color" id="cart-remove-color"></div>
           </div>
 
           <!-- Position (X/Y) — gilt für Artikel-Teile, Fortschrittsbalken,
