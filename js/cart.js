@@ -114,6 +114,17 @@
     if (!state.cartConfig.itemDisplay.layout || typeof state.cartConfig.itemDisplay.layout !== "object") state.cartConfig.itemDisplay.layout = {};
     if (state.cartConfig.discountButtonColor == null) state.cartConfig.discountButtonColor = "#4f46e5";
     if (state.cartConfig.discountButtonShape == null) state.cartConfig.discountButtonShape = "rounded";
+    // Cart editor rework: per-component position offsets (progress,
+    // discount, recommend, checkout — keyed like itemDisplay.layout) plus
+    // "Artikel-Darstellung" background/size overrides. Empty string /
+    // null mean "no override, use the shape's/CSS's own default" so
+    // existing projects keep their exact current look until someone
+    // explicitly customizes these in the cart editor.
+    if (!state.cartConfig.componentLayout || typeof state.cartConfig.componentLayout !== "object") state.cartConfig.componentLayout = {};
+    if (state.cartConfig.itemBackgroundColor == null) state.cartConfig.itemBackgroundColor = "";
+    if (state.cartConfig.cardBackgroundColor == null) state.cartConfig.cardBackgroundColor = "";
+    if (state.cartConfig.itemWidth === undefined) state.cartConfig.itemWidth = null;
+    if (state.cartConfig.itemMinHeight === undefined) state.cartConfig.itemMinHeight = null;
     return state;
   }
   function getItems() { return state.cartItems; } function getConfig() { return state.cartConfig; } function getCount() { return state.cartItems.reduce((s,i)=>s+(Number(i.qty)||0),0); } function getSubtotal() { return state.cartItems.reduce((s,i)=>s+getEffectivePrice(i)*(Number(i.qty)||0),0); }
@@ -208,13 +219,30 @@
   const esc=window.WebBuilderUtils.escapeHtml;
   const eur=v=>`${Number(v||0).toFixed(2).replace(".",",")} €`;
 
+  // Wraps a top-level cart block (progress bar / discount field /
+  // recommendation card) in a positionable, selectable wrapper — the same
+  // "only wrap when needed" rule as wrapPart() inside buildCartItemHTML():
+  // outside the editor (interactive=false), a block without a custom
+  // offset renders exactly as before (no extra DOM), so projects that
+  // never touch the cart editor see zero markup change.
+  function wrapComponent(innerHtml, componentKey, interactive) {
+    const layout = (getConfig().componentLayout || {})[componentKey] || { x: 0, y: 0 };
+    const hasOffset = !!(layout.x || layout.y);
+    if (!interactive && !hasOffset) return innerHtml;
+    const selectedClass = interactive && state.cartFocusSelectedPart === `component:${componentKey}` ? " cart-component-selected" : "";
+    const compAttr = interactive ? ` data-cart-component="${componentKey}"` : "";
+    return `<div class="cart-component-wrap${selectedClass}"${compAttr} style="transform:translate(${layout.x || 0}px, ${layout.y || 0}px);">${innerHtml}</div>`;
+  }
+
   // Builds one cart-row's HTML, based on cartConfig.itemShape/itemDisplay.
   // `interactive` is only true inside the cart editor stage: it adds
   // click/drag affordances and (on a transparent item shape) a dashed
   // frame around each sub-part. The per-part pixel offset
   // (cartConfig.itemDisplay.layout) itself is applied unconditionally, so
   // positioning changes made in the editor also show up in the real
-  // drawer/preview, not just on stage.
+  // drawer/preview, not just on stage. Same for the whole-article
+  // background/width/height overrides (cartConfig.itemBackgroundColor/
+  // itemWidth/itemMinHeight, "Artikel-Darstellung") below.
   function buildCartItemHTML(item, isDemo, interactive = false) {
     const config = getConfig() || {};
     const disp = config.itemDisplay || {};
@@ -267,12 +295,30 @@
     const descHtml = disp.showDescription && item.description ? wrapPart(`<div class="cart-item-desc">${esc(item.description)}</div>`, "description") : "";
     const shapeClass = "cart-item-" + (config.itemShape || "rounded");
 
-    return `<div class="cart-item ${shapeClass}"${idAttr}>
+    // "Artikel-Darstellung": custom background/size, applied everywhere
+    // (drawer + editor). Empty/null (the default) means "use the shape
+    // class's own look", so untouched projects render byte-identical to
+    // before.
+    let itemStyle = "";
+    if (config.itemBackgroundColor) itemStyle += `background-color:${config.itemBackgroundColor};`;
+    if (config.itemWidth) itemStyle += `width:${Number(config.itemWidth)}px;`;
+    if (config.itemMinHeight) itemStyle += `min-height:${Number(config.itemMinHeight)}px;`;
+    const styleAttr = itemStyle ? ` style="${itemStyle}"` : "";
+
+    // Selecting "Artikel-Darstellung" (component:itemRepresentation) shows
+    // a resize handle directly on the article in the editor stage — same
+    // interaction style as header-footer.js's bar resize handle.
+    const itemRepSelected = interactive && state.cartFocusSelectedPart === "component:itemRepresentation";
+    const itemRepSelectedClass = itemRepSelected ? " cart-component-selected" : "";
+    const resizeHandle = itemRepSelected ? `<span class="cart-item-resize-handle" title="Größe ziehen"></span>` : "";
+
+    return `<div class="cart-item ${shapeClass}${itemRepSelectedClass}"${idAttr}${styleAttr}>
       ${titleHtml}
       ${qtyHtml}
       ${priceHtml}
       ${removeBtn}
       ${descHtml}
+      ${resizeHandle}
     </div>`;
   }
 
@@ -296,7 +342,8 @@
       const next = milestones.find(m => subtotal < Number(m.amount));
       const reachedNow = milestones.filter(m => subtotal >= Number(m.amount || 0));
       const rewardsHtml = reachedNow.length ? `<div class="cart-milestone-rewards">${reachedNow.map(m => `<span class="cart-milestone-reward" title="${esc(m.label)}">${esc(m.icon || "🎉")}</span>`).join("")}</div>` : "";
-      html += `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%"></div>${milestones.map(m => `<div class="cart-progress-mark ${subtotal >= Number(m.amount) ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%" title="${esc(m.label)}"></div>`).join("")}</div>${rewardsHtml}<p class="cart-progress-msg">${next ? `Noch ${eur(Number(next.amount) - subtotal)} bis „${esc(next.label)}“` : "✓ Alle Ziele freigeschaltet"}</p></div>`;
+      const progressHtml = `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%"></div>${milestones.map(m => `<div class="cart-progress-mark ${subtotal >= Number(m.amount) ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%" title="${esc(m.label)}"></div>`).join("")}</div>${rewardsHtml}<p class="cart-progress-msg">${next ? `Noch ${eur(Number(next.amount) - subtotal)} bis „${esc(next.label)}“` : "✓ Alle Ziele freigeschaltet"}</p></div>`;
+      html += wrapComponent(progressHtml, "progress", interactive);
     }
 
     html += items.length ? items.map(i => buildCartItemHTML(i, isDemo, interactive)).join("") : '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
@@ -305,14 +352,16 @@
       const picked = pickRecommendation(items, subtotal);
       if (picked) {
         const { rec, product } = picked;
-        html += `<div class="cart-recommend"><p class="cart-recommend-title">${esc(rec.text || defaultRecommendationText())}</p><div class="cart-recommend-card"><span class="cart-recommend-icon">${esc(product.icon || "📦")}</span><span class="cart-recommend-name">${esc(product.name)}</span><span class="cart-recommend-price">${eur(product.discountPrice != null ? product.discountPrice : product.price)}</span><button type="button" class="cart-recommend-add" data-rec-product-id="${esc(product.id)}">+</button></div></div>`;
+        const recHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(rec.text || defaultRecommendationText())}</p><div class="cart-recommend-card"><span class="cart-recommend-icon">${esc(product.icon || "📦")}</span><span class="cart-recommend-name">${esc(product.name)}</span><span class="cart-recommend-price">${eur(product.discountPrice != null ? product.discountPrice : product.price)}</span><button type="button" class="cart-recommend-add" data-rec-product-id="${esc(product.id)}">+</button></div></div>`;
+        html += wrapComponent(recHtml, "recommend", interactive);
       }
     }
 
     if (config.discountEnabled) {
       const discColor = config.discountButtonColor || "#4f46e5";
       const discRadius = config.discountButtonShape === "pill" ? "999px" : (config.discountButtonShape === "square" ? "0px" : "6px");
-      html += `<div class="cart-discount"><input type="text" class="cart-discount-input" placeholder="Rabattcode (Demo: DEMO10)"><button type="button" class="cart-discount-apply-btn" style="background-color:${discColor}; border-radius:${discRadius};">Anwenden</button>${state.appliedDiscountLabel ? `<p class="cart-discount-msg ok">${esc(state.appliedDiscountLabel)}</p>` : ""}</div>`;
+      const discountHtml = `<div class="cart-discount"><input type="text" class="cart-discount-input" placeholder="Rabattcode (Demo: DEMO10)"><button type="button" class="cart-discount-apply-btn" style="background-color:${discColor}; border-radius:${discRadius};">Anwenden</button>${state.appliedDiscountLabel ? `<p class="cart-discount-msg ok">${esc(state.appliedDiscountLabel)}</p>` : ""}</div>`;
+      html += wrapComponent(discountHtml, "discount", interactive);
     }
 
     const reached = milestones.filter(m => subtotal >= Number(m.amount || 0));
@@ -331,21 +380,6 @@
     html += totalsHtml;
 
     return html;
-  }
-
-  function renderCartItemDemo() {
-    const host = document.getElementById("cart-item-demo-preview");
-    if (!host) return;
-    const products = window.WebBuilderProducts?.getAll?.() || [];
-    const demoSource = products[0] || { name: "Beispielprodukt", price: 19.99, discountPrice: 14.99, icon: "📦", description: "Kurze Beschreibung des Produkts." };
-    host.innerHTML = buildCartItemHTML({ id: "demo", name: demoSource.name, price: demoSource.price, discountPrice: demoSource.discountPrice, qty: 2, icon: demoSource.icon, description: demoSource.description || "Kurze Beschreibung des Produkts." }, true);
-    const demoEl = host.querySelector(".cart-item");
-    if (demoEl) {
-      demoEl.style.cursor = "pointer";
-      demoEl.addEventListener("click", () => {
-        document.getElementById("cart-item-display-editor")?.classList.remove("hidden");
-      }, true);
-    }
   }
 
   function renderRecommendList() {
@@ -505,8 +539,20 @@
     if (!list) return;
     list.innerHTML = buildCartHtml(getItems(), { interactive: false, isDemo: false });
     document.getElementById("cart-count-badge")?.replaceChildren(document.createTextNode(String(getCount())));
+    const config = getConfig() || {};
     const checkout = document.getElementById("cart-checkout-btn");
-    if (checkout) checkout.textContent = state.cartButtonLabel || "Zur Kasse gehen";
+    if (checkout) {
+      checkout.textContent = state.cartButtonLabel || "Zur Kasse gehen";
+      // Position offset set for the checkout button in the cart editor
+      // (component:checkout) applies everywhere, same as the other
+      // per-component/per-part offsets — see wrapComponent()/wrapPart().
+      const layout = (config.componentLayout || {}).checkout || { x: 0, y: 0 };
+      checkout.style.transform = (layout.x || layout.y) ? `translate(${layout.x}px, ${layout.y}px)` : "";
+    }
+    // "Hintergrund" (component:background) applies to the real drawer too,
+    // not just the editor preview.
+    const drawer = document.getElementById("cart-drawer");
+    if (drawer) drawer.style.backgroundColor = config.cardBackgroundColor || "";
   }
 
   // Re-renders every place the cart's content is currently visible: the
@@ -548,75 +594,79 @@
     bindAddRecommendation();
     bindAddMilestone();
     // Reacts to both "cart" and "products": product changes affect the
-    // recommendation/demo preview shown in the cart.
+    // recommendation preview shown in the cart.
     state.subscribe?.(e => {
       if (["cart", "products"].includes(e?.domain)) {
         refreshCartViews();
         renderRecommendList();
         renderMilestoneList();
-        renderCartItemDemo();
       }
     });
     refreshCartViews();
     renderRecommendList();
     renderMilestoneList();
-    renderCartItemDemo();
   }
   function openCart(){document.getElementById("cart-drawer")?.classList.add("active");document.getElementById("cart-drawer-backdrop")?.classList.add("active");renderCart();return true;} function closeCart(){document.getElementById("cart-drawer")?.classList.remove("active");document.getElementById("cart-drawer-backdrop")?.classList.remove("active");return true;}
   document.addEventListener("DOMContentLoaded",()=>setTimeout(bind,0));
   window.WebBuilderCartRuntime={render:renderCart,open:openCart,close:closeCart};
 
-  // Cart configuration editor lives in the cart domain.
+  // Cart configuration editor: the sidebar now only holds the three
+  // on/off toggles (discount/recommend/progress) plus the "Artikel-
+  // Darstellung"-shortcut button — everything else (colors, shapes,
+  // labels, list management) moved into the cart editor's right-hand
+  // panel, see the "Cart editor stage" section below.
   function renderConfig(){
-    const c=getConfig()||{},d=c.itemDisplay||{};
-    const map={"cart-item-shape":c.itemShape,"cart-remove-color":c.removeButtonColor,"cid-remove-style":d.removeStyle||"x","cid-remove-shape":d.removeShape||"circle","cid-quantity-style":d.quantityStyle||"stepper","cid-price-style":d.priceStyle||"simple","cart-discount-button-color":c.discountButtonColor||"#4f46e5","cart-discount-button-shape":c.discountButtonShape||"rounded"};
-    Object.entries(map).forEach(([id,v])=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;});
-    const ids=[["cart-discount-toggle",c.discountEnabled],["cart-recommend-toggle",c.recommendEnabled],["cart-progress-toggle",c.progressEnabled],["cid-show-description",d.showDescription]];
+    const c=getConfig()||{};
+    const ids=[["cart-discount-toggle",c.discountEnabled],["cart-recommend-toggle",c.recommendEnabled],["cart-progress-toggle",c.progressEnabled]];
     ids.forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.checked=!!v;});
-    const color=document.getElementById("cart-button-color");if(color)color.value=c.buttonColor||"#4f46e5";
-    const shape=document.getElementById("cart-button-shape");if(shape)shape.value=c.buttonShape||"rounded";
-    const label=document.getElementById("cart-button-label");if(label)label.value=state.cartButtonLabel||"Zur Kasse gehen";
-    document.getElementById("cart-recommend-config")?.classList.toggle("hidden",!c.recommendEnabled);
-    document.getElementById("cart-progress-config")?.classList.toggle("hidden",!c.progressEnabled);
-    document.getElementById("cart-discount-style-config")?.classList.toggle("hidden",!c.discountEnabled);
     applyCheckoutButtonStyle();
-    renderRecommendList();
-    renderMilestoneList();
-    renderCartItemDemo();
+    if (state.cartFocusMode) { renderFocusStage(); renderFocusPartPanel(); }
   }
   function bindConfig(){
-    const map={"cart-item-shape":"itemShape","cart-remove-color":"removeButtonColor","cart-discount-toggle":"discountEnabled","cart-recommend-toggle":"recommendEnabled","cart-progress-toggle":"progressEnabled","cart-button-color":"buttonColor","cart-button-shape":"buttonShape","cart-discount-button-color":"discountButtonColor","cart-discount-button-shape":"discountButtonShape"};
-    Object.entries(map).forEach(([id,p])=>document.getElementById(id)?.addEventListener("change",e=>{window.WebBuilderHistory?.arm();setConfig({[p]:e.target.type==="checkbox"?e.target.checked:e.target.value},false);window.WebBuilderHistory?.commit();renderConfig();refreshCartViews();},true));
-    [["cid-remove-style","removeStyle"],["cid-remove-shape","removeShape"],["cid-quantity-style","quantityStyle"],["cid-price-style","priceStyle"]].forEach(([id,p])=>document.getElementById(id)?.addEventListener("change",e=>{window.WebBuilderHistory?.arm();setItemDisplay({[p]:e.target.value},false);window.WebBuilderHistory?.commit();renderConfig();refreshCartViews();},true));
-    document.getElementById("cid-show-description")?.addEventListener("change",e=>{window.WebBuilderHistory?.arm();setItemDisplay({showDescription:e.target.checked},false);window.WebBuilderHistory?.commit();renderConfig();refreshCartViews();},true);
-    document.getElementById("cart-button-label")?.addEventListener("change",e=>{window.WebBuilderHistory?.arm();setButtonLabel(e.target.value,false);window.WebBuilderHistory?.commit();renderConfig();refreshCartViews();},true);
+    const map={"cart-discount-toggle":"discountEnabled","cart-recommend-toggle":"recommendEnabled","cart-progress-toggle":"progressEnabled"};
+    Object.entries(map).forEach(([id,p])=>document.getElementById(id)?.addEventListener("change",e=>{window.WebBuilderHistory?.arm();setConfig({[p]:e.target.checked},false);window.WebBuilderHistory?.commit();renderConfig();refreshCartViews();},true));
     bindAddRecommendation();
     bindAddMilestone();
     renderConfig();
   }
-  document.addEventListener("DOMContentLoaded",()=>setTimeout(bindConfig,0)); window.WebBuilderCartConfigRuntime={render:renderConfig,renderRecommendList,renderMilestoneList,renderCartItemDemo};
+  document.addEventListener("DOMContentLoaded",()=>setTimeout(bindConfig,0)); window.WebBuilderCartConfigRuntime={render:renderConfig,renderRecommendList,renderMilestoneList};
 
   // ------------------------------------------------------------------
-  // Cart editor stage ("Warenkorb-Editor", formerly the "focus editor").
+  // Cart editor stage ("Warenkorb-Editor").
   //
   // Entering it hides normal canvas content (elements + header/footer
   // bars, via CSS body.cart-focus-active — see css/styles.css) and shows
   // the FULL cart body (buildCartHtml()) centered over the canvas
   // (#cart-focus-stage, mounted into .canvas-container so it stays fixed
   // regardless of zoom): real cart items if any exist, otherwise one
-  // synthetic demo item purely so there's something to arrange. All the
-  // normal cart interactions (qty, remove, price, discount code,
-  // recommendation) work directly on the stage, same as in the drawer.
+  // synthetic demo item purely so there's something to arrange.
   //
-  // Each sub-part of an item (icon/name, qty, price, remove button,
-  // description) is wrapped by buildCartItemHTML() in a
-  // [data-cart-part] span when interactive=true. Clicking selects it;
-  // dragging updates its pixel offset in
-  // cartConfig.itemDisplay.layout[partKey]. During an active drag we only
-  // touch the DOM directly + write state silently (no notify()) — exactly
-  // like canvas.js's dragLock pattern — so a re-render can't replace the
-  // dragged node mid-move. The offset is committed to history and
-  // broadcast (notify) only on pointerup.
+  // Every top-level block is selectable and (except the background and
+  // the article representation itself) freely draggable:
+  //   - article sub-parts (icon/name, qty, price, remove, description) —
+  //     data-cart-part, offset stored in cartConfig.itemDisplay.layout
+  //   - progress bar / discount field / recommendation card / checkout
+  //     button — data-cart-component, offset stored in
+  //     cartConfig.componentLayout
+  //   - the article box as a whole ("Artikel-Darstellung") — clicking its
+  //     background (not a specific sub-part) selects it; a resize handle
+  //     then lets you drag its width/height (cartConfig.itemWidth/
+  //     itemMinHeight)
+  //   - the card background — clicking empty card space selects it,
+  //     color only (no position), cartConfig.cardBackgroundColor
+  //
+  // IMPORTANT: selecting an element that is *also* the element the drag
+  // gesture started on must NOT trigger a full re-render before pointer
+  // capture + move/up listeners are attached — a mid-gesture innerHTML
+  // rebuild detaches the very node the listeners are bound to, so no
+  // further pointermove/pointerup ever reaches them (this was the root
+  // cause of "nothing can be dragged"). That's why selection during those
+  // gestures goes through the light-weight selectFocusPartLight()
+  // (class-toggle only) instead of the full-render selectFocusPart() —
+  // the full render still happens once the gesture ends (via notify() ->
+  // refreshCartViews()) or immediately for clicks that don't start a drag
+  // on the same node (background/article-representation click, sidebar
+  // shortcut button).
   // ------------------------------------------------------------------
   function getPartLayout(partKey) {
     const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
@@ -639,61 +689,302 @@
     window.WebBuilderHistory?.commit();
     notify("cart", "part-layout", layout);
   }
+
+  // Same read/write/reset trio as above, generalized for the top-level
+  // components (progress/discount/recommend/checkout) so the X/Y fields
+  // and reset button in the right panel can work with either kind of
+  // selection through one code path.
+  function getSelectedLayout() {
+    const sel = state.cartFocusSelectedPart;
+    if (!sel) return { x: 0, y: 0 };
+    if (sel.startsWith("component:")) {
+      const key = sel.slice("component:".length);
+      return state.cartConfig.componentLayout[key] || { x: 0, y: 0 };
+    }
+    return getPartLayout(sel);
+  }
+  function setSelectedLayout(x, y) {
+    const sel = state.cartFocusSelectedPart;
+    if (!sel) return;
+    if (sel.startsWith("component:")) {
+      const key = sel.slice("component:".length);
+      window.WebBuilderHistory?.arm();
+      state.cartConfig.componentLayout[key] = { x: Math.round(x) || 0, y: Math.round(y) || 0 };
+      window.WebBuilderHistory?.commit();
+      notify("cart", "component-layout", state.cartConfig.componentLayout);
+    } else {
+      setPartLayout(sel, x, y);
+    }
+  }
+  function resetSelectedLayout() {
+    const sel = state.cartFocusSelectedPart;
+    if (!sel) return;
+    if (sel.startsWith("component:")) {
+      const key = sel.slice("component:".length);
+      window.WebBuilderHistory?.arm();
+      delete state.cartConfig.componentLayout[key];
+      window.WebBuilderHistory?.commit();
+      notify("cart", "component-layout", state.cartConfig.componentLayout);
+    } else {
+      resetPartLayout(sel);
+    }
+  }
+  // Components without a meaningful drag position (background color only,
+  // article representation resized via handle instead of X/Y).
+  const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation"]);
+
+  // Toggles the visual "selected" outline directly on the already-live
+  // stage DOM, without touching innerHTML — safe to call mid-gesture.
+  function applySelectionHighlight() {
+    const stage = document.getElementById("cart-focus-stage");
+    if (!stage) return;
+    stage.querySelectorAll(".cart-item-part-selected, .cart-component-selected").forEach(el => el.classList.remove("cart-item-part-selected", "cart-component-selected"));
+    const sel = state.cartFocusSelectedPart;
+    if (!sel) return;
+    if (sel.startsWith("component:")) {
+      const key = sel.slice("component:".length);
+      if (key === "background") stage.querySelector(".cart-focus-card")?.classList.add("cart-component-selected");
+      else if (key === "itemRepresentation") stage.querySelectorAll(".cart-item").forEach(el => el.classList.add("cart-component-selected"));
+      else stage.querySelector(`[data-cart-component="${key}"]`)?.classList.add("cart-component-selected");
+    } else {
+      stage.querySelector(`[data-cart-part="${sel}"]`)?.classList.add("cart-item-part-selected");
+    }
+  }
+
+  // Full selection: safe for clicks that don't themselves start a drag on
+  // the clicked node (sidebar shortcut, article-background click,
+  // card-background click) — rebuilds the stage so e.g. the article's
+  // resize handle actually appears.
   function selectFocusPart(partKey) {
     state.cartFocusSelectedPart = partKey;
     renderFocusStage();
     renderFocusPartPanel();
   }
+  // Light selection: for pointerdown branches that continue into a drag
+  // gesture on the very node that was just clicked — must NOT rebuild the
+  // stage (see the big comment above bindFocusStageInteractions()).
+  function selectFocusPartLight(partKey) {
+    state.cartFocusSelectedPart = partKey;
+    applySelectionHighlight();
+    renderFocusPartPanel();
+  }
+
   function renderFocusPartPanel() {
     const empty = document.getElementById("cart-part-empty");
     const editor = document.getElementById("cart-part-editor");
     if (!empty || !editor) return;
-    const partKey = state.cartFocusSelectedPart;
-    if (!partKey) { empty.classList.remove("hidden"); editor.classList.add("hidden"); return; }
+    const sel = state.cartFocusSelectedPart;
+    if (!sel) { empty.classList.remove("hidden"); editor.classList.add("hidden"); return; }
     empty.classList.add("hidden"); editor.classList.remove("hidden");
-    const labels = { icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung" };
+
+    ["cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields", "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
+    const positionFields = document.getElementById("cart-comp-position-fields");
+    positionFields?.classList.toggle("hidden", NON_POSITIONABLE.has(sel));
+
+    const labels = {
+      icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
+      "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
+      "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung"
+    };
     const labelEl = document.getElementById("cart-part-label");
-    if (labelEl) labelEl.textContent = labels[partKey] || partKey;
-    const layout = getPartLayout(partKey);
-    const xInput = document.getElementById("cart-part-x"), yInput = document.getElementById("cart-part-y");
-    if (xInput && document.activeElement !== xInput) xInput.value = layout.x;
-    if (yInput && document.activeElement !== yInput) yInput.value = layout.y;
+    if (labelEl) labelEl.textContent = labels[sel] || sel;
+
+    const config = getConfig();
+
+    if (sel === "component:checkout") {
+      document.getElementById("cart-comp-checkout-fields")?.classList.remove("hidden");
+      const labelInput = document.getElementById("cart-comp-checkout-label");
+      if (labelInput && document.activeElement !== labelInput) labelInput.value = state.cartButtonLabel || "";
+      const colorInput = document.getElementById("cart-comp-checkout-color");
+      if (colorInput) colorInput.value = config.buttonColor || "#4f46e5";
+      const shapeSel = document.getElementById("cart-comp-checkout-shape");
+      if (shapeSel) shapeSel.value = config.buttonShape || "rounded";
+    } else if (sel === "component:discount") {
+      document.getElementById("cart-comp-discount-fields")?.classList.remove("hidden");
+      const colorInput = document.getElementById("cart-comp-discount-color");
+      if (colorInput) colorInput.value = config.discountButtonColor || "#4f46e5";
+      const shapeSel = document.getElementById("cart-comp-discount-shape");
+      if (shapeSel) shapeSel.value = config.discountButtonShape || "rounded";
+    } else if (sel === "component:progress") {
+      document.getElementById("cart-comp-progress-fields")?.classList.remove("hidden");
+      renderMilestoneList();
+    } else if (sel === "component:recommend") {
+      document.getElementById("cart-comp-recommend-fields")?.classList.remove("hidden");
+      renderRecommendList();
+    } else if (sel === "component:background") {
+      document.getElementById("cart-comp-background-fields")?.classList.remove("hidden");
+      const colorInput = document.getElementById("cart-comp-bg-color");
+      if (colorInput) colorInput.value = config.cardBackgroundColor || "#ffffff";
+    } else if (sel === "component:itemRepresentation") {
+      document.getElementById("cart-comp-item-fields")?.classList.remove("hidden");
+      const shapeSel = document.getElementById("cart-item-shape");
+      if (shapeSel) shapeSel.value = config.itemShape || "rounded";
+      const bgInput = document.getElementById("cart-item-bg-color");
+      if (bgInput) bgInput.value = config.itemBackgroundColor || "#f3f4f6";
+      const wInput = document.getElementById("cart-item-width"), hInput = document.getElementById("cart-item-height");
+      if (wInput && document.activeElement !== wInput) wInput.value = config.itemWidth || "";
+      if (hInput && document.activeElement !== hInput) hInput.value = config.itemMinHeight || "";
+      const removeColor = document.getElementById("cart-remove-color");
+      if (removeColor) removeColor.value = config.removeButtonColor || "#ef4444";
+      const rs = document.getElementById("cid-remove-style"); if (rs) rs.value = config.itemDisplay.removeStyle || "x";
+      const rsh = document.getElementById("cid-remove-shape"); if (rsh) rsh.value = config.itemDisplay.removeShape || "circle";
+      const qs = document.getElementById("cid-quantity-style"); if (qs) qs.value = config.itemDisplay.quantityStyle || "stepper";
+      const ps = document.getElementById("cid-price-style"); if (ps) ps.value = config.itemDisplay.priceStyle || "simple";
+      const sd = document.getElementById("cid-show-description"); if (sd) sd.checked = !!config.itemDisplay.showDescription;
+    }
+
+    if (!NON_POSITIONABLE.has(sel)) {
+      const layout = getSelectedLayout();
+      const xInput = document.getElementById("cart-part-x"), yInput = document.getElementById("cart-part-y");
+      if (xInput && document.activeElement !== xInput) xInput.value = layout.x;
+      if (yInput && document.activeElement !== yInput) yInput.value = layout.y;
+    }
   }
+
   function bindFocusStageInteractions(container) {
     if (!container || container.dataset.webBuilderPartsBound === "true") return;
     container.dataset.webBuilderPartsBound = "true";
     container.addEventListener("pointerdown", e => {
       if (!state.cartFocusMode) return;
+
+      // 1) Resize handle for the article representation (drag its width/
+      // height directly). Only rendered when component:itemRepresentation
+      // is already selected.
+      const resizeHandle = e.target.closest?.(".cart-item-resize-handle");
+      if (resizeHandle) {
+        e.preventDefault(); e.stopPropagation();
+        const itemEl = resizeHandle.closest(".cart-item");
+        if (!itemEl) return;
+        const startRect = itemEl.getBoundingClientRect();
+        const startX = e.clientX, startY = e.clientY;
+        const startW = startRect.width, startH = startRect.height;
+        let moved = false;
+        try { resizeHandle.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        function onMove(moveEvent) {
+          const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
+          if (!moved && Math.hypot(dx, dy) < 3) return;
+          moved = true;
+          const nextW = Math.max(120, Math.round(startW + dx));
+          const nextH = Math.max(30, Math.round(startH + dy));
+          state.cartConfig.itemWidth = nextW;
+          state.cartConfig.itemMinHeight = nextH;
+          itemEl.style.width = nextW + "px";
+          itemEl.style.minHeight = nextH + "px";
+          const wInput = document.getElementById("cart-item-width"), hInput = document.getElementById("cart-item-height");
+          if (wInput) wInput.value = nextW;
+          if (hInput) hInput.value = nextH;
+        }
+        function onUp() {
+          resizeHandle.removeEventListener("pointermove", onMove);
+          resizeHandle.removeEventListener("pointerup", onUp);
+          resizeHandle.removeEventListener("pointercancel", onUp);
+          try { resizeHandle.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+          if (moved) { window.WebBuilderHistory?.commit(); notify("cart", "config", state.cartConfig); }
+        }
+        window.WebBuilderHistory?.arm();
+        resizeHandle.addEventListener("pointermove", onMove);
+        resizeHandle.addEventListener("pointerup", onUp);
+        resizeHandle.addEventListener("pointercancel", onUp);
+        return;
+      }
+
+      // 2) Top-level components (progress bar / discount field /
+      // recommendation card / checkout button). Native controls inside
+      // them (the discount input, its "Anwenden" button, the recommend
+      // "+" button) only get a selection update — no preventDefault/
+      // stopPropagation, so typing/focusing/clicking them still works
+      // exactly as before.
+      const compEl = e.target.closest?.("[data-cart-component]");
+      if (compEl) {
+        const key = compEl.dataset.cartComponent;
+        if (e.target.closest?.("input, textarea, select, button")) {
+          selectFocusPartLight(`component:${key}`);
+          return;
+        }
+        e.preventDefault(); e.stopPropagation();
+        selectFocusPartLight(`component:${key}`);
+        const origin = state.cartConfig.componentLayout[key] || { x: 0, y: 0 };
+        const startX = e.clientX, startY = e.clientY;
+        let moved = false;
+        try { compEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        function onMove(moveEvent) {
+          const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
+          if (!moved && Math.hypot(dx, dy) < 3) return;
+          moved = true;
+          const nextX = origin.x + dx, nextY = origin.y + dy;
+          compEl.style.transform = `translate(${nextX}px, ${nextY}px)`;
+          state.cartConfig.componentLayout[key] = { x: Math.round(nextX), y: Math.round(nextY) };
+        }
+        function onUp() {
+          compEl.removeEventListener("pointermove", onMove);
+          compEl.removeEventListener("pointerup", onUp);
+          compEl.removeEventListener("pointercancel", onUp);
+          try { compEl.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+          if (moved) { window.WebBuilderHistory?.commit(); notify("cart", "component-layout", state.cartConfig.componentLayout); }
+        }
+        window.WebBuilderHistory?.arm();
+        compEl.addEventListener("pointermove", onMove);
+        compEl.addEventListener("pointerup", onUp);
+        compEl.addEventListener("pointercancel", onUp);
+        return;
+      }
+
+      // 3) Article sub-parts (icon/name, qty, price, remove, description).
+      // Same "don't steal focus from native controls" guard as above —
+      // fixes the price input / quantity dropdown being unclickable in
+      // the editor.
       const partEl = e.target.closest?.("[data-cart-part]");
-      if (!partEl) return;
-      e.preventDefault(); e.stopPropagation();
-      const partKey = partEl.dataset.cartPart;
-      selectFocusPart(partKey);
-      const origin = getPartLayout(partKey);
-      const startX = e.clientX, startY = e.clientY;
-      let moved = false;
-      try { partEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-      function onMove(moveEvent) {
-        const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
-        if (!moved && Math.hypot(dx, dy) < 3) return;
-        moved = true;
-        const nextX = origin.x + dx, nextY = origin.y + dy;
-        partEl.style.transform = `translate(${nextX}px, ${nextY}px)`;
-        setPartLayoutSilent(partKey, nextX, nextY);
+      if (partEl) {
+        const partKey = partEl.dataset.cartPart;
+        if (e.target.closest?.("input, textarea, select, button")) {
+          selectFocusPartLight(partKey);
+          return;
+        }
+        e.preventDefault(); e.stopPropagation();
+        selectFocusPartLight(partKey);
+        const origin = getPartLayout(partKey);
+        const startX = e.clientX, startY = e.clientY;
+        let moved = false;
+        try { partEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        function onMove(moveEvent) {
+          const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
+          if (!moved && Math.hypot(dx, dy) < 3) return;
+          moved = true;
+          const nextX = origin.x + dx, nextY = origin.y + dy;
+          partEl.style.transform = `translate(${nextX}px, ${nextY}px)`;
+          setPartLayoutSilent(partKey, nextX, nextY);
+        }
+        function onUp() {
+          partEl.removeEventListener("pointermove", onMove);
+          partEl.removeEventListener("pointerup", onUp);
+          partEl.removeEventListener("pointercancel", onUp);
+          try { partEl.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+          if (moved) { window.WebBuilderHistory?.commit(); notify("cart", "part-layout", state.cartConfig.itemDisplay.layout); }
+        }
+        window.WebBuilderHistory?.arm();
+        partEl.addEventListener("pointermove", onMove);
+        partEl.addEventListener("pointerup", onUp);
+        partEl.addEventListener("pointercancel", onUp);
+        return;
       }
-      function onUp() {
-        partEl.removeEventListener("pointermove", onMove);
-        partEl.removeEventListener("pointerup", onUp);
-        partEl.removeEventListener("pointercancel", onUp);
-        try { partEl.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-        if (moved) { window.WebBuilderHistory?.commit(); notify("cart", "part-layout", state.cartConfig.itemDisplay.layout); }
+
+      // 4) Click on the article container itself (not a specific sub-
+      // part) -> select the overall article representation.
+      const itemEl = e.target.closest?.(".cart-item");
+      if (itemEl) {
+        e.preventDefault();
+        selectFocusPart("component:itemRepresentation");
+        return;
       }
-      window.WebBuilderHistory?.arm();
-      partEl.addEventListener("pointermove", onMove);
-      partEl.addEventListener("pointerup", onUp);
-      partEl.addEventListener("pointercancel", onUp);
+
+      // 5) Click directly on the card's empty background -> select it.
+      if (e.target.matches?.(".cart-focus-card")) {
+        e.preventDefault();
+        selectFocusPart("component:background");
+      }
     });
   }
+
   function renderFocusStage() {
     if (!state.cartFocusMode) return;
     const host = document.querySelector(".canvas-container");
@@ -716,14 +1007,18 @@
     const config = getConfig() || {};
     const checkoutColor = config.buttonColor || "#4f46e5";
     const checkoutRadius = config.buttonShape === "pill" ? "999px" : (config.buttonShape === "square" ? "0px" : "6px");
+    const checkoutLayout = config.componentLayout.checkout || { x: 0, y: 0 };
+    const checkoutSelectedClass = state.cartFocusSelectedPart === "component:checkout" ? " cart-component-selected" : "";
+    const bgSelectedClass = state.cartFocusSelectedPart === "component:background" ? " cart-component-selected" : "";
+    const cardBgStyle = config.cardBackgroundColor ? ` style="background-color:${config.cardBackgroundColor};"` : "";
     stage.innerHTML = `
-      <div class="cart-focus-card">
+      <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
         <div class="cart-focus-header">
-          <p class="cart-focus-hint">🛒 Warenkorb-Editor — klicke auf einen Teil, um ihn zu verschieben</p>
+          <p class="cart-focus-hint">🛒 Warenkorb-Editor — klicke auf einen Bereich (Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Hintergrund), um ihn anzupassen</p>
           <button type="button" class="btn btn-danger-outline btn-sm" id="cart-focus-exit-inline">✖</button>
         </div>
         <div class="cart-focus-body">${buildCartHtml(items, { interactive: true, isDemo: usingDemo })}</div>
-        <button type="button" class="btn btn-primary cart-focus-checkout" style="width:100%; background-color:${checkoutColor}; border-radius:${checkoutRadius};">${esc(state.cartButtonLabel || "Zur Kasse gehen")}</button>
+        <button type="button" class="btn btn-primary cart-focus-checkout${checkoutSelectedClass}" data-cart-component="checkout" style="width:100%; background-color:${checkoutColor}; border-radius:${checkoutRadius}; transform:translate(${checkoutLayout.x || 0}px, ${checkoutLayout.y || 0}px);">${esc(state.cartButtonLabel || "Zur Kasse gehen")}</button>
       </div>
     `;
     bindFocusStageInteractions(stage);
@@ -753,22 +1048,108 @@
   function bindFocusEditor() {
     document.getElementById("btn-cart-focus-editor")?.addEventListener("click", e => { e.preventDefault(); enterFocusMode(); }, true);
     document.getElementById("btn-cart-focus-exit")?.addEventListener("click", e => { e.preventDefault(); exitFocusMode(); }, true);
+    // Sidebar shortcut: opens the editor (if needed) and jumps straight to
+    // the article representation, so it doesn't have to be found by
+    // clicking precisely on an article's empty background.
+    document.getElementById("btn-select-item-representation")?.addEventListener("click", e => {
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (!state.cartFocusMode) enterFocusMode();
+      selectFocusPart("component:itemRepresentation");
+    }, true);
+
+    // Position (X/Y) — shared by article sub-parts and the four
+    // draggable components (progress/discount/recommend/checkout).
     document.getElementById("cart-part-x")?.addEventListener("change", e => {
-      const partKey = state.cartFocusSelectedPart; if (!partKey) return;
-      const layout = getPartLayout(partKey);
-      setPartLayout(partKey, Number(e.target.value) || 0, layout.y);
+      if (!state.cartFocusSelectedPart) return;
+      const layout = getSelectedLayout();
+      setSelectedLayout(Number(e.target.value) || 0, layout.y);
       renderFocusStage();
     }, true);
     document.getElementById("cart-part-y")?.addEventListener("change", e => {
-      const partKey = state.cartFocusSelectedPart; if (!partKey) return;
-      const layout = getPartLayout(partKey);
-      setPartLayout(partKey, layout.x, Number(e.target.value) || 0);
+      if (!state.cartFocusSelectedPart) return;
+      const layout = getSelectedLayout();
+      setSelectedLayout(layout.x, Number(e.target.value) || 0);
       renderFocusStage();
     }, true);
     document.getElementById("cart-part-reset")?.addEventListener("click", e => {
       e.preventDefault(); e.stopImmediatePropagation();
-      if (state.cartFocusSelectedPart) { resetPartLayout(state.cartFocusSelectedPart); renderFocusStage(); renderFocusPartPanel(); }
+      if (state.cartFocusSelectedPart) { resetSelectedLayout(); renderFocusStage(); renderFocusPartPanel(); }
     }, true);
+
+    // Zur-Kasse-Button (component:checkout)
+    document.getElementById("cart-comp-checkout-label")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setButtonLabel(e.target.value, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-checkout-color")?.addEventListener("input", e => {
+      window.WebBuilderHistory?.arm(); setConfig({ buttonColor: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-checkout-shape")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setConfig({ buttonShape: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
+    // Rabattfeld (component:discount)
+    document.getElementById("cart-comp-discount-color")?.addEventListener("input", e => {
+      window.WebBuilderHistory?.arm(); setConfig({ discountButtonColor: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-discount-shape")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setConfig({ discountButtonShape: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
+    // Hintergrund (component:background)
+    document.getElementById("cart-comp-bg-color")?.addEventListener("input", e => {
+      window.WebBuilderHistory?.arm(); setConfig({ cardBackgroundColor: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
+    // Artikel-Darstellung (component:itemRepresentation)
+    document.getElementById("cart-item-shape")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setConfig({ itemShape: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-item-bg-color")?.addEventListener("input", e => {
+      window.WebBuilderHistory?.arm(); setConfig({ itemBackgroundColor: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-item-width")?.addEventListener("change", e => {
+      const v = e.target.value === "" ? null : Math.max(120, Number(e.target.value) || 0);
+      window.WebBuilderHistory?.arm(); setConfig({ itemWidth: v }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-item-height")?.addEventListener("change", e => {
+      const v = e.target.value === "" ? null : Math.max(30, Number(e.target.value) || 0);
+      window.WebBuilderHistory?.arm(); setConfig({ itemMinHeight: v }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-remove-color")?.addEventListener("input", e => {
+      window.WebBuilderHistory?.arm(); setConfig({ removeButtonColor: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cid-remove-style")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setItemDisplay({ removeStyle: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cid-remove-shape")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setItemDisplay({ removeShape: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cid-quantity-style")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setItemDisplay({ quantityStyle: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cid-price-style")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setItemDisplay({ priceStyle: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cid-show-description")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); setItemDisplay({ showDescription: e.target.checked }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
     document.addEventListener("keydown", e => { if (e.key === "Escape" && state.cartFocusMode) exitFocusMode(); });
   }
   document.addEventListener("DOMContentLoaded", () => setTimeout(bindFocusEditor, 0));
