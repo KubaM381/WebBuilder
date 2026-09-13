@@ -304,7 +304,18 @@
       priceHtml = `<span><s class="cart-item-price-strike">${eur(item.price)}</s> ${eur(effective)}</span>`;
     } else if (disp.priceStyle === "perUnit") {
       priceHtml = `<span>${eur(effective)} / Stk · Summe ${eur(effective * (Number(item.qty) || 1))}</span>`;
-    } else if (isDemo) {
+    } else if (isDemo || interactive) {
+      // interactive (Warenkorb-Editor) added: der Preis wird dort NIE als
+      // editierbares <input> gerendert, sondern rein informativ als
+      // <span> — analog zum Demo-Artikel bei leerem Warenkorb. Das ist
+      // Teil des Bugfixes "Warenkorb-Editor darf keine echten
+      // Datenänderungen mehr auslösen" (siehe bind()'s Klick-/Change-
+      // Handler weiter unten): so entsteht im Editor gar nicht erst der
+      // Eindruck, man könne hier live den echten Preis ändern, und das
+      // frühere "change"-Event, das updatePrice() mit dem echten Preis
+      // aufrief, kann im Editor gar nicht mehr feuern. In der echten
+      // Vorschau/im Drawer (interactive=false) bleibt das <input>
+      // unverändert bestehen.
       priceHtml = `<span>${hasDiscount ? `<s class="cart-item-price-strike">${eur(item.price)}</s> ` : ""}${eur(effective)}</span>`;
     } else {
       priceHtml = `<input type="number" class="cart-item-price-input" data-cart-id="${esc(item.id)}" value="${Number(item.price || 0).toFixed(2)}" step="0.01" />`;
@@ -583,16 +594,36 @@
   }
 
   function bind() {
-    // Delegated on `document` (not scoped to #cart-items-list) because the
-    // same cart markup can now also live inside the editor stage
-    // (#cart-focus-stage) at the same time.
+    // Delegated on `document`. Scoped to #cart-items-list (the real
+    // drawer) only — NOT to #cart-focus-stage. The editor stage
+    // (js/cart.js "Cart editor stage") renders the exact same cart
+    // markup/classes for editing purposes, but a click/change inside it
+    // must NEVER trigger a real data mutation (remove item, change qty,
+    // change price, apply a discount code, add a recommended product).
+    // Inside the stage, clicks only ever SELECT the clicked part/
+    // component — that is handled entirely by
+    // bindFocusStageInteractions()'s own "pointerdown" listener further
+    // below. This handler here explicitly ignores anything that
+    // originates inside #cart-focus-stage, even though native controls
+    // there (buttons/selects) still fire normal click/change events that
+    // bubble up to `document`.
     document.addEventListener("click", e => {
+      const inStage = !!e.target.closest?.("#cart-focus-stage");
+
       const discountBtn = e.target.closest?.(".cart-discount-apply-btn");
-      if (discountBtn) { e.preventDefault(); e.stopImmediatePropagation(); applyDiscountCode(discountBtn.closest(".cart-discount")); refreshCartViews(); return; }
+      if (discountBtn) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        if (!inStage) { applyDiscountCode(discountBtn.closest(".cart-discount")); refreshCartViews(); }
+        return;
+      }
       const recBtn = e.target.closest?.(".cart-recommend-add");
-      if (recBtn) { e.preventDefault(); e.stopImmediatePropagation(); const product = window.WebBuilderProducts?.getById?.(recBtn.dataset.recProductId); if (product) addItem(product); refreshCartViews(); return; }
+      if (recBtn) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        if (!inStage) { const product = window.WebBuilderProducts?.getById?.(recBtn.dataset.recProductId); if (product) addItem(product); refreshCartViews(); }
+        return;
+      }
       const t = e.target.closest?.("[data-cart-id]");
-      if (!t || !t.closest("#cart-items-list, #cart-focus-stage")) return;
+      if (!t || !t.closest("#cart-items-list")) return;
       e.preventDefault(); e.stopImmediatePropagation();
       const id = t.dataset.cartId;
       if (t.classList.contains("cart-item-remove")) removeItem(id);
@@ -603,9 +634,9 @@
 
     document.addEventListener("change", e => {
       const qtySel = e.target.closest?.(".cart-qty-select[data-cart-id]");
-      if (qtySel && qtySel.closest("#cart-items-list, #cart-focus-stage")) { updateQty(qtySel.dataset.cartId, parseInt(qtySel.value, 10) || 1); refreshCartViews(); return; }
+      if (qtySel && qtySel.closest("#cart-items-list")) { updateQty(qtySel.dataset.cartId, parseInt(qtySel.value, 10) || 1); refreshCartViews(); return; }
       const priceInput = e.target.closest?.(".cart-item-price-input[data-cart-id]");
-      if (priceInput && priceInput.closest("#cart-items-list, #cart-focus-stage")) { updatePrice(priceInput.dataset.cartId, priceInput.value); refreshCartViews(); }
+      if (priceInput && priceInput.closest("#cart-items-list")) { updatePrice(priceInput.dataset.cartId, priceInput.value); refreshCartViews(); }
     }, true);
 
     document.getElementById("close-cart-btn")?.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); closeCart(); }, true);
@@ -687,6 +718,16 @@
   // refreshCartViews()) or immediately for clicks that don't start a drag
   // on the same node (background/article-representation click, sidebar
   // shortcut button).
+  //
+  // IMPORTANT (bugfix): native controls inside a selectable part/
+  // component (the remove button, the qty +/- buttons/dropdown, the
+  // discount "Anwenden" button, the recommendation "+" button) are
+  // intentionally NOT prevented from firing their normal click/change
+  // event here, so typing/opening a dropdown/focusing still works. Those
+  // events DO bubble up to the page-wide delegated listeners in bind()
+  // above — but bind() explicitly ignores anything inside
+  // #cart-focus-stage, so no real cart data is ever changed from here,
+  // only the current selection (via selectFocusPartLight()).
   // ------------------------------------------------------------------
   function getPartLayout(partKey) {
     const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
@@ -916,7 +957,9 @@
       // them (the discount input, its "Anwenden" button, the recommend
       // "+" button) only get a selection update — no preventDefault/
       // stopPropagation, so typing/focusing/clicking them still works
-      // exactly as before.
+      // exactly as before. Any real data effect of those native controls
+      // is now blocked centrally in bind()'s delegated listeners (see the
+      // big comment there), not here.
       const compEl = e.target.closest?.("[data-cart-component]");
       if (compEl) {
         const key = compEl.dataset.cartComponent;
@@ -954,8 +997,11 @@
 
       // 3) Article sub-parts (icon/name, qty, price, remove, description).
       // Same "don't steal focus from native controls" guard as above —
-      // fixes the price input / quantity dropdown being unclickable in
-      // the editor.
+      // fixes the price display / quantity dropdown being unclickable in
+      // the editor. As with (2), any real data effect is blocked
+      // centrally in bind(), so clicking the remove button or the qty
+      // +/- buttons here can never delete a real cart item or change its
+      // real quantity — only select the "remove"/"qty" part.
       const partEl = e.target.closest?.("[data-cart-part]");
       if (partEl) {
         const partKey = partEl.dataset.cartPart;
