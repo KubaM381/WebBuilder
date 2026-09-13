@@ -21,6 +21,16 @@ window.WebBuilderState = window.WebBuilderState || {
   cartButtonLabel: "Zur Kasse gehen",
   cartConfig: {
     itemShape: "rounded",
+    // "Artikel-Darstellung" (cart editor): custom background/size for the
+    // article box. Empty string / null = no override, use the shape
+    // class's own default look (unchanged behavior for existing/new
+    // projects until someone explicitly customizes this).
+    itemBackgroundColor: "",
+    itemWidth: null,
+    itemMinHeight: null,
+    // Background color of the cart card itself (real drawer AND the cart
+    // editor's preview card) — same "empty = default" convention.
+    cardBackgroundColor: "",
     removeButtonColor: "#ef4444",
     buttonColor: "#4f46e5",
     buttonShape: "rounded",
@@ -33,6 +43,10 @@ window.WebBuilderState = window.WebBuilderState || {
     recommendations: [],
     progressEnabled: false,
     milestones: [],
+    // Cart editor: free-form pixel offset per top-level cart block, keyed
+    // by "progress" | "discount" | "recommend" | "checkout". Same
+    // mechanism as itemDisplay.layout below, one level up.
+    componentLayout: {},
     itemDisplay: {
       removeStyle: "x",
       removeShape: "circle",
@@ -65,8 +79,13 @@ window.WebBuilderState = window.WebBuilderState || {
   // Cart focus editor mode (task 3) — like isPreviewMode, this is pure
   // runtime UI state, not persisted (not part of storage.js's snapshot).
   cartFocusMode: false,
-  // Which cart-item sub-part is currently selected for editing in the
-  // focus editor's right panel (see js/cart.js). Also runtime-only.
+  // Which cart-item sub-part or top-level component is currently selected
+  // for editing in the focus editor's right panel (see js/cart.js). Also
+  // runtime-only. Either a sub-part key ("icon"/"qty"/"price"/"remove"/
+  // "description") or a component key prefixed with "component:"
+  // ("component:progress"/"component:discount"/"component:recommend"/
+  // "component:checkout"/"component:background"/
+  // "component:itemRepresentation").
   cartFocusSelectedPart: null,
   background: {
     type: "solid",
