@@ -35,6 +35,11 @@
 
   function normalizeState() {
     state.elements.forEach(migrateActionFields);
+    // hoverHighlight is a new field (per-icon hover-border toggle, see
+    // inspector.js). Not part of migrateActionFields since it isn't an
+    // action field — defaults to true so existing projects keep their
+    // current (always-visible) hover behavior unless explicitly disabled.
+    state.elements.forEach(item => { if (item && item.hoverHighlight == null) item.hoverHighlight = true; });
     return state.elements;
   }
 
@@ -70,6 +75,10 @@
       fontFamily: "inherit",
       iconFrame: false,
       iconFrameColor: "#111827",
+      // Only exposed in the inspector for icon elements (see
+      // inspector.js renderSpecial()), but stored on every element type
+      // for consistency with the storage snapshot format.
+      hoverHighlight: true,
       modalTitle: "",
       modalBody: "",
       messagePosition: "bottom-right"
