@@ -39,6 +39,14 @@ function initSidebarTabs() {
     if (tab.dataset.webBuilderTabBound === "true") return;
     tab.dataset.webBuilderTabBound = "true";
     tab.addEventListener("click", () => {
+      // Aufgabe H: Ein Wechsel auf einen anderen Sidebar-Tab ist eine
+      // normale Editor-Hauptaktion und beendet einen offen gelassenen
+      // Warenkorb-Editor automatisch — außer man klickt gerade (erneut)
+      // auf den Warenkorb-Tab selbst, in dem der Öffnen-Button liegt; das
+      // soll einen bereits offenen Editor nicht sofort wieder schließen.
+      if (tab.dataset.tab !== "cart" && window.WebBuilderCartFocus?.isActive?.()) {
+        window.WebBuilderCartFocus.exit();
+      }
       tabs.forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
       panels.forEach(p => p.classList.add("hidden"));
