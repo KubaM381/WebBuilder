@@ -153,6 +153,10 @@
     if (state.cartConfig.cardBackgroundColor == null) state.cartConfig.cardBackgroundColor = "";
     if (state.cartConfig.itemWidth === undefined) state.cartConfig.itemWidth = null;
     if (state.cartConfig.itemMinHeight === undefined) state.cartConfig.itemMinHeight = null;
+    // T1: editable title of the cart drawer/editor header (e.g. "Dein
+    // Warenkorb"). Default matches the previously hardcoded string
+    // exactly, so existing projects render byte-identical until changed.
+    if (state.cartConfig.cartTitleLabel == null) state.cartConfig.cartTitleLabel = "Dein Warenkorb";
     // "Kosten-Übersicht" (component:totals, cart-editor.js): editable
     // labels for the subtotal/discount/shipping/total rows plus the
     // shipping cost amount and the free-shipping text. Defaults match the
