@@ -14,6 +14,9 @@ document.write('<script src="js/canvas/elements.js"><\/script>');
 document.write('<script src="js/shop/products.js"><\/script>');
 document.write('<script src="js/shop/cart-data.js"><\/script>');
 document.write('<script src="js/shop/cart-render.js"><\/script>');
+// shop/cart-preview-bars.js: independent preview header/footer for the
+// cart focus editor, deliberately separate from layout/header-footer.js.
+document.write('<script src="js/shop/cart-preview-bars.js"><\/script>');
 document.write('<script src="js/shop/cart-editor.js"><\/script>');
 // canvas/alignment.js must load before canvas/canvas.js and
 // layout/header-footer.js: both call window.WebBuilderAlignment at
@@ -52,6 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.WebBuilderCartRuntime?.render?.();
   window.WebBuilderProductsRuntime?.render?.();
   window.WebBuilderCartConfigRuntime?.render?.();
+  window.WebBuilderCartPreviewBars?.normalizeState?.();
+  window.WebBuilderCartPreviewBars?.render?.();
   window.WebBuilderPreview?.bindToggle?.();
 
 });
