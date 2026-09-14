@@ -18,36 +18,52 @@ WebBuilder/
 │   └── *.css
 └── js/
     ├── README.md          module overview, see there for details
-    ├── builder.js          bootstrap / load order
-    ├── *.js                domain modules (state, canvas, cart, products, ...)
-    ├── ui/                 cross-domain UI helpers: toast, modals, shared
-    │                      inspector markup (see js/README.md)
-    └── Supabase/           Supabase client, auth, project/page CRUD, cloud modal UI
+    ├── builder.js          bootstrap / load order (orchestrator only)
+    ├── toolbar.js          zoom/undo/redo/save toolbar bindings
+    ├── export.js            static HTML export
+    ├── preview.js            preview mode + click-action runtime
+    ├── core/                shared state, utils, storage/history
+    ├── canvas/              canvas rendering, drag/alignment, elements+icons
+    ├── editor/              right-hand inspector panel for canvas elements
+    ├── layout/              header/footer domain
+    ├── shop/                products + cart (data / rendering / focus editor)
+    ├── ui/                  cross-domain UI helpers: toast, modals, shared
+    │                        inspector markup, sidebar-tab switching
+    ├── pages/               reserved for future multi-page client logic
+    │                        (currently only rudimentary in Supabase/)
+    └── Supabase/            Supabase client, auth, project/page CRUD, cloud modal UI
 ```
 
 ## Core architecture at a glance
 
-- **One central state**: `js/state.js` defines `window.WebBuilderState` — the
-  single source of truth for elements, products, cart, header/footer,
-  background, zoom, history.
+- **One central state**: `js/core/state.js` defines `window.WebBuilderState` —
+  the single source of truth for elements, products, cart, header/footer,
+  background, zoom, history. `js/core/utils.js` provides the shared,
+  stateless helpers (`escapeHtml`, `buildTextStyleCss`, `normalizeInPlace`).
 - **Pub/sub instead of direct coupling**: modules change state and call
   `state.notify(domain, action, payload)`; other modules listen via
   `state.subscribe(fn)` for the domains they care about (`"elements"`,
   `"products"`, `"cart"`, `"preview"`, `"background"`, `"selection"`).
   Header/footer changes are the one exception — see `js/README.md`'s
   "Event conventions" section.
-- **One serialization format for everything**: `js/storage.js` →
+- **One serialization format for everything**: `js/core/storage.js` →
   `createSnapshot()` / `applySnapshot()`. Shared by local save, undo/redo
   **and** Supabase cloud save. A new persistable property must be added
   **here**, or it's lost on save/load.
+- **Shared drag/click + alignment guides**: `js/canvas/alignment.js`
+  (`window.WebBuilderAlignment`) owns the pointer-event drag controller and
+  Canva-style snapping, used by both `canvas/canvas.js` (canvas elements)
+  and `layout/header-footer.js` (bar items) — neither duplicates it.
 - **One module per domain**, self-initializing on load
   (`DOMContentLoaded`), exposing its API under `window.WebBuilderXxx`.
   Details: see `js/README.md`.
 - **Load order matters**: `js/builder.js` loads all modules in sequence via
-  `document.write`. `products.js` **must load before** `cart.js` (cart.js
-  references products only via `window.WebBuilderProducts`), and
-  `js/ui/shared-markup.js` **must load before** `inspector.js`/
-  `header-footer.js` (see `js/README.md`).
+  `document.write`. `shop/products.js` **must load before**
+  `shop/cart-data.js` (cart-data.js references products only via
+  `window.WebBuilderProducts`), `js/canvas/alignment.js` **must load
+  before** `canvas/canvas.js` and `layout/header-footer.js`, and
+  `js/ui/shared-markup.js` **must load before** `editor/inspector.js`/
+  `layout/header-footer.js` (see `js/README.md`).
 
 ## Supabase schema
 
@@ -73,7 +89,7 @@ format.
    `js/README.md` for "who does what").
 2. No drive-by refactors — if a structural improvement seems useful,
    propose it instead of doing it unasked.
-3. Always add new persistable state fields to `storage.js` too
+3. Always add new persistable state fields to `core/storage.js` too
    (`createSnapshot`/`applySnapshot`).
 4. Keep new comments short (why, not bug history). History belongs in
    commit messages.
@@ -86,15 +102,18 @@ format.
    whole script fails to run, its `window.WebBuilderXxx` API is never
    defined, and every other module's optional-chaining call into it
    (`window.WebBuilderXxx?.method?.()`) fails silently with no console
-   error. This exact issue previously made the header/footer bars
-   disappear completely (see `js/header-footer.js` fix history in git).
+   error.
 
 ## Known technical debt
 
-- `inspector.js`, `cart.js`, `elements.js`, `preview.js` are densely
-  written (many statements per line) — harder to read than the rest of the
-  project; should be unified to the rest of the codebase's style
-  (multi-line, one statement per line) next time they're touched.
+- `editor/inspector.js`, `shop/cart-*.js`, `canvas/elements.js`,
+  `preview.js` are densely written (many statements per line) — harder to
+  read than the rest of the project; should be unified to the rest of the
+  codebase's style (multi-line, one statement per line) next time they're
+  touched.
+- `js/editor/background.js` doesn't exist yet — the background editor
+  still lives inside `canvas/canvas.js` (`bindBackgroundEditor()`). Split
+  it out once that area needs real growth (see `js/README.md`).
 
 > Note for future AI sessions: this list reflects only what is genuinely
 > still open. Items that get fixed should be removed here, not left
