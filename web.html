@@ -229,7 +229,7 @@
 
         <div class="section-title">Vorschau: Kopf-/Fußzeile</div>
         <div class="sidebar-subsection">
-          <p class="help-text" style="margin-bottom:8px;">Rein visuelle Vorschau-Balken nur für den Warenkorb-Editor — unabhängig von der echten Kopf-/Fußzeile der Seite (die bleibt beim Bearbeiten des Warenkorbs ausgeblendet und wird hier nicht verändert).</p>
+          <p class="help-text" style="margin-bottom:8px;">Rein visuelle Vorschau-Balken nur für den Warenkorb-Editor — unabhängig von der echten Kopf-/Fußzeile der Seite (die bleibt beim Bearbeiten des Warenkorbs ausgeblendet und wird hier nicht verändert). Diese Balken lassen sich seit Kurzem auch direkt im Warenkorb-Editor anklicken und dort bearbeiten.</p>
           <label class="checkbox-row"><input type="checkbox" id="cart-preview-header-toggle"> Header-Vorschau anzeigen</label>
           <div class="form-group"><label for="cart-preview-header-height">Höhe (px)</label><input type="number" id="cart-preview-header-height" min="20" max="400" value="64"></div>
           <div class="form-group"><label for="cart-preview-header-color">Farbe</label><input type="color" id="cart-preview-header-color" value="#111827"></div>
@@ -386,11 +386,12 @@
 
       <!-- Warenkorb-Editor: Bearbeitung einzelner Bereiche (Artikel-Teile,
            Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button,
-           Kosten-Übersicht, Hintergrund, Artikel-Darstellung), siehe
-           js/shop/cart-editor.js enterFocusMode()/renderFocusPartPanel(). -->
+           Kosten-Übersicht, Hintergrund, Artikel-Darstellung, Warenkorb-
+           Titel, Vorschau-Header/-Footer), siehe js/shop/cart-editor.js
+           enterFocusMode()/renderFocusPartPanel(). -->
       <div id="cart-inspector-form" class="inspector-form hidden">
         <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht oder Hintergrund), um ihn hier anzupassen.</p>
+        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Hintergrund oder die Vorschau-Balken), um ihn hier anzupassen.</p>
 
         <div id="cart-part-editor" class="hidden">
           <div class="form-group"><label id="cart-part-label">Element</label></div>
@@ -398,6 +399,18 @@
           <!-- Warenkorb-Titel (Kopfzeile der Vorschau/des echten Drawers) -->
           <div id="cart-comp-header-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-header-title">Titel</label><input type="text" id="cart-comp-header-title" placeholder="Dein Warenkorb"></div>
+          </div>
+
+          <!-- Vorschau-Header/-Footer (T2): rein dekorative
+               Orientierungsbalken aus js/shop/cart-preview-bars.js, hier
+               direkt im Editor anklickbar/bearbeitbar (zusätzlich zur
+               bestehenden Sidebar-Steuerung in #panel-cart > "Vorschau:
+               Kopf-/Fußzeile"). Nicht verschiebbar, siehe
+               NON_POSITIONABLE in js/shop/cart-editor.js. -->
+          <div id="cart-comp-previewbar-fields" class="hidden">
+            <div class="form-group"><label for="cart-comp-previewbar-height">Höhe (px)</label><input type="number" id="cart-comp-previewbar-height" min="20" max="400"></div>
+            <div class="form-group"><label for="cart-comp-previewbar-color">Farbe</label><input type="color" id="cart-comp-previewbar-color"></div>
+            <div class="form-group"><label for="cart-comp-previewbar-label">Beschriftung</label><input type="text" id="cart-comp-previewbar-label"></div>
           </div>
 
           <!-- Zur-Kasse-Button -->
@@ -545,9 +558,9 @@
 
           <!-- Position (X/Y) — gilt für Artikel-Teile, Fortschrittsbalken,
                Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht.
-               Nicht für Hintergrund, Artikel-Darstellung und den
-               Warenkorb-Titel (dafür ist eine feste Position nicht
-               sinnvoll). -->
+               Nicht für Hintergrund, Artikel-Darstellung, den
+               Warenkorb-Titel und die Vorschau-Balken (dafür ist eine
+               feste Position nicht sinnvoll). -->
           <div id="cart-comp-position-fields">
             <div class="form-group">
               <label for="cart-part-x">Position X (px)</label>
