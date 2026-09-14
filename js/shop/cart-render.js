@@ -201,14 +201,27 @@
     const extra = reached.some(m => m.action === "discount") ? 10 : 0;
     const discountPercent = Number(state.appliedDiscountPercent || 0) + extra;
     const discountAmount = subtotal * discountPercent / 100;
-    const shipping = config.progressEnabled ? (free ? 0 : 4.95) : 0;
+    // Versandkosten-Betrag und "Kostenlos"-Text sind jetzt im Warenkorb-
+    // Editor konfigurierbar (component:totals, siehe cart-editor.js) —
+    // Defaults (4,95 €, "Kostenlos") kommen aus cartConfig.shippingCost /
+    // cartConfig.shippingFreeText (Default-Werte in cart-data.js
+    // normalizeState()), damit unveränderte Projekte exakt wie zuvor
+    // aussehen.
+    const shippingCost = Number(config.shippingCost);
+    const shipping = config.progressEnabled ? (free ? 0 : (Number.isFinite(shippingCost) ? shippingCost : 4.95)) : 0;
     const total = Math.max(0, subtotal - discountAmount) + shipping;
 
-    let totalsHtml = `<div class="cart-totals"><div class="cart-total-row"><span>Zwischensumme</span><span>${eur(subtotal)}</span></div>`;
-    if (discountAmount > 0) totalsHtml += `<div class="cart-total-row"><span>Rabatt</span><span>−${eur(discountAmount)}</span></div>`;
-    if (config.progressEnabled) totalsHtml += `<div class="cart-total-row"><span>Versand</span><span>${shipping === 0 ? "Kostenlos" : eur(shipping)}</span></div>`;
+    const subtotalLabel = esc(config.subtotalLabel || "Zwischensumme");
+    const discountLabel = esc(config.discountLabel || "Rabatt");
+    const shippingLabel = esc(config.shippingLabel || "Versand");
+    const shippingFreeText = esc(config.shippingFreeText || "Kostenlos");
+    const totalLabel = esc(config.totalLabel || "Gesamt");
+
+    let totalsHtml = `<div class="cart-totals"><div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
+    if (discountAmount > 0) totalsHtml += `<div class="cart-total-row"><span>${discountLabel}</span><span>−${eur(discountAmount)}</span></div>`;
+    if (config.progressEnabled) totalsHtml += `<div class="cart-total-row"><span>${shippingLabel}</span><span>${shipping === 0 ? shippingFreeText : eur(shipping)}</span></div>`;
     if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>🎁 Gratis-Produkt</span><span>freigeschaltet</span></div>`;
-    totalsHtml += `<div class="cart-total-row cart-total-final"><span>Gesamt</span><span>${eur(total)}</span></div></div>`;
+    totalsHtml += `<div class="cart-total-row cart-total-final"><span>${totalLabel}</span><span>${eur(total)}</span></div></div>`;
     html += wrapComponent(totalsHtml, "totals", interactive);
 
     return html;
