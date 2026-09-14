@@ -134,7 +134,12 @@
       resetPartLayout(sel);
     }
   }
-  const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation"]);
+  // T1: "header" (the drawer-header preview at the top of the stage) is
+  // selectable/editable but never position-draggable — same reasoning as
+  // background/itemRepresentation. See bindFocusStageInteractions()'s
+  // generic [data-cart-component] branch below, which now skips drag
+  // setup entirely for any NON_POSITIONABLE component.
+  const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation", "component:header"]);
 
   function applySelectionHighlight() {
     const stage = document.getElementById("cart-focus-stage");
@@ -165,7 +170,7 @@
 
   // Field-block IDs for the right-hand panel (renderFocusPartPanel()).
   const PART_FIELD_BLOCK_IDS = [
-    "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
+    "cart-comp-header-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
     "cart-comp-totals-fields"
@@ -187,14 +192,21 @@
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
-      "component:totals": "Kosten-Übersicht"
+      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel"
     };
     const labelEl = document.getElementById("cart-part-label");
     if (labelEl) labelEl.textContent = labels[sel] || sel;
 
     const config = cart.getConfig();
 
-    if (sel === "component:checkout") {
+    if (sel === "component:header") {
+      // T1: editable title shown in the drawer-header preview at the top
+      // of the stage (see renderFocusStage()) and in the real drawer
+      // (cart-render.js renderCart()).
+      document.getElementById("cart-comp-header-fields")?.classList.remove("hidden");
+      const titleInput = document.getElementById("cart-comp-header-title");
+      if (titleInput && document.activeElement !== titleInput) titleInput.value = config.cartTitleLabel || "Dein Warenkorb";
+    } else if (sel === "component:checkout") {
       document.getElementById("cart-comp-checkout-fields")?.classList.remove("hidden");
       const labelInput = document.getElementById("cart-comp-checkout-label");
       if (labelInput && document.activeElement !== labelInput) labelInput.value = state.cartButtonLabel || "";
@@ -332,6 +344,12 @@
         const key = compEl.dataset.cartComponent;
         e.preventDefault(); e.stopPropagation();
         selectFocusPartLight(`component:${key}`);
+        // T1: NON_POSITIONABLE components (currently only "header") are
+        // selectable but never draggable — bail out before any drag
+        // tracking is set up. Generalized here (instead of a one-off
+        // "header" check) so any future non-positionable
+        // [data-cart-component] element is covered automatically.
+        if (NON_POSITIONABLE.has(`component:${key}`)) return;
         const origin = state.cartConfig.componentLayout[key] || { x: 0, y: 0 };
         const startX = e.clientX, startY = e.clientY;
         let moved = false;
@@ -463,20 +481,24 @@
     const checkoutLayout = config.componentLayout.checkout || { x: 0, y: 0 };
     const checkoutSelectedClass = state.cartFocusSelectedPart === "component:checkout" ? " cart-component-selected" : "";
     const bgSelectedClass = state.cartFocusSelectedPart === "component:background" ? " cart-component-selected" : "";
+    // T1: replaces the old static hint text + inline "✖" exit button with
+    // an accurate, non-interactive preview of the real drawer header
+    // (title + live/demo item count), reusing .drawer-header's styling so
+    // both stay visually identical. Selectable via data-cart-component
+    // like the other top-level blocks, but NON_POSITIONABLE (see above).
+    const headerSelectedClass = state.cartFocusSelectedPart === "component:header" ? " cart-component-selected" : "";
     const cardBgStyle = config.cardBackgroundColor ? ` style="background-color:${config.cardBackgroundColor};"` : "";
+    const cartTitle = config.cartTitleLabel || "Dein Warenkorb";
+    const previewCount = usingDemo ? (Number(items[0]?.qty) || 0) : cart.getCount();
     const buildCartHtml = window.WebBuilderCartRuntime?.buildCartHtml;
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
-        <div class="cart-focus-header">
-          <p class="cart-focus-hint">🛒 Warenkorb-Editor — klicke auf einen Bereich (Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Hintergrund), um ihn anzupassen</p>
-          <button type="button" class="btn btn-danger-outline btn-sm" id="cart-focus-exit-inline">✖</button>
-        </div>
+        <div class="drawer-header cart-focus-header${headerSelectedClass}" data-cart-component="header"><h3>${esc(cartTitle)} (${previewCount})</h3><button type="button" class="close-btn" disabled>&times;</button></div>
         <div class="cart-focus-body">${buildCartHtml ? buildCartHtml(items, { interactive: true, isDemo: usingDemo }) : ""}</div>
         <button type="button" class="btn btn-primary cart-focus-checkout${checkoutSelectedClass}" data-cart-component="checkout" style="width:100%; background-color:${checkoutColor}; border-radius:${checkoutRadius}; transform:translate(${checkoutLayout.x || 0}px, ${checkoutLayout.y || 0}px);">${esc(state.cartButtonLabel || "Zur Kasse gehen")}</button>
       </div>
     `;
     bindFocusStageInteractions(stage);
-    document.getElementById("cart-focus-exit-inline")?.addEventListener("click", e => { e.preventDefault(); exitFocusMode(); }, true);
   }
   function enterFocusMode() {
     if (state.isPreviewMode) window.WebBuilderPreview?.exit?.();
@@ -504,6 +526,11 @@
       e.preventDefault(); e.stopImmediatePropagation();
       if (!state.cartFocusMode) enterFocusMode();
       selectFocusPart("component:itemRepresentation");
+    }, true);
+
+    document.getElementById("cart-comp-header-title")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ cartTitleLabel: e.target.value.trim() || "Dein Warenkorb" }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
     }, true);
 
     document.getElementById("cart-part-x")?.addEventListener("change", e => {
