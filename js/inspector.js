@@ -6,6 +6,14 @@
   function refreshCanvas(){const c=window.WebBuilderCanvas;if(c?.render)c.render();}
   function getSelected(){return elements.getSelected();}
   function select(id){
+    // Aufgabe H: Auswahl eines echten Canvas-Elements ist eine normale
+    // Editor-Hauptaktion und beendet einen offenen Warenkorb-Editor
+    // automatisch. Auswahl eines Kopf-/Fußzeilen-Elements läuft NICHT
+    // über diese Funktion mit einer echten id (header-footer.js
+    // selectItem() ruft select(null) auf, um nur das Canvas-Element zu
+    // deselektieren) — beendet den Warenkorb-Editor also bewusst nicht
+    // (siehe Aufgabe I).
+    if(id!=null&&window.WebBuilderCartFocus?.isActive?.())window.WebBuilderCartFocus.exit();
     const s=elements.setSelected(id);
     // Selecting a canvas element must deselect any bar item, and vice
     // versa — only one right-hand inspector panel is visible at a time.
@@ -30,8 +38,11 @@
     const barActive=!!(state.selectedBarItemRef&&barItems&&barItems.some(x=>x.id===state.selectedBarItemRef.id));
     form.classList.toggle("hidden",!has);
     // Keep the "no selection" hint hidden while a bar item is being
-    // edited instead (that panel takes its place).
-    empty.classList.toggle("hidden",has||barActive);
+    // edited instead (that panel takes its place). Aufgabe I: auch
+    // während der Warenkorb-Editor offen ist, bleibt der Hinweis
+    // versteckt — dort zeigt #cart-inspector-form die rechte Spalte
+    // (siehe header-footer.js renderEditor()).
+    empty.classList.toggle("hidden",has||barActive||state.cartFocusMode);
     if(!item)return;
     const values={"prop-id":item.id||"","prop-text":item.text||"","prop-size":Number(item.size)||18,"prop-color":item.color||"#000000","prop-font-family":item.fontFamily||"inherit","prop-image-url":item.imageUrl||""};Object.entries(values).forEach(([id,v])=>{const e=byId(id);if(e&&document.activeElement!==e)e.value=v;});const image=item.type==="image",textLike=["text","headline","button"].includes(item.type);["group-image","group-text","group-color"].forEach(id=>byId(id)?.classList.toggle("hidden",id==="group-image"?!image:id==="group-text"?(image||item.type==="shape"||item.type==="icon"):!textLike));["bold","italic","underline"].forEach(f=>byId(`ttb-${f}`)?.classList.toggle("active",!!item[f]));["left","center","right"].forEach(a=>byId(`ttb-align-${a}`)?.classList.toggle("active",(item.align||"left")===a));
   }
