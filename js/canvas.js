@@ -521,6 +521,14 @@
     bindPaletteDragAndDrop();
   }
 
+  // "Eigene Icons": Name-Feld + Datei-Upload (kein Text-/URL-Feld mehr,
+  // siehe Aufgabe F — der Nutzer hat sich explizit für einen kompletten
+  // Ersatz statt einer parallelen Option entschieden). Die Datei wird per
+  // FileReader als Data-URL gelesen; addCustomIcon() in elements.js
+  // erkennt bereits automatisch, ob der übergebene Wert mit "<svg"
+  // beginnt oder nicht, und baut andernfalls ein <img>-Tag — eine
+  // Data-URL (z. B. "data:image/png;base64,...") fällt also ohne
+  // Änderung an elements.js in den bestehenden <img>-Zweig.
   function bindCustomIconForm() {
     const btn = document.getElementById("btn-add-custom-icon");
     if (!btn || btn.dataset.webBuilderCustomIconBound === "true") return;
@@ -528,23 +536,32 @@
     btn.addEventListener("click", e => {
       e.preventDefault();
       const nameInput = document.getElementById("custom-icon-name");
-      const sourceInput = document.getElementById("custom-icon-source");
+      const fileInput = document.getElementById("custom-icon-file");
       const name = (nameInput?.value || "").trim();
-      const source = (sourceInput?.value || "").trim();
+      const file = fileInput?.files?.[0];
       const registry = window.WebBuilderIconRegistry;
-      if (!name || !source || !registry || typeof registry.addCustom !== "function") {
-        window.WebBuilderToast?.show?.("Bitte Name und SVG-Code/Bild-URL angeben.", "danger");
+      if (!name || !file || !registry || typeof registry.addCustom !== "function") {
+        window.WebBuilderToast?.show?.("Bitte Name und Bilddatei auswählen.", "danger");
         return;
       }
-      const ok = registry.addCustom(name, source);
-      if (!ok) {
-        window.WebBuilderToast?.show?.("Icon konnte nicht hinzugefügt werden.", "danger");
+      if (!file.type.startsWith("image/")) {
+        window.WebBuilderToast?.show?.("Bitte eine Bilddatei auswählen.", "danger");
         return;
       }
-      if (nameInput) nameInput.value = "";
-      if (sourceInput) sourceInput.value = "";
-      renderCustomIconPalette();
-      window.WebBuilderToast?.show?.(`Icon "${name}" hinzugefügt ⚡`, "success");
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result !== "string") return;
+        const ok = registry.addCustom(name, reader.result);
+        if (!ok) {
+          window.WebBuilderToast?.show?.("Icon konnte nicht hinzugefügt werden.", "danger");
+          return;
+        }
+        if (nameInput) nameInput.value = "";
+        if (fileInput) fileInput.value = "";
+        renderCustomIconPalette();
+        window.WebBuilderToast?.show?.(`Icon "${name}" hinzugefügt ⚡`, "success");
+      };
+      reader.readAsDataURL(file);
     });
   }
 
