@@ -16,33 +16,65 @@
 
   function refreshCartViews() { window.WebBuilderCartRuntime?.refresh?.(); }
 
-  // Header/footer bleiben während des Warenkorb-Editors sichtbar und
-  // bedienbar (css/styles.css versteckt .builder-bar nicht mehr im
-  // "cart-focus-active"-Zustand). Damit die Editor-Bühne
-  // (#cart-focus-stage) die Bars dabei weder optisch verdeckt noch ihre
-  // Klicks blockiert, beschränkt sich die Bühne stattdessen auf den
-  // Bereich zwischen der sichtbaren Header-Unterkante und der sichtbaren
-  // Footer-Oberkante. Die Positionen werden live per
-  // getBoundingClientRect() gemessen statt aus state.headerHeight/
-  // footerHeight berechnet, damit das auch bei aktivem Zoom exakt passt.
+  // Der Warenkorb-Editor ist bewusst NICHT mehr mit der echten Kopf-/
+  // Fußzeile der Seite verbunden (window.WebBuilderHeaderFooter) — die
+  // echten Bars bleiben während des Editors ausgeblendet (siehe
+  // css/styles.css body.cart-focus-active). Stattdessen liefert
+  // js/shop/cart-preview-bars.js zwei rein visuelle, unabhängig
+  // konfigurierbare Vorschau-Balken (Ein/Aus, Höhe, Farbe, Beschriftung —
+  // Sidebar "Warenkorb" > "Vorschau: Kopf-/Fußzeile"), die hier nur der
+  // räumlichen Orientierung dienen. Da diese Balken feste Pixelhöhen aus
+  // dem State beziehen statt aus gemessenen DOM-Rects, genügt eine reine
+  // Konfigurationsabfrage statt getBoundingClientRect() — kein
+  // Resize-/Zoom-Listener mehr nötig.
   const STAGE_BAR_GAP = 10;
   function computeStageInsets() {
-    const host = document.querySelector(".canvas-container");
-    const canvasEl = document.getElementById("canvas");
-    if (!host || !canvasEl) return { top: 0, bottom: 0 };
-    const hostRect = host.getBoundingClientRect();
-    let top = 0, bottom = 0;
-    const headerBar = canvasEl.querySelector('.builder-bar[data-bar-target="header"]');
-    const footerBar = canvasEl.querySelector('.builder-bar[data-bar-target="footer"]');
-    if (headerBar) {
-      const r = headerBar.getBoundingClientRect();
-      top = Math.max(0, Math.round(r.bottom - hostRect.top) + STAGE_BAR_GAP);
-    }
-    if (footerBar) {
-      const r = footerBar.getBoundingClientRect();
-      bottom = Math.max(0, Math.round(hostRect.bottom - r.top) + STAGE_BAR_GAP);
-    }
+    const cfg = window.WebBuilderCartPreviewBars?.getConfig?.() || { header: {}, footer: {} };
+    const top = cfg.header.enabled ? Math.max(0, Number(cfg.header.height) || 0) + STAGE_BAR_GAP : 0;
+    const bottom = cfg.footer.enabled ? Math.max(0, Number(cfg.footer.height) || 0) + STAGE_BAR_GAP : 0;
     return { top, bottom };
+  }
+
+  // Baut/aktualisiert die beiden rein dekorativen Vorschau-Balken direkt
+  // im selben Host wie #cart-focus-stage (siehe renderFocusStage()) —
+  // keine Klick-/Drag-Logik, keine Items, nur Ein/Aus + Höhe + Farbe +
+  // Beschriftung aus js/shop/cart-preview-bars.js.
+  function renderPreviewBars(host) {
+    const cfg = window.WebBuilderCartPreviewBars?.getConfig?.();
+    if (!host || !cfg) return;
+    let top = document.getElementById("cart-preview-bar-top");
+    if (cfg.header.enabled) {
+      if (!top) {
+        top = document.createElement("div");
+        top.id = "cart-preview-bar-top";
+        top.className = "cart-preview-bar cart-preview-bar-top";
+        host.appendChild(top);
+      }
+      top.style.height = (Number(cfg.header.height) || 64) + "px";
+      top.style.backgroundColor = cfg.header.color || "#111827";
+      top.textContent = cfg.header.label || "";
+    } else if (top) {
+      top.remove();
+    }
+    let bottom = document.getElementById("cart-preview-bar-bottom");
+    if (cfg.footer.enabled) {
+      if (!bottom) {
+        bottom = document.createElement("div");
+        bottom.id = "cart-preview-bar-bottom";
+        bottom.className = "cart-preview-bar cart-preview-bar-bottom";
+        host.appendChild(bottom);
+      }
+      bottom.style.height = (Number(cfg.footer.height) || 70) + "px";
+      bottom.style.backgroundColor = cfg.footer.color || "#111827";
+      bottom.textContent = cfg.footer.label || "";
+    } else if (bottom) {
+      bottom.remove();
+    }
+  }
+
+  function removePreviewBars() {
+    document.getElementById("cart-preview-bar-top")?.remove();
+    document.getElementById("cart-preview-bar-bottom")?.remove();
   }
 
   function getPartLayout(partKey) {
@@ -178,6 +210,8 @@
       if (shapeSel) shapeSel.value = config.discountButtonShape || "rounded";
     } else if (sel === "component:progress") {
       document.getElementById("cart-comp-progress-fields")?.classList.remove("hidden");
+      const progressColorInput = document.getElementById("cart-comp-progress-color");
+      if (progressColorInput) progressColorInput.value = config.progressBarColor || "#10b981";
       window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
     } else if (sel === "component:recommend") {
       document.getElementById("cart-comp-recommend-fields")?.classList.remove("hidden");
@@ -245,21 +279,10 @@
     }
   }
 
-  // BUGFIX: Sub-Teile (Icon/Name, Menge, Preis, Entfernen, Beschreibung)
-  // und Top-Level-Komponenten (Rabattfeld, Fortschrittsbalken, ...) waren
-  // NICHT ziehbar, sobald der Klick auf ein echtes <input>/<select>/
-  // <button> innerhalb des Teils traf (z. B. das Entfernen-Icon selbst
-  // oder das Rabattcode-Feld) — der alte Code hat in diesem Fall den Drag
-  // gar nicht erst gestartet, sondern nur selektiert. Da innerhalb des
-  // Warenkorb-Editors ohnehin NIE eine echte Aktion ausgelöst werden soll
-  // (siehe AUFGABE B: Entfernen/Menge/Preis/Rabatt-Anwenden sind über die
-  // #cart-items-list-Scoping-Konvention in cart-render.js bereits
-  // geschützt), gibt es hier jetzt keine Sonderbehandlung mehr: JEDER
-  // Klick auf einen Teil/eine Komponente startet preventDefault() + Drag,
-  // unabhängig vom genauen Ziel-Element. Das macht z. B. das
-  // Entfernen-Symbol zu einem reinen Ziehgriff (keine Button-Funktion
-  // mehr erreichbar) und verhindert zugleich, dass Texteingaben (Rabatt-
-  // code-Feld) durch Fokus/Tippen "funktionieren".
+  // Jeder Klick auf einen Teil/eine Komponente startet preventDefault() +
+  // Drag, unabhängig vom genauen Ziel-Element (Button, Input, Select) —
+  // im Warenkorb-Editor soll NIE eine echte Aktion ausgelöst werden
+  // (Aufgabe B), jedes dieser Elemente ist ein reiner Ziehgriff.
   function bindFocusStageInteractions(container) {
     if (!container || container.dataset.webBuilderPartsBound === "true") return;
     container.dataset.webBuilderPartsBound = "true";
@@ -344,17 +367,13 @@
         const startX = e.clientX, startY = e.clientY;
         let moved = false;
 
-        // BUGFIX: Bounds relativ zur Eltern-Artikel-Box (.cart-item), damit
-        // sich Icon/Name, Menge, Preis, Entfernen-Button und Beschreibung
-        // nicht mehr aus dem Produktfeld herausziehen lassen. Einmalig
-        // beim Drag-Start berechnet: "natural*" = aktuelle Position minus
-        // dem schon aktiven Transform-Offset (origin), daraus ergibt sich
-        // der erlaubte x/y-Bereich, in dem die linke/obere bzw.
+        // Bounds relativ zur Eltern-Artikel-Box (.cart-item), damit sich
+        // Icon/Name, Menge, Preis, Entfernen-Button und Beschreibung nicht
+        // aus dem Produktfeld herausziehen lassen. Einmalig beim
+        // Drag-Start berechnet: "natural*" = aktuelle Position minus dem
+        // schon aktiven Transform-Offset (origin), daraus ergibt sich der
+        // erlaubte x/y-Bereich, in dem die linke/obere bzw.
         // rechte/untere Kante des Teils innerhalb der Artikel-Box bleibt.
-        // Die Stage liegt außerhalb von .canvas-column und ist nicht
-        // gezoomt, daher genügen rohe Client-Pixel-Deltas ohne
-        // Zoom-Korrektur (siehe canvas/alignment.js für den Vergleich mit
-        // dem gezoomten Canvas).
         const itemEl = partEl.closest(".cart-item");
         let bounds = null;
         if (itemEl) {
@@ -424,8 +443,9 @@
       stage.className = "cart-focus-stage";
       host.appendChild(stage);
     }
-    // Stage auf den Bereich zwischen Header-Unterkante und
-    // Footer-Oberkante begrenzen (siehe computeStageInsets() oben).
+    renderPreviewBars(host);
+    // Stage auf den Bereich zwischen Vorschau-Header und Vorschau-Footer
+    // begrenzen (siehe computeStageInsets() oben).
     const insets = computeStageInsets();
     stage.style.top = insets.top + "px";
     stage.style.bottom = insets.bottom + "px";
@@ -474,6 +494,7 @@
     state.cartFocusSelectedPart = null;
     document.body.classList.remove("cart-focus-active");
     document.getElementById("cart-focus-stage")?.remove();
+    removePreviewBars();
     document.getElementById("cart-inspector-form")?.classList.add("hidden");
   }
   function bindFocusEditor() {
@@ -521,6 +542,12 @@
     }, true);
     document.getElementById("cart-comp-discount-shape")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ discountButtonShape: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
+    // Fortschrittsbalken-Farbe (component:progress).
+    document.getElementById("cart-comp-progress-color")?.addEventListener("input", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ progressBarColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
@@ -614,12 +641,6 @@
       refreshCartViews();
     }, true);
 
-    // Bühnen-Bereich (zwischen Header/Footer) bei Fenstergrößenänderung
-    // und bei Header-/Footer-Änderungen (z. B. Höhe per Ziehgriff
-    // angepasst) neu berechnen, solange der Warenkorb-Editor offen ist.
-    window.addEventListener("resize", () => { if (state.cartFocusMode) renderFocusStage(); });
-    window.WebBuilderHeaderFooter?.onChange?.(() => { if (state.cartFocusMode) renderFocusStage(); });
-
     document.addEventListener("keydown", e => { if (e.key === "Escape" && state.cartFocusMode) exitFocusMode(); });
   }
   document.addEventListener("DOMContentLoaded", () => setTimeout(bindFocusEditor, 0));
@@ -627,8 +648,9 @@
     enter: enterFocusMode,
     exit: exitFocusMode,
     isActive: () => !!state.cartFocusMode,
-    // Exposed for cart-render.js's refreshCartViews()/renderConfig(), so
-    // the editor stage stays in sync whenever the drawer/config re-renders.
+    // Exposed for cart-render.js's refreshCartViews()/renderConfig() and
+    // cart-preview-bars.js, so the editor stage stays in sync whenever
+    // the drawer/config/preview bars re-render.
     renderStage: renderFocusStage,
     renderPartPanel: renderFocusPartPanel
   };
