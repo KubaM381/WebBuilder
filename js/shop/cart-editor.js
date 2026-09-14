@@ -1,7 +1,7 @@
 // js/shop/cart-editor.js
 // WebBuilder cart focus editor ("Warenkorb-Editor").
 // Owns the dedicated editing stage mounted into .canvas-container: shows
-// the full cart body (via cart-render.js's buildCartHtml()) centered over
+// the full cart body (via cart-render.js's buildCartParts()) centered over
 // the canvas, lets the user click/drag individual parts and top-level
 // components, and drives the right-hand #cart-inspector-form panel. Cart
 // data/CRUD lives in cart-data.js, shared HTML building + the real drawer
@@ -546,11 +546,25 @@
     const cardBgStyle = config.cardBackgroundColor ? ` style="background-color:${config.cardBackgroundColor};"` : "";
     const cartTitle = config.cartTitleLabel || "Dein Warenkorb";
     const previewCount = usingDemo ? (Number(items[0]?.qty) || 0) : cart.getCount();
-    const buildCartHtml = window.WebBuilderCartRuntime?.buildCartHtml;
+    // T3: build the cart body as separate parts instead of one combined
+    // string — progress bar goes into a fixed top strip, the item list
+    // into its own scrollable middle section, and recommendation/
+    // discount/totals into a fixed bottom strip (see
+    // css/modals.css .cart-focus-fixed-top/.cart-focus-scroll/
+    // .cart-focus-fixed-bottom). The real drawer keeps rendering via
+    // buildCartHtml() unchanged (cart-render.js renderCart()).
+    const buildCartParts = window.WebBuilderCartRuntime?.buildCartParts;
+    const parts = buildCartParts
+      ? buildCartParts(items, { interactive: true, isDemo: usingDemo })
+      : { progress: "", items: "", recommend: "", discount: "", totals: "" };
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
         <div class="drawer-header cart-focus-header${headerSelectedClass}" data-cart-component="header"><h3>${esc(cartTitle)} (${previewCount})</h3><button type="button" class="close-btn" disabled>&times;</button></div>
-        <div class="cart-focus-body">${buildCartHtml ? buildCartHtml(items, { interactive: true, isDemo: usingDemo }) : ""}</div>
+        <div class="cart-focus-body">
+          <div class="cart-focus-fixed-top">${parts.progress}</div>
+          <div class="cart-focus-scroll">${parts.items}</div>
+          <div class="cart-focus-fixed-bottom">${parts.recommend}${parts.discount}${parts.totals}</div>
+        </div>
         <button type="button" class="btn btn-primary cart-focus-checkout${checkoutSelectedClass}" data-cart-component="checkout" style="width:100%; background-color:${checkoutColor}; border-radius:${checkoutRadius}; transform:translate(${checkoutLayout.x || 0}px, ${checkoutLayout.y || 0}px);">${esc(state.cartButtonLabel || "Zur Kasse gehen")}</button>
       </div>
     `;
