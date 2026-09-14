@@ -41,12 +41,19 @@ body.preview-mode .canvas-extend-wrap { display: none !important; }
    exitFocusMode()) — hides normal canvas content so only the cart demo
    item on #cart-focus-stage is visible, and swaps the right inspector to
    #cart-inspector-form. Kept centralized here per the same reasoning as
-   body.preview-mode above: it cuts across canvas, inspector and controls. */
+   body.preview-mode above: it cuts across canvas, inspector and controls.
+   Aufgabe I: .builder-bar (Header/Footer) ist HIER BEWUSST NICHT MEHR
+   gelistet — Header/Footer bleiben während des Warenkorb-Editors sichtbar
+   und bedienbar. Die Editor-Bühne (#cart-focus-stage, css/modals.css)
+   beschränkt sich dafür live per JS (js/cart.js computeStageInsets()) auf
+   den Bereich zwischen Header-Unterkante und Footer-Oberkante, statt sich
+   z-index-mäßig mit den Bars zu überlappen. #bar-inspector-form ist
+   ebenfalls nicht mehr pauschal versteckt — das steuert jetzt situativ
+   header-footer.js renderEditor() (sichtbar, sobald ein Bar-Item
+   selektiert ist; #cart-inspector-form tritt dafür kurz zur Seite). */
 body.cart-focus-active #canvas .placed-element,
-body.cart-focus-active #canvas .builder-bar,
 body.cart-focus-active .canvas-hint,
 body.cart-focus-active .zoom-controls,
 body.cart-focus-active .canvas-extend-wrap { display: none !important; }
 body.cart-focus-active #inspector-form,
-body.cart-focus-active #bar-inspector-form,
 body.cart-focus-active #no-selection { display: none !important; }
