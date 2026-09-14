@@ -224,6 +224,21 @@
     }
   }
 
+  // BUGFIX: Sub-Teile (Icon/Name, Menge, Preis, Entfernen, Beschreibung)
+  // und Top-Level-Komponenten (Rabattfeld, Fortschrittsbalken, ...) waren
+  // NICHT ziehbar, sobald der Klick auf ein echtes <input>/<select>/
+  // <button> innerhalb des Teils traf (z. B. das Entfernen-Icon selbst
+  // oder das Rabattcode-Feld) — der alte Code hat in diesem Fall den Drag
+  // gar nicht erst gestartet, sondern nur selektiert. Da innerhalb des
+  // Warenkorb-Editors ohnehin NIE eine echte Aktion ausgelöst werden soll
+  // (siehe AUFGABE B: Entfernen/Menge/Preis/Rabatt-Anwenden sind über die
+  // #cart-items-list-Scoping-Konvention in cart-render.js bereits
+  // geschützt), gibt es hier jetzt keine Sonderbehandlung mehr: JEDER
+  // Klick auf einen Teil/eine Komponente startet preventDefault() + Drag,
+  // unabhängig vom genauen Ziel-Element. Das macht z. B. das
+  // Entfernen-Symbol zu einem reinen Ziehgriff (keine Button-Funktion
+  // mehr erreichbar) und verhindert zugleich, dass Texteingaben (Rabatt-
+  // code-Feld) durch Fokus/Tippen "funktionieren".
   function bindFocusStageInteractions(container) {
     if (!container || container.dataset.webBuilderPartsBound === "true") return;
     container.dataset.webBuilderPartsBound = "true";
@@ -271,10 +286,6 @@
       const compEl = e.target.closest?.("[data-cart-component]");
       if (compEl) {
         const key = compEl.dataset.cartComponent;
-        if (e.target.closest?.("input, textarea, select, button")) {
-          selectFocusPartLight(`component:${key}`);
-          return;
-        }
         e.preventDefault(); e.stopPropagation();
         selectFocusPartLight(`component:${key}`);
         const origin = state.cartConfig.componentLayout[key] || { x: 0, y: 0 };
@@ -306,21 +317,50 @@
       const partEl = e.target.closest?.("[data-cart-part]");
       if (partEl) {
         const partKey = partEl.dataset.cartPart;
-        if (e.target.closest?.("input, textarea, select, button")) {
-          selectFocusPartLight(partKey);
-          return;
-        }
         e.preventDefault(); e.stopPropagation();
         selectFocusPartLight(partKey);
         const origin = getPartLayout(partKey);
         const startX = e.clientX, startY = e.clientY;
         let moved = false;
+
+        // BUGFIX: Bounds relativ zur Eltern-Artikel-Box (.cart-item), damit
+        // sich Icon/Name, Menge, Preis, Entfernen-Button und Beschreibung
+        // nicht mehr aus dem Produktfeld herausziehen lassen. Einmalig
+        // beim Drag-Start berechnet: "natural*" = aktuelle Position minus
+        // dem schon aktiven Transform-Offset (origin), daraus ergibt sich
+        // der erlaubte x/y-Bereich, in dem die linke/obere bzw.
+        // rechte/untere Kante des Teils innerhalb der Artikel-Box bleibt.
+        // Die Stage liegt außerhalb von .canvas-column und ist nicht
+        // gezoomt, daher genügen rohe Client-Pixel-Deltas ohne
+        // Zoom-Korrektur (siehe canvas/alignment.js für den Vergleich mit
+        // dem gezoomten Canvas).
+        const itemEl = partEl.closest(".cart-item");
+        let bounds = null;
+        if (itemEl) {
+          const itemRect = itemEl.getBoundingClientRect();
+          const partRect = partEl.getBoundingClientRect();
+          const naturalLeft = partRect.left - (origin.x || 0);
+          const naturalTop = partRect.top - (origin.y || 0);
+          const rawMinX = itemRect.left - naturalLeft;
+          const rawMaxX = itemRect.right - partRect.width - naturalLeft;
+          const rawMinY = itemRect.top - naturalTop;
+          const rawMaxY = itemRect.bottom - partRect.height - naturalTop;
+          bounds = {
+            minX: Math.min(rawMinX, rawMaxX), maxX: Math.max(rawMinX, rawMaxX),
+            minY: Math.min(rawMinY, rawMaxY), maxY: Math.max(rawMinY, rawMaxY)
+          };
+        }
+
         try { partEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         function onMove(moveEvent) {
           const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
           if (!moved && Math.hypot(dx, dy) < 3) return;
           moved = true;
-          const nextX = origin.x + dx, nextY = origin.y + dy;
+          let nextX = origin.x + dx, nextY = origin.y + dy;
+          if (bounds) {
+            nextX = Math.min(bounds.maxX, Math.max(bounds.minX, nextX));
+            nextY = Math.min(bounds.maxY, Math.max(bounds.minY, nextY));
+          }
           partEl.style.transform = `translate(${nextX}px, ${nextY}px)`;
           setPartLayoutSilent(partKey, nextX, nextY);
         }
