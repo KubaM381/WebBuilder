@@ -71,6 +71,10 @@
     return item?{ref,item}:null;
   }
   // Deselect canvas element too — mirrors inspector.js select(); panels are mutually exclusive.
+  // Aufgabe I: ruft bewusst select(null) auf (nie mit einer echten id) —
+  // dadurch löst die Auswahl eines Kopf-/Fußzeilen-Elements NIE den
+  // automatischen "Warenkorb-Editor verlassen"-Zweig in inspector.js
+  // select() aus (siehe Aufgabe H), der nur bei id!=null greift.
   function selectItem(target,id){
     state.selectedBarItemRef={target,id};
     if(window.WebBuilderInspector?.select) window.WebBuilderInspector.select(null);
@@ -252,14 +256,21 @@
     const panel=byId("bar-inspector-form");
     const emptyMsg=byId("no-selection");
     const elementForm=byId("inspector-form");
+    // Aufgabe I: der Warenkorb-Editor läuft im Hintergrund weiter, wenn
+    // ein Kopf-/Fußzeilen-Element ausgewählt wird — #cart-inspector-form
+    // tritt dafür nur vorübergehend zur Seite und kommt automatisch
+    // zurück, sobald kein Bar-Item mehr selektiert ist (siehe unten).
+    const cartForm=byId("cart-inspector-form");
     const sel=currentSelection();
     const showBar=!!sel&&!state.selectedElementId;
     if(panel)panel.classList.toggle("hidden",!showBar);
     if(showBar){
       elementForm?.classList.add("hidden");
       emptyMsg?.classList.add("hidden");
-    }else if(!state.selectedElementId){
-      emptyMsg?.classList.remove("hidden");
+      cartForm?.classList.add("hidden");
+    }else{
+      if(!state.selectedElementId&&!state.cartFocusMode)emptyMsg?.classList.remove("hidden");
+      if(state.cartFocusMode)cartForm?.classList.remove("hidden");
     }
     if(!sel)return;
     const{item}=sel;
