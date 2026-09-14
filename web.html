@@ -68,14 +68,17 @@
 
         <div class="section-title">Eigene Icons</div>
         <div class="sidebar-subsection">
-          <p class="help-text" style="margin-bottom:8px;">Füge ein eigenes Icon per SVG-Code (z. B. <code>&lt;svg&gt;...&lt;/svg&gt;</code>) oder Bild-URL hinzu. Eigene Icons gelten nur für die aktuelle Sitzung und werden nicht im Projekt gespeichert.</p>
+          <p class="help-text" style="margin-bottom:8px;">Füge ein eigenes Icon per Bilddatei hinzu. Eigene Icons gelten nur für die aktuelle Sitzung und werden nicht im Projekt gespeichert.</p>
           <div class="form-group">
             <label for="custom-icon-name">Name</label>
             <input type="text" id="custom-icon-name" placeholder="z. B. haken">
           </div>
           <div class="form-group">
-            <label for="custom-icon-source">SVG-Code oder Bild-URL</label>
-            <input type="text" id="custom-icon-source" placeholder="<svg ...>...</svg> oder https://...">
+            <label>Bilddatei</label>
+            <div class="file-input-wrapper">
+              <button type="button" class="file-input-btn">📁 Datei wählen</button>
+              <input type="file" id="custom-icon-file" accept="image/*">
+            </div>
           </div>
           <button type="button" id="btn-add-custom-icon" class="btn btn-secondary" style="width:100%;">+ Icon hinzufügen</button>
           <div id="custom-icon-palette" class="palette-grid" style="margin-top:10px;"></div>
