@@ -187,7 +187,12 @@
     if (config.discountEnabled) {
       const discColor = config.discountButtonColor || "#4f46e5";
       const discRadius = config.discountButtonShape === "pill" ? "999px" : (config.discountButtonShape === "square" ? "0px" : "6px");
-      const discountHtml = `<div class="cart-discount"><input type="text" class="cart-discount-input" placeholder="Rabattcode (Demo: DEMO10)"><button type="button" class="cart-discount-apply-btn" style="background-color:${discColor}; border-radius:${discRadius};">Anwenden</button>${state.appliedDiscountLabel ? `<p class="cart-discount-msg ok">${esc(state.appliedDiscountLabel)}</p>` : ""}</div>`;
+      // BUGFIX: im Warenkorb-Editor (interactive) ist das Feld rein
+      // optisch/verschiebbar — readonly, damit man dort nicht versehentlich
+      // einen Code eintippt, der ohnehin nirgends ausgewertet wird (siehe
+      // cart-editor.js bindFocusStageInteractions(), das Klicks hier nur
+      // zum Verschieben des ganzen Rabatt-Blocks nutzt statt zu tippen).
+      const discountHtml = `<div class="cart-discount"><input type="text" class="cart-discount-input" placeholder="Rabattcode (Demo: DEMO10)"${interactive ? " readonly" : ""}><button type="button" class="cart-discount-apply-btn" style="background-color:${discColor}; border-radius:${discRadius};">Anwenden</button>${state.appliedDiscountLabel ? `<p class="cart-discount-msg ok">${esc(state.appliedDiscountLabel)}</p>` : ""}</div>`;
       html += wrapComponent(discountHtml, "discount", interactive);
     }
 
@@ -209,9 +214,58 @@
     return html;
   }
 
+  // Delegierte Bindings für den Empfehlungs-Editor, EINMALIG auf den nie
+  // ersetzten Container gelegt statt auf jede wegwerfbare Zeile.
+  // BUGFIX: Die alte Version hat nach jedem renderRecommendList()-Aufruf
+  // direkt an jede Zeile neu gebunden — eine einzelne Bearbeitung (z. B.
+  // Alternativ-Produkt wählen) hat renderRecommendList() aber bis zu
+  // dreimal synchron im selben Aufruf-Stack ausgelöst (einmal über den
+  // expliziten Aufruf danach, einmal über refreshCartViews(), einmal über
+  // den "cart"-state.subscribe unten) — dabei wurde genau das
+  // Select/Input, mit dem der Nutzer gerade interagiert, wiederholt aus
+  // dem DOM gerissen und neu aufgebaut. Delegation auf den stabilen
+  // Container macht die Bindings unabhängig davon, wie oft/wann die
+  // Zeilen neu gebaut werden.
+  function bindRecommendListDelegated() {
+    const listEl = document.getElementById("cart-recommend-list");
+    if (!listEl || listEl.dataset.webBuilderRecBound === "true") return;
+    listEl.dataset.webBuilderRecBound = "true";
+
+    listEl.addEventListener("click", e => {
+      const btn = e.target.closest?.(".item-delete[data-rec-id]");
+      if (!btn) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      cart.removeRecommendation(btn.dataset.recId);
+    }, true);
+
+    listEl.addEventListener("change", e => {
+      const textInput = e.target.closest?.(".rec-text[data-rec-id]");
+      if (textInput) { cart.updateRecommendation(textInput.dataset.recId, { text: textInput.value }); return; }
+
+      const altSelect = e.target.closest?.(".rec-alternative[data-rec-id]");
+      if (altSelect) { cart.updateRecommendation(altSelect.dataset.recId, { alternativeProductId: altSelect.value || null }); return; }
+
+      const condType = e.target.closest?.(".rec-condition-type[data-rec-id]");
+      if (condType) {
+        const recId = condType.dataset.recId;
+        const rec = (cart.getConfig().recommendations || []).find(r => r.id === recId);
+        cart.updateRecommendation(recId, { condition: { type: condType.value, value: rec?.condition?.value || 0 } });
+        return;
+      }
+
+      const condValue = e.target.closest?.(".rec-condition-value[data-rec-id]");
+      if (condValue) {
+        const recId = condValue.dataset.recId;
+        const rec = (cart.getConfig().recommendations || []).find(r => r.id === recId);
+        cart.updateRecommendation(recId, { condition: { type: rec?.condition?.type || "none", value: Number(condValue.value) || 0 } });
+      }
+    }, true);
+  }
+
   function renderRecommendList() {
     const listEl = document.getElementById("cart-recommend-list");
     if (!listEl) return;
+    bindRecommendListDelegated();
     let list = Array.isArray(cart.getConfig()?.recommendations) ? cart.getConfig().recommendations : [];
     // Drop recommendations whose product was deleted in the meantime.
     const valid = list.filter(rec => window.WebBuilderProducts?.getById?.(rec.productId));
@@ -244,34 +298,6 @@
       `;
       listEl.appendChild(row);
     });
-
-    listEl.querySelectorAll(".item-delete[data-rec-id]").forEach(btn => btn.addEventListener("click", e => {
-      e.preventDefault(); e.stopImmediatePropagation();
-      cart.removeRecommendation(e.currentTarget.dataset.recId);
-      renderRecommendList();
-      refreshCartViews();
-    }, true));
-    listEl.querySelectorAll(".rec-text").forEach(inp => inp.addEventListener("change", e => {
-      cart.updateRecommendation(e.target.dataset.recId, { text: e.target.value });
-      refreshCartViews();
-    }, true));
-    listEl.querySelectorAll(".rec-alternative").forEach(sel => sel.addEventListener("change", e => {
-      cart.updateRecommendation(e.target.dataset.recId, { alternativeProductId: e.target.value || null });
-      refreshCartViews();
-    }, true));
-    listEl.querySelectorAll(".rec-condition-type").forEach(sel => sel.addEventListener("change", e => {
-      const recId = e.target.dataset.recId;
-      const rec = (cart.getConfig().recommendations || []).find(r => r.id === recId);
-      cart.updateRecommendation(recId, { condition: { type: e.target.value, value: rec?.condition?.value || 0 } });
-      renderRecommendList();
-      refreshCartViews();
-    }, true));
-    listEl.querySelectorAll(".rec-condition-value").forEach(inp => inp.addEventListener("change", e => {
-      const recId = e.target.dataset.recId;
-      const rec = (cart.getConfig().recommendations || []).find(r => r.id === recId);
-      cart.updateRecommendation(recId, { condition: { type: rec?.condition?.type || "none", value: Number(e.target.value) || 0 } });
-      refreshCartViews();
-    }, true));
   }
 
   function bindAddRecommendation() {
