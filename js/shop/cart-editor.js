@@ -135,7 +135,8 @@
   const PART_FIELD_BLOCK_IDS = [
     "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
-    "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields"
+    "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
+    "cart-comp-totals-fields"
   ];
 
   function renderFocusPartPanel() {
@@ -153,7 +154,8 @@
     const labels = {
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
-      "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung"
+      "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
+      "component:totals": "Kosten-Übersicht"
     };
     const labelEl = document.getElementById("cart-part-label");
     if (labelEl) labelEl.textContent = labels[sel] || sel;
@@ -200,6 +202,25 @@
       dividerGroup?.classList.toggle("hidden", config.itemShape !== "transparent");
       const dividerCb = document.getElementById("cid-show-item-dividers");
       if (dividerCb) dividerCb.checked = !!config.itemDisplay.showItemDividers;
+    } else if (sel === "component:totals") {
+      // "Kosten-Übersicht": Texte/Labels für Zwischensumme, Rabatt,
+      // Versand, Gesamt, plus Versandkosten-Betrag und der Text bei
+      // kostenlosem Versand. Siehe cart-data.js normalizeState() für die
+      // Default-Werte (entsprechen dem bisherigen fest verdrahteten
+      // Verhalten in cart-render.js).
+      document.getElementById("cart-comp-totals-fields")?.classList.remove("hidden");
+      const subtotalInput = document.getElementById("cart-comp-subtotal-label");
+      if (subtotalInput && document.activeElement !== subtotalInput) subtotalInput.value = config.subtotalLabel || "Zwischensumme";
+      const discountInput = document.getElementById("cart-comp-discount-label");
+      if (discountInput && document.activeElement !== discountInput) discountInput.value = config.discountLabel || "Rabatt";
+      const shippingLabelInput = document.getElementById("cart-comp-shipping-label");
+      if (shippingLabelInput && document.activeElement !== shippingLabelInput) shippingLabelInput.value = config.shippingLabel || "Versand";
+      const shippingCostInput = document.getElementById("cart-comp-shipping-cost");
+      if (shippingCostInput && document.activeElement !== shippingCostInput) shippingCostInput.value = config.shippingCost != null ? config.shippingCost : 4.95;
+      const shippingFreeInput = document.getElementById("cart-comp-shipping-free-text");
+      if (shippingFreeInput && document.activeElement !== shippingFreeInput) shippingFreeInput.value = config.shippingFreeText || "Kostenlos";
+      const totalLabelInput = document.getElementById("cart-comp-total-label");
+      if (totalLabelInput && document.activeElement !== totalLabelInput) totalLabelInput.value = config.totalLabel || "Gesamt";
     } else if (sel === "qty") {
       document.getElementById("cart-comp-qty-fields")?.classList.remove("hidden");
       const qs = document.getElementById("cid-quantity-style"); if (qs) qs.value = config.itemDisplay.quantityStyle || "stepper";
@@ -427,7 +448,7 @@
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
         <div class="cart-focus-header">
-          <p class="cart-focus-hint">🛒 Warenkorb-Editor — klicke auf einen Bereich (Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Hintergrund), um ihn anzupassen</p>
+          <p class="cart-focus-hint">🛒 Warenkorb-Editor — klicke auf einen Bereich (Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Hintergrund), um ihn anzupassen</p>
           <button type="button" class="btn btn-danger-outline btn-sm" id="cart-focus-exit-inline">✖</button>
         </div>
         <div class="cart-focus-body">${buildCartHtml ? buildCartHtml(items, { interactive: true, isDemo: usingDemo }) : ""}</div>
@@ -505,6 +526,36 @@
 
     document.getElementById("cart-comp-bg-color")?.addEventListener("input", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ cardBackgroundColor: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
+    // "Kosten-Übersicht" (component:totals): Texte/Labels + Versandkosten.
+    // Alle setConfig()-Aufrufe fallen auf den jeweiligen Default zurück,
+    // falls das Feld geleert wird, statt eine leere Zeile im Warenkorb
+    // anzuzeigen.
+    document.getElementById("cart-comp-subtotal-label")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ subtotalLabel: e.target.value.trim() || "Zwischensumme" }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-discount-label")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ discountLabel: e.target.value.trim() || "Rabatt" }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-shipping-label")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ shippingLabel: e.target.value.trim() || "Versand" }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-shipping-cost")?.addEventListener("change", e => {
+      const v = Math.max(0, Number(e.target.value) || 0);
+      window.WebBuilderHistory?.arm(); cart.setConfig({ shippingCost: v }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-shipping-free-text")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ shippingFreeText: e.target.value.trim() || "Kostenlos" }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-total-label")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ totalLabel: e.target.value.trim() || "Gesamt" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
