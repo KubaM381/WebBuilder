@@ -1,26 +1,37 @@
 // WebBuilder bootstrap
-// The js/ directory intentionally contains only the main builder domains.
-// builder.js remains the central bootstrap/core and is not split further.
-document.write('<script src="js/state.js"><\/script>');
+// The js/ directory is split into core/canvas/editor/layout/shop/ui
+// subfolders (see js/README.md for the full layout and the reasoning
+// behind the load order below). builder.js stays a pure orchestrator:
+// fix the load order, then kick off the initial render once everything
+// is loaded.
+document.write('<script src="js/core/state.js"><\/script>');
+document.write('<script src="js/core/utils.js"><\/script>');
 document.write('<script src="js/ui/toast.js"><\/script>');
-document.write('<script src="js/storage.js"><\/script>');
-document.write('<script src="js/elements.js"><\/script>');
-// products.js must load before cart.js — cart.js references products only
-// via window.WebBuilderProducts.
-document.write('<script src="js/products.js"><\/script>');
-document.write('<script src="js/cart.js"><\/script>');
-document.write('<script src="js/canvas.js"><\/script>');
-// ui/shared-markup.js must load before inspector.js and header-footer.js:
-// it fills the action-type <select> options and the text-format toolbar
-// buttons (shared markup for #prop-*/#bar-prop-*, see its own header
-// comment) that those two modules read/bind right after DOMContentLoaded.
+document.write('<script src="js/core/storage.js"><\/script>');
+document.write('<script src="js/canvas/elements.js"><\/script>');
+// shop/products.js must load before shop/cart-data.js — cart-data.js
+// references products only via window.WebBuilderProducts.
+document.write('<script src="js/shop/products.js"><\/script>');
+document.write('<script src="js/shop/cart-data.js"><\/script>');
+document.write('<script src="js/shop/cart-render.js"><\/script>');
+document.write('<script src="js/shop/cart-editor.js"><\/script>');
+// canvas/alignment.js must load before canvas/canvas.js and
+// layout/header-footer.js: both call window.WebBuilderAlignment at
+// runtime for drag/click interaction + alignment-guide snapping.
+document.write('<script src="js/canvas/alignment.js"><\/script>');
+document.write('<script src="js/canvas/canvas.js"><\/script>');
+// ui/shared-markup.js must load before editor/inspector.js and
+// layout/header-footer.js: it fills the action-type <select> options and
+// the text-format toolbar buttons (shared markup for #prop-*/#bar-prop-*)
+// that those two modules read/bind right after DOMContentLoaded.
 document.write('<script src="js/ui/shared-markup.js"><\/script>');
-document.write('<script src="js/inspector.js"><\/script>');
+document.write('<script src="js/editor/inspector.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
-document.write('<script src="js/header-footer.js"><\/script>');
+document.write('<script src="js/layout/header-footer.js"><\/script>');
 document.write('<script src="js/export.js"><\/script>');
 document.write('<script src="js/ui/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
+document.write('<script src="js/ui/tabs.js"><\/script>');
 // Supabase files live in js/Supabase/ (see its README) as ES modules —
 // supabase-ui.js imports directly from supabase-data.js, so the order of
 // these three lines is informal only, not functionally required.
@@ -29,32 +40,6 @@ document.write('<script src="js/preview.js"><\/script>');
 document.write('<script type="module" src="js/Supabase/supabase-config.js"><\/script>');
 document.write('<script type="module" src="js/Supabase/supabase-data.js"><\/script>');
 document.write('<script type="module" src="js/Supabase/supabase-ui.js"><\/script>');
-
-// Wires up the sidebar tab buttons (Elemente/Kopf-Fuß/Warenkorb/Produkte).
-function initSidebarTabs() {
-  const tabs = document.querySelectorAll(".sidebar-tab");
-  const panels = document.querySelectorAll(".sidebar-panel");
-  if (!tabs.length) return;
-  tabs.forEach(tab => {
-    if (tab.dataset.webBuilderTabBound === "true") return;
-    tab.dataset.webBuilderTabBound = "true";
-    tab.addEventListener("click", () => {
-      // Aufgabe H: Ein Wechsel auf einen anderen Sidebar-Tab ist eine
-      // normale Editor-Hauptaktion und beendet einen offen gelassenen
-      // Warenkorb-Editor automatisch — außer man klickt gerade (erneut)
-      // auf den Warenkorb-Tab selbst, in dem der Öffnen-Button liegt; das
-      // soll einen bereits offenen Editor nicht sofort wieder schließen.
-      if (tab.dataset.tab !== "cart" && window.WebBuilderCartFocus?.isActive?.()) {
-        window.WebBuilderCartFocus.exit();
-      }
-      tabs.forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-      panels.forEach(p => p.classList.add("hidden"));
-      const target = document.getElementById("panel-" + tab.dataset.tab);
-      if (target) target.classList.remove("hidden");
-    });
-  });
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   window.WebBuilderStorage?.loadIntoState?.();
@@ -69,5 +54,4 @@ document.addEventListener('DOMContentLoaded', () => {
   window.WebBuilderCartConfigRuntime?.render?.();
   window.WebBuilderPreview?.bindToggle?.();
 
-  initSidebarTabs();
 });
