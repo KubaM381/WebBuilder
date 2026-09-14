@@ -84,8 +84,20 @@
 }
 
 /* Task 6: eigenes Bild als Produkt-Icon. Bild-Vorschau ersetzt die Emoji-
-   Vorschau im Karten-Header; die Icon-Typ-Auswahl spannt wie die
-   Beschreibung über die volle Kartenbreite. */
+   Vorschau im Karten-Header; die Beschreibung spannt wie gehabt über die
+   volle Kartenbreite. */
 .product-card-icon-img { width: 32px; height: 32px; object-fit: cover; border-radius: 6px; flex: none; }
-.product-card-icon-fields { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
+/* Aufgabe G (Layout-Fix): NUR die beiden bedingten Icon-Wertfelder (Emoji-
+   Eingabe ODER Bild-Upload — es ist immer genau eines sichtbar) spannen
+   die volle Breite. Das Icon-Typ-<select> selbst ist bewusst KEIN
+   vollbreites Feld mehr (siehe js/products.js renderProducts()), sondern
+   ein normales einspaltiges Grid-Feld, das sich mit "Rabattpreis" zu
+   einem sauberen 2x2-Raster ergänzt. Vorher waren Icon-Typ und die
+   bedingten Felder gemeinsam in einem vollbreiten Wrapper
+   (.product-card-icon-fields) untergebracht — bei der ungeraden Anzahl
+   vorangehender Felder (Name/Preis/Rabattpreis) erzeugte das eine leere
+   Grid-Zelle und ein sichtbar "verrutschtes" Layout.
+   .product-card-icon-fields wird nicht mehr von renderProducts() erzeugt
+   und ist hier absichtlich entfernt, statt eine tote Regel zu behalten. */
+.product-card-icon-value { grid-column: 1 / -1; }
 .product-card-fields select { padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.825rem; font-weight: 400; color: var(--text-main); }
