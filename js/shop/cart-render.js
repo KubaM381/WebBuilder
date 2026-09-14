@@ -416,6 +416,11 @@
     list.innerHTML = buildCartHtml(cart.getItems(), { interactive: false, isDemo: false });
     document.getElementById("cart-count-badge")?.replaceChildren(document.createTextNode(String(cart.getCount())));
     const config = cart.getConfig() || {};
+    // T1: real drawer title now follows cartConfig.cartTitleLabel instead
+    // of the hardcoded "Dein Warenkorb" in web.html — kept in sync with
+    // the cart-editor stage's header preview (see cart-editor.js
+    // renderFocusStage()).
+    document.getElementById("cart-title-label")?.replaceChildren(document.createTextNode(config.cartTitleLabel || "Dein Warenkorb"));
     const checkout = document.getElementById("cart-checkout-btn");
     if (checkout) {
       checkout.textContent = state.cartButtonLabel || "Zur Kasse gehen";
