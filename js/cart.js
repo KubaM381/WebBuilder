@@ -423,7 +423,7 @@
     if (config.progressEnabled) totalsHtml += `<div class="cart-total-row"><span>Versand</span><span>${shipping === 0 ? "Kostenlos" : eur(shipping)}</span></div>`;
     if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>🎁 Gratis-Produkt</span><span>freigeschaltet</span></div>`;
     totalsHtml += `<div class="cart-total-row cart-total-final"><span>Gesamt</span><span>${eur(total)}</span></div></div>`;
-    html += totalsHtml;
+    html += wrapComponent(totalsHtml, "totals", interactive);
 
     return html;
   }
@@ -683,6 +683,41 @@
   // Cart editor stage ("Warenkorb-Editor"). Siehe ausführlichen Kommentar
   // in vorherigen Versionen dieser Datei — unverändert gültig.
   // ------------------------------------------------------------------
+
+  // Aufgabe I: Kopf-/Fußzeile bleiben während des Warenkorb-Editors
+  // sichtbar und bedienbar (css/styles.css versteckt .builder-bar nicht
+  // mehr im "cart-focus-active"-Zustand). Damit die Editor-Bühne
+  // (#cart-focus-stage) die Bars dabei weder optisch verdeckt noch ihre
+  // Klicks blockiert — ein reiner z-index-Kampf würde an der
+  // Stacking-Context-Grenze von #canvas-column (siehe dessen zoom-
+  // bedingtes CSS-transform) scheitern —, beschränkt sich die Bühne
+  // stattdessen auf den Bereich zwischen der sichtbaren Header-Unterkante
+  // und der sichtbaren Footer-Oberkante. Die Positionen werden live per
+  // getBoundingClientRect() gemessen statt aus state.headerHeight/
+  // footerHeight berechnet, damit das auch bei aktivem Zoom exakt passt
+  // (die Bars liegen innerhalb des skalierten #canvas-column, die Bühne
+  // aber bewusst außerhalb, siehe web.html-Kommentar bei #canvas-column,
+  // "damit Zoom keinen Einfluss darauf hat").
+  const STAGE_BAR_GAP = 10;
+  function computeStageInsets() {
+    const host = document.querySelector(".canvas-container");
+    const canvasEl = document.getElementById("canvas");
+    if (!host || !canvasEl) return { top: 0, bottom: 0 };
+    const hostRect = host.getBoundingClientRect();
+    let top = 0, bottom = 0;
+    const headerBar = canvasEl.querySelector('.builder-bar[data-bar-target="header"]');
+    const footerBar = canvasEl.querySelector('.builder-bar[data-bar-target="footer"]');
+    if (headerBar) {
+      const r = headerBar.getBoundingClientRect();
+      top = Math.max(0, Math.round(r.bottom - hostRect.top) + STAGE_BAR_GAP);
+    }
+    if (footerBar) {
+      const r = footerBar.getBoundingClientRect();
+      bottom = Math.max(0, Math.round(hostRect.bottom - r.top) + STAGE_BAR_GAP);
+    }
+    return { top, bottom };
+  }
+
   function getPartLayout(partKey) {
     const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
     return layout[partKey] || { x: 0, y: 0 };
@@ -1002,6 +1037,11 @@
       stage.className = "cart-focus-stage";
       host.appendChild(stage);
     }
+    // Aufgabe I: Bühne auf den Bereich zwischen Header-Unterkante und
+    // Footer-Oberkante begrenzen (siehe computeStageInsets() oben).
+    const insets = computeStageInsets();
+    stage.style.top = insets.top + "px";
+    stage.style.bottom = insets.bottom + "px";
     const realItems = getItems();
     const usingDemo = realItems.length === 0;
     let items = realItems;
@@ -1156,6 +1196,13 @@
       window.WebBuilderHistory?.arm(); setItemDisplay({ showItemDividers: e.target.checked }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
+
+    // Aufgabe I: Bühnen-Bereich (zwischen Header/Footer) bei
+    // Fenstergrößenänderung und bei Header-/Footer-Änderungen (z. B.
+    // Höhe per Ziehgriff angepasst) neu berechnen, solange der
+    // Warenkorb-Editor offen ist.
+    window.addEventListener("resize", () => { if (state.cartFocusMode) renderFocusStage(); });
+    window.WebBuilderHeaderFooter?.onChange?.(() => { if (state.cartFocusMode) renderFocusStage(); });
 
     document.addEventListener("keydown", e => { if (e.key === "Escape" && state.cartFocusMode) exitFocusMode(); });
   }
