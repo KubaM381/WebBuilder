@@ -153,7 +153,22 @@
       const next = milestones.find(m => subtotal < Number(m.amount));
       const reachedNow = milestones.filter(m => subtotal >= Number(m.amount || 0));
       const rewardsHtml = reachedNow.length ? `<div class="cart-milestone-rewards">${reachedNow.map(m => `<span class="cart-milestone-reward" title="${esc(m.label)}">${esc(m.icon || "🎉")}</span>`).join("")}</div>` : "";
-      const progressHtml = `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%"></div>${milestones.map(m => `<div class="cart-progress-mark ${subtotal >= Number(m.amount) ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%" title="${esc(m.label)}"></div>`).join("")}</div>${rewardsHtml}<p class="cart-progress-msg">${next ? `Noch ${eur(Number(next.amount) - subtotal)} bis „${esc(next.label)}“` : "✓ Alle Ziele freigeschaltet"}</p></div>`;
+      const barColor = config.progressBarColor || "#10b981";
+      // Text im Fortschritts-Bereich: solange ein weiterer Meilenstein
+      // fehlt, unverändert "Noch X bis Label". Ist der höchste Meilenstein
+      // erreicht (kein "next" mehr), zeigt sein optionales `reachedText`
+      // eine individuelle Erfolgsmeldung statt des generischen Standard-
+      // textes.
+      const highestReached = reachedNow[reachedNow.length - 1];
+      let progressMsg;
+      if (next) {
+        progressMsg = `Noch ${eur(Number(next.amount) - subtotal)} bis „${esc(next.label)}“`;
+      } else if (highestReached && highestReached.reachedText) {
+        progressMsg = esc(highestReached.reachedText);
+      } else {
+        progressMsg = "✓ Alle Ziele freigeschaltet";
+      }
+      const progressHtml = `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%; background-color:${barColor};"></div>${milestones.map(m => `<div class="cart-progress-mark ${subtotal >= Number(m.amount) ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%" title="${esc(m.label)}"></div>`).join("")}</div>${rewardsHtml}<p class="cart-progress-msg">${progressMsg}</p></div>`;
       html += wrapComponent(progressHtml, "progress", interactive);
     }
 
@@ -201,9 +216,9 @@
     const extra = reached.some(m => m.action === "discount") ? 10 : 0;
     const discountPercent = Number(state.appliedDiscountPercent || 0) + extra;
     const discountAmount = subtotal * discountPercent / 100;
-    // Versandkosten-Betrag und "Kostenlos"-Text sind jetzt im Warenkorb-
-    // Editor konfigurierbar (component:totals, siehe cart-editor.js) —
-    // Defaults (4,95 €, "Kostenlos") kommen aus cartConfig.shippingCost /
+    // Versandkosten-Betrag und "Kostenlos"-Text sind im Warenkorb-Editor
+    // konfigurierbar (component:totals, siehe cart-editor.js) — Defaults
+    // (4,95 €, "Kostenlos") kommen aus cartConfig.shippingCost /
     // cartConfig.shippingFreeText (Default-Werte in cart-data.js
     // normalizeState()), damit unveränderte Projekte exakt wie zuvor
     // aussehen.
@@ -229,16 +244,6 @@
 
   // Delegierte Bindings für den Empfehlungs-Editor, EINMALIG auf den nie
   // ersetzten Container gelegt statt auf jede wegwerfbare Zeile.
-  // BUGFIX: Die alte Version hat nach jedem renderRecommendList()-Aufruf
-  // direkt an jede Zeile neu gebunden — eine einzelne Bearbeitung (z. B.
-  // Alternativ-Produkt wählen) hat renderRecommendList() aber bis zu
-  // dreimal synchron im selben Aufruf-Stack ausgelöst (einmal über den
-  // expliziten Aufruf danach, einmal über refreshCartViews(), einmal über
-  // den "cart"-state.subscribe unten) — dabei wurde genau das
-  // Select/Input, mit dem der Nutzer gerade interagiert, wiederholt aus
-  // dem DOM gerissen und neu aufgebaut. Delegation auf den stabilen
-  // Container macht die Bindings unabhängig davon, wie oft/wann die
-  // Zeilen neu gebaut werden.
   function bindRecommendListDelegated() {
     const listEl = document.getElementById("cart-recommend-list");
     if (!listEl || listEl.dataset.webBuilderRecBound === "true") return;
@@ -346,6 +351,7 @@
       row.innerHTML = `<input type="text" class="ms-icon" data-id="${esc(m.id)}" value="${esc(m.icon || "")}" placeholder="Icon" title="Icon/Emoji, wird angezeigt sobald der Meilenstein erreicht ist">
         <input type="number" class="ms-amount" data-id="${esc(m.id)}" value="${Number(m.amount) || 0}" step="1" placeholder="Betrag (€)">
         <input type="text" class="ms-label" data-id="${esc(m.id)}" value="${esc(m.label)}" placeholder="Label">
+        <input type="text" class="ms-reached-text" data-id="${esc(m.id)}" value="${esc(m.reachedText || "")}" placeholder="Text bei Erreichen (optional)" title="Wird anstelle der Standardmeldung gezeigt, sobald dies der zuletzt erreichte Meilenstein ist">
         <select class="ms-action" data-id="${esc(m.id)}">
           <option value="free-shipping" ${m.action === "free-shipping" ? "selected" : ""}>Kostenloser Versand</option>
           <option value="discount" ${m.action === "discount" ? "selected" : ""}>Extra-Rabatt (10%)</option>
@@ -366,6 +372,10 @@
     listEl.querySelectorAll(".ms-label").forEach(inp => inp.addEventListener("input", e => {
       const m = (cart.getConfig().milestones || []).find(x => x.id === e.target.dataset.id);
       if (m) { window.WebBuilderHistory?.arm(); m.label = e.target.value; window.WebBuilderHistory?.commit(); refreshCartViews(); }
+    }, true));
+    listEl.querySelectorAll(".ms-reached-text").forEach(inp => inp.addEventListener("input", e => {
+      const m = (cart.getConfig().milestones || []).find(x => x.id === e.target.dataset.id);
+      if (m) { window.WebBuilderHistory?.arm(); m.reachedText = e.target.value; window.WebBuilderHistory?.commit(); refreshCartViews(); }
     }, true));
     listEl.querySelectorAll(".ms-action").forEach(sel => sel.addEventListener("change", e => {
       const m = (cart.getConfig().milestones || []).find(x => x.id === e.target.dataset.id);
