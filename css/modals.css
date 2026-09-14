@@ -145,17 +145,38 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    editor is active. Mounted into .canvas-container (position: relative,
    see css/canvas.css) so it stays fixed regardless of zoom. */
 .cart-focus-stage { position: absolute; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 30px; pointer-events: none; }
-.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; }
+/* T3: fixed footprint matching the real .drawer (width 380px, full
+   stage height) instead of a content-driven, whole-card-scrolling box —
+   see .cart-focus-body/.cart-focus-scroll below for the new internal
+   scroll split. overflow:hidden here since scrolling now happens only
+   inside .cart-focus-scroll. */
+.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 380px; max-width: 100%; height: 100%; max-height: 100%; overflow: hidden; display: flex; flex-direction: column; }
 /* T1: .cart-focus-header reuses .drawer-header's flex/border-bottom look
    (see the drawer-header rules above) for an accurate preview of the
    real drawer's header. The negative margin cancels out
    .cart-focus-card's own 24px padding so the header still reaches the
    card's edges, exactly like the real drawer. The close button inside is
    disabled/non-functional — purely a visual preview, dimmed accordingly. */
-.cart-focus-header { margin: -24px -24px 16px -24px; }
+.cart-focus-header { margin: -24px -24px 16px -24px; flex-shrink: 0; }
 .cart-focus-header .close-btn { opacity: 0.5; }
-.cart-focus-body { display: flex; flex-direction: column; }
-.cart-focus-checkout { margin-top: 16px; }
+/* T3: .cart-focus-body is now the flex region between the fixed header
+   and the fixed checkout button, itself split into a fixed top part
+   (progress bar), a scrollable middle part (the item list only) and a
+   fixed bottom part (recommendation/discount/totals) — see
+   js/shop/cart-render.js buildCartParts() and js/shop/cart-editor.js
+   renderFocusStage() for how the three blocks are assembled. The real
+   drawer (.drawer-body) intentionally keeps its previous single-scroll-
+   region behavior; this split is editor-only per
+   docs/CART_EDITOR_TASKS.md T3. min-height:0 is required so the nested
+   .cart-focus-scroll can actually shrink and scroll inside a flex parent
+   instead of growing to fit its content. */
+.cart-focus-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.cart-focus-fixed-top,
+.cart-focus-fixed-bottom { flex-shrink: 0; }
+.cart-focus-fixed-top:empty,
+.cart-focus-fixed-bottom:empty { display: none; }
+.cart-focus-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.cart-focus-checkout { margin-top: 16px; flex-shrink: 0; }
 /* Only inside the editor stage does the transparent item shape get a
    dashed outline, so item bounds stay visible while editing (see
    .cart-item-transparent above for the "no lines" real-preview state). */
