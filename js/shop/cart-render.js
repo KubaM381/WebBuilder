@@ -132,21 +132,22 @@
     </div>`;
   }
 
-  // Builds the shared cart body (progress bar, items, recommendation,
-  // discount, totals). Used by both the real drawer (interactive=false)
-  // and the editor stage (interactive=true, see cart-editor.js), so both
-  // stay pixel-identical apart from the editing affordances. `items`/
-  // subtotal come from the passed-in list, not from state directly, so
-  // the editor stage can show a synthetic demo item without touching the
-  // real cart.
-  function buildCartHtml(items, opts = {}) {
+  // Builds the shared cart body split into its five logical blocks
+  // (progress / items / recommendation / discount / totals) instead of a
+  // single concatenated string. buildCartHtml() below just joins them in
+  // the original order for the real drawer — the split itself exists so
+  // the cart focus editor stage (js/shop/cart-editor.js renderFocusStage(),
+  // see docs/CART_EDITOR_TASKS.md T3) can place the item block in its own
+  // scrollable region while progress/recommend/discount/totals stay fixed
+  // on screen, without duplicating any of this HTML-building logic.
+  function buildCartParts(items, opts = {}) {
     const interactive = !!opts.interactive;
     const isDemo = !!opts.isDemo;
     const config = cart.getConfig() || {};
     const milestones = Array.isArray(config.milestones) ? [...config.milestones].sort((a, b) => Number(a.amount) - Number(b.amount)) : [];
     const subtotal = items.reduce((s, i) => s + cart.getEffectivePrice(i) * (Number(i.qty) || 0), 0);
-    let html = "";
 
+    let progressPart = "";
     if (config.progressEnabled && milestones.length) {
       const max = Number(milestones[milestones.length - 1].amount || 1);
       const pct = Math.min(100, subtotal / max * 100);
@@ -169,22 +170,23 @@
         progressMsg = "✓ Alle Ziele freigeschaltet";
       }
       const progressHtml = `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%; background-color:${barColor};"></div>${milestones.map(m => `<div class="cart-progress-mark ${subtotal >= Number(m.amount) ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%" title="${esc(m.label)}"></div>`).join("")}</div>${rewardsHtml}<p class="cart-progress-msg">${progressMsg}</p></div>`;
-      html += wrapComponent(progressHtml, "progress", interactive);
+      progressPart = wrapComponent(progressHtml, "progress", interactive);
     }
 
     // Divider between items on a transparent item shape, only if enabled
     // — between each item, not before the first / after the last.
     const showDividers = config.itemShape === "transparent" && !!(config.itemDisplay || {}).showItemDividers;
-    html += items.length
+    const itemsPart = items.length
       ? items.map((i, idx) => (showDividers && idx > 0 ? '<div class="cart-item-divider"></div>' : "") + buildCartItemHTML(i, isDemo, interactive)).join("")
       : '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
 
+    let recommendPart = "";
     if (config.recommendEnabled) {
       const picked = cart.pickRecommendation(items, subtotal);
       if (picked) {
         const { rec, product } = picked;
         const recHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(rec.text || cart.defaultRecommendationText())}</p><div class="cart-recommend-card"><span class="cart-recommend-icon">${esc(product.icon || "📦")}</span><span class="cart-recommend-name">${esc(product.name)}</span><span class="cart-recommend-price">${eur(product.discountPrice != null ? product.discountPrice : product.price)}</span><button type="button" class="cart-recommend-add" data-rec-product-id="${esc(product.id)}">+</button></div></div>`;
-        html += wrapComponent(recHtml, "recommend", interactive);
+        recommendPart = wrapComponent(recHtml, "recommend", interactive);
       } else if (interactive) {
         // If recommendations are enabled but nothing is configured / no
         // condition matches, there's otherwise nothing to click in the
@@ -195,10 +197,11 @@
         // existing selection logic in cart-editor.js keeps working
         // unchanged.
         const dummyHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(cart.defaultRecommendationText())}</p><div class="cart-recommend-card"><span class="cart-recommend-icon">➕</span><span class="cart-recommend-name">Noch keine passende Empfehlung konfiguriert</span></div></div>`;
-        html += wrapComponent(dummyHtml, "recommend", interactive);
+        recommendPart = wrapComponent(dummyHtml, "recommend", interactive);
       }
     }
 
+    let discountPart = "";
     if (config.discountEnabled) {
       const discColor = config.discountButtonColor || "#4f46e5";
       const discRadius = config.discountButtonShape === "pill" ? "999px" : (config.discountButtonShape === "square" ? "0px" : "6px");
@@ -208,7 +211,7 @@
       // cart-editor.js bindFocusStageInteractions(), das Klicks hier nur
       // zum Verschieben des ganzen Rabatt-Blocks nutzt statt zu tippen).
       const discountHtml = `<div class="cart-discount"><input type="text" class="cart-discount-input" placeholder="Rabattcode (Demo: DEMO10)"${interactive ? " readonly" : ""}><button type="button" class="cart-discount-apply-btn" style="background-color:${discColor}; border-radius:${discRadius};">Anwenden</button>${state.appliedDiscountLabel ? `<p class="cart-discount-msg ok">${esc(state.appliedDiscountLabel)}</p>` : ""}</div>`;
-      html += wrapComponent(discountHtml, "discount", interactive);
+      discountPart = wrapComponent(discountHtml, "discount", interactive);
     }
 
     const reached = milestones.filter(m => subtotal >= Number(m.amount || 0));
@@ -237,9 +240,19 @@
     if (config.progressEnabled) totalsHtml += `<div class="cart-total-row"><span>${shippingLabel}</span><span>${shipping === 0 ? shippingFreeText : eur(shipping)}</span></div>`;
     if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>🎁 Gratis-Produkt</span><span>freigeschaltet</span></div>`;
     totalsHtml += `<div class="cart-total-row cart-total-final"><span>${totalLabel}</span><span>${eur(total)}</span></div></div>`;
-    html += wrapComponent(totalsHtml, "totals", interactive);
+    const totalsPart = wrapComponent(totalsHtml, "totals", interactive);
 
-    return html;
+    return { progress: progressPart, items: itemsPart, recommend: recommendPart, discount: discountPart, totals: totalsPart };
+  }
+
+  // Builds the shared cart body (progress bar, items, recommendation,
+  // discount, totals) as one concatenated string, in the original order.
+  // Used by the real drawer (interactive: false) — output is byte-
+  // identical to before the T3 split. The cart focus editor stage uses
+  // buildCartParts() directly instead (see above).
+  function buildCartHtml(items, opts = {}) {
+    const parts = buildCartParts(items, opts);
+    return parts.progress + parts.items + parts.recommend + parts.discount + parts.totals;
   }
 
   // Delegierte Bindings für den Empfehlungs-Editor, EINMALIG auf den nie
@@ -521,6 +534,6 @@
   }
   document.addEventListener("DOMContentLoaded", () => setTimeout(bindConfig, 0));
 
-  window.WebBuilderCartRuntime = { render: renderCart, refresh: refreshCartViews, open: openCart, close: closeCart, buildCartHtml };
+  window.WebBuilderCartRuntime = { render: renderCart, refresh: refreshCartViews, open: openCart, close: closeCart, buildCartHtml, buildCartParts };
   window.WebBuilderCartConfigRuntime = { render: renderConfig, renderRecommendList, renderMilestoneList };
 })();
