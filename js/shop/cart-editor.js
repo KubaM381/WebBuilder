@@ -37,8 +37,9 @@
 
   // Baut/aktualisiert die beiden rein dekorativen Vorschau-Balken direkt
   // im selben Host wie #cart-focus-stage (siehe renderFocusStage()) —
-  // keine Klick-/Drag-Logik, keine Items, nur Ein/Aus + Höhe + Farbe +
-  // Beschriftung aus js/shop/cart-preview-bars.js.
+  // keine Drag-Logik (siehe NON_POSITIONABLE/bindPreviewBarInteractions
+  // unten), aber seit T2 anklickbar/auswählbar. Ein/Aus + Höhe + Farbe +
+  // Beschriftung kommen weiterhin aus js/shop/cart-preview-bars.js.
   function renderPreviewBars(host) {
     const cfg = window.WebBuilderCartPreviewBars?.getConfig?.();
     if (!host || !cfg) return;
@@ -48,11 +49,16 @@
         top = document.createElement("div");
         top.id = "cart-preview-bar-top";
         top.className = "cart-preview-bar cart-preview-bar-top";
+        // T2: Klick-Ziel-Erkennung für bindPreviewBarInteractions() —
+        // einmalig bei Erzeugung gesetzt, bleibt über spätere Updates
+        // erhalten (Element wird nur aktualisiert, nicht neu erzeugt).
+        top.dataset.cartPreviewbar = "header";
         host.appendChild(top);
       }
       top.style.height = (Number(cfg.header.height) || 64) + "px";
       top.style.backgroundColor = cfg.header.color || "#111827";
       top.textContent = cfg.header.label || "";
+      top.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewHeader");
     } else if (top) {
       top.remove();
     }
@@ -62,11 +68,13 @@
         bottom = document.createElement("div");
         bottom.id = "cart-preview-bar-bottom";
         bottom.className = "cart-preview-bar cart-preview-bar-bottom";
+        bottom.dataset.cartPreviewbar = "footer";
         host.appendChild(bottom);
       }
       bottom.style.height = (Number(cfg.footer.height) || 70) + "px";
       bottom.style.backgroundColor = cfg.footer.color || "#111827";
       bottom.textContent = cfg.footer.label || "";
+      bottom.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewFooter");
     } else if (bottom) {
       bottom.remove();
     }
@@ -75,6 +83,23 @@
   function removePreviewBars() {
     document.getElementById("cart-preview-bar-top")?.remove();
     document.getElementById("cart-preview-bar-bottom")?.remove();
+  }
+
+  // T2: macht die beiden Vorschau-Balken direkt im Editor anklickbar.
+  // Eigene, separate Bindung nötig (statt über bindFocusStageInteractions),
+  // da die Balken NICHT Kinder von #cart-focus-stage sind, sondern direkt
+  // in `host` (.canvas-container) hängen (siehe renderPreviewBars() oben).
+  // Rein auswählbar, nicht verschiebbar — siehe NON_POSITIONABLE.
+  function bindPreviewBarInteractions(host) {
+    if (!host || host.dataset.webBuilderPreviewBarsBound === "true") return;
+    host.dataset.webBuilderPreviewBarsBound = "true";
+    host.addEventListener("pointerdown", e => {
+      if (!state.cartFocusMode) return;
+      const bar = e.target.closest?.("[data-cart-previewbar]");
+      if (!bar) return;
+      e.preventDefault(); e.stopPropagation();
+      selectFocusPartLight(bar.dataset.cartPreviewbar === "footer" ? "previewFooter" : "previewHeader");
+    });
   }
 
   function getPartLayout(partKey) {
@@ -136,17 +161,32 @@
   }
   // T1: "header" (the drawer-header preview at the top of the stage) is
   // selectable/editable but never position-draggable — same reasoning as
-  // background/itemRepresentation. See bindFocusStageInteractions()'s
-  // generic [data-cart-component] branch below, which now skips drag
-  // setup entirely for any NON_POSITIONABLE component.
-  const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation", "component:header"]);
+  // background/itemRepresentation. T2: "previewHeader"/"previewFooter"
+  // (die beiden Vorschau-Balken) sind aus demselben Grund ebenfalls nur
+  // auswählbar, nicht verschiebbar — anders als die echten Kopf-/
+  // Fußzeilen-Elemente haben sie keine sinnvolle freie Position, ihre
+  // Höhe wird stattdessen über ein eigenes Feld gesteuert. Siehe
+  // bindFocusStageInteractions()'s generic [data-cart-component] branch
+  // unten, das für jede NON_POSITIONABLE-Komponente kein Dragging
+  // aufsetzt; für previewHeader/previewFooter greift das ohnehin nicht,
+  // da sie über bindPreviewBarInteractions() separat behandelt werden.
+  const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation", "component:header", "previewHeader", "previewFooter"]);
 
   function applySelectionHighlight() {
     const stage = document.getElementById("cart-focus-stage");
     if (!stage) return;
     stage.querySelectorAll(".cart-item-part-selected, .cart-component-selected").forEach(el => el.classList.remove("cart-item-part-selected", "cart-component-selected"));
+    // T2: die Vorschau-Balken liegen NICHT innerhalb von
+    // #cart-focus-stage (siehe renderPreviewBars()) — eigene, separate
+    // Bereinigung nötig, bevor die neue Auswahl markiert wird.
+    document.getElementById("cart-preview-bar-top")?.classList.remove("cart-component-selected");
+    document.getElementById("cart-preview-bar-bottom")?.classList.remove("cart-component-selected");
     const sel = state.cartFocusSelectedPart;
     if (!sel) return;
+    if (sel === "previewHeader" || sel === "previewFooter") {
+      document.getElementById(sel === "previewFooter" ? "cart-preview-bar-bottom" : "cart-preview-bar-top")?.classList.add("cart-component-selected");
+      return;
+    }
     if (sel.startsWith("component:")) {
       const key = sel.slice("component:".length);
       if (key === "background") stage.querySelector(".cart-focus-card")?.classList.add("cart-component-selected");
@@ -173,7 +213,7 @@
     "cart-comp-header-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
-    "cart-comp-totals-fields"
+    "cart-comp-totals-fields", "cart-comp-previewbar-fields"
   ];
 
   function renderFocusPartPanel() {
@@ -192,14 +232,29 @@
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
-      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel"
+      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel",
+      previewHeader: "Vorschau-Header", previewFooter: "Vorschau-Footer"
     };
     const labelEl = document.getElementById("cart-part-label");
     if (labelEl) labelEl.textContent = labels[sel] || sel;
 
     const config = cart.getConfig();
 
-    if (sel === "component:header") {
+    if (sel === "previewHeader" || sel === "previewFooter") {
+      // T2: Vorschau-Header/-Footer — Daten kommen NICHT aus
+      // cartConfig, sondern aus window.WebBuilderCartPreviewBars
+      // (state.cartPreviewHeader*/cartPreviewFooter*), siehe
+      // js/shop/cart-preview-bars.js.
+      document.getElementById("cart-comp-previewbar-fields")?.classList.remove("hidden");
+      const isFooter = sel === "previewFooter";
+      const barCfg = (window.WebBuilderCartPreviewBars?.getConfig?.() || { header: {}, footer: {} })[isFooter ? "footer" : "header"];
+      const heightInput = document.getElementById("cart-comp-previewbar-height");
+      if (heightInput && document.activeElement !== heightInput) heightInput.value = barCfg.height != null ? barCfg.height : (isFooter ? 70 : 64);
+      const colorInput = document.getElementById("cart-comp-previewbar-color");
+      if (colorInput) colorInput.value = barCfg.color || "#111827";
+      const labelInput = document.getElementById("cart-comp-previewbar-label");
+      if (labelInput && document.activeElement !== labelInput) labelInput.value = barCfg.label || (isFooter ? "Footer" : "Header");
+    } else if (sel === "component:header") {
       // T1: editable title shown in the drawer-header preview at the top
       // of the stage (see renderFocusStage()) and in the real drawer
       // (cart-render.js renderCart()).
@@ -462,6 +517,7 @@
       host.appendChild(stage);
     }
     renderPreviewBars(host);
+    bindPreviewBarInteractions(host);
     // Stage auf den Bereich zwischen Vorschau-Header und Vorschau-Footer
     // begrenzen (siehe computeStageInsets() oben).
     const insets = computeStageInsets();
@@ -531,6 +587,32 @@
     document.getElementById("cart-comp-header-title")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ cartTitleLabel: e.target.value.trim() || "Dein Warenkorb" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
+    }, true);
+
+    // T2: Vorschau-Header/-Footer — Schreibpfad geht bewusst NICHT über
+    // cart.setConfig() (die Balken sind kein Teil von cartConfig),
+    // sondern über window.WebBuilderCartPreviewBars.updateHeader()/
+    // updateFooter() — dieselben Funktionen, die auch die Sidebar-
+    // Steuerung in #panel-cart verwendet, damit beide Wege synchron
+    // bleiben. render() dort synchronisiert zusätzlich die Sidebar-Felder.
+    document.getElementById("cart-comp-previewbar-height")?.addEventListener("change", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      fn?.({ height: e.target.value });
+      window.WebBuilderCartPreviewBars?.render?.();
+      renderFocusPartPanel();
+    }, true);
+    document.getElementById("cart-comp-previewbar-color")?.addEventListener("input", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      fn?.({ color: e.target.value });
+      window.WebBuilderCartPreviewBars?.render?.();
+    }, true);
+    document.getElementById("cart-comp-previewbar-label")?.addEventListener("change", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      fn?.({ label: e.target.value });
+      window.WebBuilderCartPreviewBars?.render?.();
     }, true);
 
     document.getElementById("cart-part-x")?.addEventListener("change", e => {
