@@ -390,10 +390,15 @@
            js/shop/cart-editor.js enterFocusMode()/renderFocusPartPanel(). -->
       <div id="cart-inspector-form" class="inspector-form hidden">
         <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht oder Hintergrund), um ihn hier anzupassen.</p>
+        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht oder Hintergrund), um ihn hier anzupassen.</p>
 
         <div id="cart-part-editor" class="hidden">
           <div class="form-group"><label id="cart-part-label">Element</label></div>
+
+          <!-- Warenkorb-Titel (Kopfzeile der Vorschau/des echten Drawers) -->
+          <div id="cart-comp-header-fields" class="hidden">
+            <div class="form-group"><label for="cart-comp-header-title">Titel</label><input type="text" id="cart-comp-header-title" placeholder="Dein Warenkorb"></div>
+          </div>
 
           <!-- Zur-Kasse-Button -->
           <div id="cart-comp-checkout-fields" class="hidden">
@@ -540,8 +545,9 @@
 
           <!-- Position (X/Y) — gilt für Artikel-Teile, Fortschrittsbalken,
                Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht.
-               Nicht für Hintergrund und Artikel-Darstellung (dafür ist
-               eine feste Position nicht sinnvoll). -->
+               Nicht für Hintergrund, Artikel-Darstellung und den
+               Warenkorb-Titel (dafür ist eine feste Position nicht
+               sinnvoll). -->
           <div id="cart-comp-position-fields">
             <div class="form-group">
               <label for="cart-part-x">Position X (px)</label>
@@ -563,7 +569,7 @@
   <div id="toast-container"></div>
   <div id="cart-drawer-backdrop" class="drawer-backdrop"></div>
   <aside id="cart-drawer" class="drawer">
-    <div class="drawer-header"><h3>Dein Warenkorb (<span id="cart-count-badge">0</span>)</h3><button id="close-cart-btn" class="close-btn">&times;</button></div>
+    <div class="drawer-header"><h3><span id="cart-title-label">Dein Warenkorb</span> (<span id="cart-count-badge">0</span>)</h3><button id="close-cart-btn" class="close-btn">&times;</button></div>
     <div class="drawer-body" id="cart-items-list"></div>
     <div class="drawer-footer"><button class="btn btn-primary" id="cart-checkout-btn" style="width:100%;">Zur Kasse gehen</button></div>
   </aside>
