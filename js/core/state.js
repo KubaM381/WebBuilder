@@ -42,6 +42,8 @@ window.WebBuilderState = window.WebBuilderState || {
     recommendEnabled: false,
     recommendations: [],
     progressEnabled: false,
+    // Fill color of the progress bar track (cart editor: component:progress).
+    progressBarColor: "#10b981",
     milestones: [],
     // Cart editor: free-form pixel offset per top-level cart block, keyed
     // by "progress" | "discount" | "recommend" | "checkout" | "totals".
@@ -76,6 +78,19 @@ window.WebBuilderState = window.WebBuilderState || {
   footerBgImage: "",
   footerItems: [],
   selectedBarItemRef: null,
+  // Cart editor preview header/footer (js/shop/cart-preview-bars.js) —
+  // deliberately separate from headerItems/footerItems/headerEnabled/
+  // footerEnabled above: the cart focus editor no longer shows or lets
+  // you edit the REAL site header/footer. Persisted like any other
+  // project setting (see core/storage.js createSnapshot()).
+  cartPreviewHeaderEnabled: false,
+  cartPreviewHeaderHeight: 64,
+  cartPreviewHeaderColor: "#111827",
+  cartPreviewHeaderLabel: "Header",
+  cartPreviewFooterEnabled: false,
+  cartPreviewFooterHeight: 70,
+  cartPreviewFooterColor: "#111827",
+  cartPreviewFooterLabel: "Footer",
   // Cart focus editor mode — like isPreviewMode, this is pure runtime UI
   // state, not persisted (not part of storage.js's snapshot).
   cartFocusMode: false,
