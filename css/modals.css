@@ -124,7 +124,13 @@ body.cart-focus-active .cart-item-part:active * { cursor: grabbing; }
 body.cart-focus-active [data-cart-component],
 body.cart-focus-active [data-cart-component] * { cursor: grab; }
 body.cart-focus-active [data-cart-component]:active,
-body.cart-focus-active [data-cart-component]:active * { cursor: grabbing; }
+body.cart-focus-active [data-cart-component] * :active { cursor: grabbing; }
+/* T1: the header preview is selectable but never draggable (see
+   NON_POSITIONABLE in cart-editor.js) — override the generic grab cursor
+   above specifically for it. Must come after the general rule above to
+   win on equal specificity. */
+body.cart-focus-active [data-cart-component="header"],
+body.cart-focus-active [data-cart-component="header"] * { cursor: pointer; }
 
 /* Clicking an article's empty background (not a specific sub-part)
    selects the overall "Artikel-Darstellung". */
@@ -140,8 +146,14 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    see css/canvas.css) so it stays fixed regardless of zoom. */
 .cart-focus-stage { position: absolute; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 30px; pointer-events: none; }
 .cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 100%; max-width: 480px; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; }
-.cart-focus-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.cart-focus-hint { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
+/* T1: .cart-focus-header reuses .drawer-header's flex/border-bottom look
+   (see the drawer-header rules above) for an accurate preview of the
+   real drawer's header. The negative margin cancels out
+   .cart-focus-card's own 24px padding so the header still reaches the
+   card's edges, exactly like the real drawer. The close button inside is
+   disabled/non-functional — purely a visual preview, dimmed accordingly. */
+.cart-focus-header { margin: -24px -24px 16px -24px; }
+.cart-focus-header .close-btn { opacity: 0.5; }
 .cart-focus-body { display: flex; flex-direction: column; }
 .cart-focus-checkout { margin-top: 16px; }
 /* Only inside the editor stage does the transparent item shape get a
