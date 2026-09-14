@@ -58,8 +58,21 @@
       condition: { type: cond.type || "none", value: Number(cond.value) || 0 }
     };
   }
+  // BUGFIX: previously `.map(normalizeRecommendation)` — this built a
+  // brand-new object for every recommendation on every normalize pass.
+  // cart-data.js's own updateRecommendation()/addRecommendation()/
+  // removeRecommendation() call window.WebBuilderHistory?.arm() before
+  // mutating, and arm() triggers normalizeRuntimeState() ->
+  // cart.normalizeState() -> this function. That replaced
+  // state.cartConfig.recommendations with all-new objects *before* the
+  // caller's own patch was applied to the (now orphaned) old reference —
+  // the edit silently never reached the live array (same reference-
+  // stability class of bug as normalizeState()/normalizeItem() for
+  // cartItems, see project README "Key learnings"). Fixed by normalizing
+  // in place (WebBuilderUtils.normalizeInPlace) so an existing
+  // recommendation object keeps its identity across a normalize pass.
   function normalizeRecommendations(list) {
-    return (Array.isArray(list) ? list : []).map(normalizeRecommendation);
+    return window.WebBuilderUtils.normalizeInPlace(Array.isArray(list) ? list : [], normalizeRecommendation);
   }
 
   const CONDITION_LABELS = {
@@ -138,6 +151,17 @@
     if (state.cartConfig.cardBackgroundColor == null) state.cartConfig.cardBackgroundColor = "";
     if (state.cartConfig.itemWidth === undefined) state.cartConfig.itemWidth = null;
     if (state.cartConfig.itemMinHeight === undefined) state.cartConfig.itemMinHeight = null;
+    // "Kosten-Übersicht" (component:totals, cart-editor.js): editable
+    // labels for the subtotal/discount/shipping/total rows plus the
+    // shipping cost amount and the free-shipping text. Defaults match the
+    // previously hardcoded strings/values exactly, so existing projects
+    // render byte-identical until someone explicitly edits these.
+    if (state.cartConfig.subtotalLabel == null) state.cartConfig.subtotalLabel = "Zwischensumme";
+    if (state.cartConfig.discountLabel == null) state.cartConfig.discountLabel = "Rabatt";
+    if (state.cartConfig.shippingLabel == null) state.cartConfig.shippingLabel = "Versand";
+    if (state.cartConfig.shippingCost == null) state.cartConfig.shippingCost = 4.95;
+    if (state.cartConfig.shippingFreeText == null) state.cartConfig.shippingFreeText = "Kostenlos";
+    if (state.cartConfig.totalLabel == null) state.cartConfig.totalLabel = "Gesamt";
     return state;
   }
   function getItems() { return state.cartItems; }
