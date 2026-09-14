@@ -227,6 +227,20 @@
           <button type="button" id="btn-open-cart" class="btn btn-secondary" style="width:100%;">🛒 Vorschau öffnen</button>
         </div>
 
+        <div class="section-title">Vorschau: Kopf-/Fußzeile</div>
+        <div class="sidebar-subsection">
+          <p class="help-text" style="margin-bottom:8px;">Rein visuelle Vorschau-Balken nur für den Warenkorb-Editor — unabhängig von der echten Kopf-/Fußzeile der Seite (die bleibt beim Bearbeiten des Warenkorbs ausgeblendet und wird hier nicht verändert).</p>
+          <label class="checkbox-row"><input type="checkbox" id="cart-preview-header-toggle"> Header-Vorschau anzeigen</label>
+          <div class="form-group"><label for="cart-preview-header-height">Höhe (px)</label><input type="number" id="cart-preview-header-height" min="20" max="400" value="64"></div>
+          <div class="form-group"><label for="cart-preview-header-color">Farbe</label><input type="color" id="cart-preview-header-color" value="#111827"></div>
+          <div class="form-group"><label for="cart-preview-header-label">Beschriftung</label><input type="text" id="cart-preview-header-label" placeholder="Header"></div>
+          <hr class="divider modal-divider-tight">
+          <label class="checkbox-row"><input type="checkbox" id="cart-preview-footer-toggle"> Footer-Vorschau anzeigen</label>
+          <div class="form-group"><label for="cart-preview-footer-height">Höhe (px)</label><input type="number" id="cart-preview-footer-height" min="20" max="400" value="70"></div>
+          <div class="form-group"><label for="cart-preview-footer-color">Farbe</label><input type="color" id="cart-preview-footer-color" value="#111827"></div>
+          <div class="form-group"><label for="cart-preview-footer-label">Beschriftung</label><input type="text" id="cart-preview-footer-label" placeholder="Footer"></div>
+        </div>
+
         <div class="section-title">Artikel-Darstellung</div>
         <div class="sidebar-subsection">
           <p class="help-text" style="margin-bottom:8px;">Form, Hintergrund und Größe der Artikel im Warenkorb. Öffnet den Editor und wählt die Artikel-Darstellung — dort lässt sie sich auch direkt an der Ecke ziehen, um sie größer/kleiner zu machen.</p>
@@ -243,7 +257,7 @@
 
         <hr class="divider">
         <label class="checkbox-row"><input type="checkbox" id="cart-progress-toggle"> Fortschrittsbalken</label>
-        <p class="help-text" style="margin:-6px 0 0;">Meilensteine verwalten &amp; Position anpassen im Warenkorb-Editor — dort auf den Fortschrittsbalken klicken.</p>
+        <p class="help-text" style="margin:-6px 0 0;">Farbe &amp; Meilensteine verwalten &amp; Position anpassen im Warenkorb-Editor — dort auf den Fortschrittsbalken klicken.</p>
       </div>
 
       <!-- ==================== TAB: PRODUKTE ==================== -->
@@ -270,9 +284,10 @@
           <button id="btn-extend-canvas" class="btn btn-secondary btn-pill" title="Zeichenfläche nach unten erweitern">⬇️ Seite verlängern</button>
         </div>
       </div>
-      <!-- Cart editor stage (js/shop/cart-editor.js renderFocusStage()) ist
-           hier zur Laufzeit eingehängt — außerhalb von #canvas-column,
-           damit Zoom keinen Einfluss darauf hat. -->
+      <!-- Cart editor stage (js/shop/cart-editor.js renderFocusStage()) und
+           die Vorschau-Balken (js/shop/cart-preview-bars.js) werden hier
+           zur Laufzeit eingehängt — außerhalb von #canvas-column, damit
+           Zoom keinen Einfluss darauf hat. -->
     </main>
 
     <!-- RECHTE SPALTE: Bearbeitungsmöglichkeiten für das ausgewählte Element -->
@@ -424,9 +439,10 @@
             <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist und kein Meilenstein „Kostenloser Versand“ erreicht wurde.</p>
           </div>
 
-          <!-- Fortschrittsbalken: Position (unten) + Meilenstein-Liste hier -->
+          <!-- Fortschrittsbalken: Farbe + Position (unten) + Meilenstein-Liste hier -->
           <div id="cart-comp-progress-fields" class="hidden">
-            <p class="help-text">Meilensteine:</p>
+            <div class="form-group"><label for="cart-comp-progress-color">Balkenfarbe</label><input type="color" id="cart-comp-progress-color"></div>
+            <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist):</p>
             <div class="mini-btn-row"><button type="button" id="btn-add-milestone" class="btn btn-secondary btn-sm" style="width:100%;">+ Meilenstein</button></div>
             <div id="cart-milestone-list" class="items-list"></div>
           </div>
