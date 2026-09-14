@@ -133,6 +133,8 @@
     if (!state.cartConfig.itemDisplay.layout || typeof state.cartConfig.itemDisplay.layout !== "object") state.cartConfig.itemDisplay.layout = {};
     if (state.cartConfig.discountButtonColor == null) state.cartConfig.discountButtonColor = "#4f46e5";
     if (state.cartConfig.discountButtonShape == null) state.cartConfig.discountButtonShape = "rounded";
+    // Fill color of the progress bar track.
+    if (state.cartConfig.progressBarColor == null) state.cartConfig.progressBarColor = "#10b981";
     // Quantity selector "group" variant shape + the closed +/- color
     // palette. Defaults keep existing projects' look unchanged (stepper
     // style, black buttons) until explicitly edited.
@@ -235,11 +237,14 @@
   }
 
   // Progress-bar milestones. `icon` is an optional emoji/short text shown
-  // once the milestone is reached (see cart-render.js buildCartHtml()).
+  // once the milestone is reached, `reachedText` is an optional custom
+  // message shown in the progress area once this milestone is the
+  // highest one reached and no further milestone follows (see
+  // cart-render.js buildCartHtml()).
   function addMilestone() {
     window.WebBuilderHistory?.arm();
     if (!Array.isArray(state.cartConfig.milestones)) state.cartConfig.milestones = [];
-    state.cartConfig.milestones.push({ id: `ms_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, amount: 50, label: "Kostenloser Versand", action: "free-shipping", icon: "🚚" });
+    state.cartConfig.milestones.push({ id: `ms_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, amount: 50, label: "Kostenloser Versand", action: "free-shipping", icon: "🚚", reachedText: "" });
     window.WebBuilderHistory?.commit();
     notify("cart", "milestones", state.cartConfig.milestones);
   }
