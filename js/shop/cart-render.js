@@ -17,6 +17,28 @@
   const esc = window.WebBuilderUtils.escapeHtml;
   const eur = v => `${Number(v || 0).toFixed(2).replace(".", ",")} €`;
 
+  // T4: generic "positioned sub-part" wrapper, shared by cart-item parts
+  // (icon/qty/price/remove/description, keyed in
+  // cartConfig.itemDisplay.layout) and recommend-card parts (icon/name/
+  // price/add, keyed in cartConfig.recommendDisplay.layout — see
+  // buildRecommendCardContentHtml() below). `dataKey` is what's written
+  // into data-cart-part / compared against state.cartFocusSelectedPart —
+  // recommend parts use a "recommend:" prefix so cart-editor.js can tell
+  // the two families of parts apart from the key alone (see
+  // js/shop/cart-editor.js resolveLayoutMap()), without inspecting DOM
+  // ancestry. `showFrame` only ever applies to item parts on a
+  // transparent item shape (see buildCartItemHTML) — recommend parts
+  // never show the dashed frame.
+  function wrapLayoutPart(innerHtml, layoutKey, layoutMap, dataKey, interactive, showFrame) {
+    const off = layoutMap[layoutKey] || { x: 0, y: 0 };
+    const hasOffset = !!(off.x || off.y);
+    if (!interactive && !hasOffset) return innerHtml;
+    const frameClass = interactive && showFrame ? " cart-item-part-frame" : "";
+    const selectedClass = interactive && state.cartFocusSelectedPart === dataKey ? " cart-item-part-selected" : "";
+    const partAttr = interactive ? ` data-cart-part="${dataKey}"` : "";
+    return `<span class="cart-item-part${frameClass}${selectedClass}"${partAttr} style="transform:translate(${off.x || 0}px, ${off.y || 0}px);">${innerHtml}</span>`;
+  }
+
   // Wraps a top-level cart block (progress bar / discount field /
   // recommendation card / totals) in a positionable, selectable wrapper —
   // same "only wrap when needed" rule as wrapPart() inside
@@ -30,6 +52,25 @@
     const selectedClass = interactive && state.cartFocusSelectedPart === `component:${componentKey}` ? " cart-component-selected" : "";
     const compAttr = interactive ? ` data-cart-component="${componentKey}"` : "";
     return `<div class="cart-component-wrap${selectedClass}"${compAttr} style="transform:translate(${layout.x || 0}px, ${layout.y || 0}px);">${innerHtml}</div>`;
+  }
+
+  // T4: builds the recommend card's inner content (icon/name/price/+
+  // button), each individually positionable via
+  // cartConfig.recommendDisplay.layout — same mechanism as
+  // buildCartItemHTML's per-part offsets, just against a separate layout
+  // map (the recommend card isn't a cart item, so it can't share
+  // itemDisplay.layout). The "+" button's color comes from
+  // cartConfig.recommendAddButtonColor (default matches the previous
+  // hardcoded CSS color, see css/modals.css .cart-recommend-add).
+  function buildRecommendCardContentHtml(product, interactive) {
+    const config = cart.getConfig() || {};
+    const layout = (config.recommendDisplay || {}).layout || {};
+    const addColor = config.recommendAddButtonColor || "#4f46e5";
+    const iconHtml = wrapLayoutPart(`<span class="cart-recommend-icon">${esc(product.icon || "📦")}</span>`, "icon", layout, "recommend:icon", interactive, false);
+    const nameHtml = wrapLayoutPart(`<span class="cart-recommend-name">${esc(product.name)}</span>`, "name", layout, "recommend:name", interactive, false);
+    const priceHtml = wrapLayoutPart(`<span class="cart-recommend-price">${eur(product.discountPrice != null ? product.discountPrice : product.price)}</span>`, "price", layout, "recommend:price", interactive, false);
+    const addHtml = wrapLayoutPart(`<button type="button" class="cart-recommend-add" data-rec-product-id="${esc(product.id)}" style="background-color:${addColor};">+</button>`, "add", layout, "recommend:add", interactive, false);
+    return `${iconHtml}${nameHtml}${priceHtml}${addHtml}`;
   }
 
   // Builds one cart-row's HTML, based on cartConfig.itemShape/itemDisplay.
@@ -48,14 +89,12 @@
     const idAttr = isDemo ? "" : ` data-cart-id="${esc(item.id)}"`;
     const transparent = config.itemShape === "transparent";
 
+    // T4: delegates to the shared wrapLayoutPart() helper, keyed against
+    // this item's own layout map (cartConfig.itemDisplay.layout) — call
+    // sites below (wrapPart(x, "remove")/("qty")/("price")/("icon")/
+    // ("description")) are unchanged.
     function wrapPart(innerHtml, partKey) {
-      const off = layout[partKey] || { x: 0, y: 0 };
-      const hasOffset = !!(off.x || off.y);
-      if (!interactive && !hasOffset) return innerHtml;
-      const frameClass = interactive && transparent ? " cart-item-part-frame" : "";
-      const selectedClass = interactive && state.cartFocusSelectedPart === partKey ? " cart-item-part-selected" : "";
-      const partAttr = interactive ? ` data-cart-part="${partKey}"` : "";
-      return `<span class="cart-item-part${frameClass}${selectedClass}"${partAttr} style="transform:translate(${off.x || 0}px, ${off.y || 0}px);">${innerHtml}</span>`;
+      return wrapLayoutPart(innerHtml, partKey, layout, partKey, interactive, transparent);
     }
 
     let removeInner = "✕";
@@ -182,10 +221,12 @@
 
     let recommendPart = "";
     if (config.recommendEnabled) {
+      // T4: Form der Empfehlungskarte (unabhängig von der Artikel-Form).
+      const recShapeClass = "cart-recommend-card-" + (config.recommendShape === "square" ? "square" : (config.recommendShape === "pill" ? "pill" : "rounded"));
       const picked = cart.pickRecommendation(items, subtotal);
       if (picked) {
         const { rec, product } = picked;
-        const recHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(rec.text || cart.defaultRecommendationText())}</p><div class="cart-recommend-card"><span class="cart-recommend-icon">${esc(product.icon || "📦")}</span><span class="cart-recommend-name">${esc(product.name)}</span><span class="cart-recommend-price">${eur(product.discountPrice != null ? product.discountPrice : product.price)}</span><button type="button" class="cart-recommend-add" data-rec-product-id="${esc(product.id)}">+</button></div></div>`;
+        const recHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(rec.text || cart.defaultRecommendationText())}</p><div class="cart-recommend-card ${recShapeClass}">${buildRecommendCardContentHtml(product, interactive)}</div></div>`;
         recommendPart = wrapComponent(recHtml, "recommend", interactive);
       } else if (interactive) {
         // If recommendations are enabled but nothing is configured / no
@@ -195,8 +236,9 @@
         // in the real preview/drawer, unchanged behavior (show nothing).
         // Same data-cart-component="recommend" as the real card, so the
         // existing selection logic in cart-editor.js keeps working
-        // unchanged.
-        const dummyHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(cart.defaultRecommendationText())}</p><div class="cart-recommend-card"><span class="cart-recommend-icon">➕</span><span class="cart-recommend-name">Noch keine passende Empfehlung konfiguriert</span></div></div>`;
+        // unchanged. No individually-positionable sub-parts here (no real
+        // product behind it), but it does reflect the configured shape.
+        const dummyHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(cart.defaultRecommendationText())}</p><div class="cart-recommend-card ${recShapeClass}"><span class="cart-recommend-icon">➕</span><span class="cart-recommend-name">Noch keine passende Empfehlung konfiguriert</span></div></div>`;
         recommendPart = wrapComponent(dummyHtml, "recommend", interactive);
       }
     }
