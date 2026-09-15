@@ -62,13 +62,28 @@
     el.style.fontWeight = barCfg.bold ? "bold" : "600";
   }
 
+  // Baut das Innere eines Vorschau-Balkens: optionales Icon (eigenes
+  // hochgeladenes Bild ODER ein Emoji/Text-Icon, gegenseitig
+  // ausschließend — siehe js/shop/cart-preview-bars.js) gefolgt von der
+  // Beschriftung. iconImage hat Vorrang, falls beide Felder aus
+  // irgendeinem Grund gleichzeitig gesetzt wären.
+  function buildPreviewBarContentHtml(barCfg) {
+    let iconHtml = "";
+    if (barCfg.iconImage) {
+      iconHtml = `<img class="cart-preview-bar-icon-img" src="${esc(barCfg.iconImage)}" alt="">`;
+    } else if (barCfg.icon) {
+      iconHtml = `<span class="cart-preview-bar-icon">${esc(barCfg.icon)}</span>`;
+    }
+    return `${iconHtml}<span class="cart-preview-bar-text">${esc(barCfg.label || "")}</span>`;
+  }
+
   // Baut/aktualisiert die beiden rein dekorativen Vorschau-Balken direkt
   // im selben Host wie #cart-focus-stage (siehe renderFocusStage()) —
   // keine Drag-Logik (siehe NON_POSITIONABLE/bindPreviewBarInteractions
   // unten), aber seit T2 anklickbar/auswählbar. Ein/Aus + Höhe +
   // Beschriftung kommen weiterhin aus js/shop/cart-preview-bars.js;
-  // Hintergrund/Textfarbe/Schriftart/Fett werden hier per applyBarStyle()
-  // angewendet.
+  // Hintergrund/Textfarbe/Schriftart/Fett/Icon werden hier per
+  // applyBarStyle()/buildPreviewBarContentHtml() angewendet.
   function renderPreviewBars(host) {
     const cfg = window.WebBuilderCartPreviewBars?.getConfig?.();
     if (!host || !cfg) return;
@@ -86,7 +101,7 @@
       }
       top.style.height = (Number(cfg.header.height) || 64) + "px";
       applyBarStyle(top, cfg.header);
-      top.textContent = cfg.header.label || "";
+      top.innerHTML = buildPreviewBarContentHtml(cfg.header);
       top.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewHeader");
     } else if (top) {
       top.remove();
@@ -102,7 +117,7 @@
       }
       bottom.style.height = (Number(cfg.footer.height) || 70) + "px";
       applyBarStyle(bottom, cfg.footer);
-      bottom.textContent = cfg.footer.label || "";
+      bottom.innerHTML = buildPreviewBarContentHtml(cfg.footer);
       bottom.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewFooter");
     } else if (bottom) {
       bottom.remove();
@@ -313,6 +328,18 @@
       // Fett.
       const boldInput = document.getElementById("cart-comp-previewbar-bold");
       if (boldInput) boldInput.checked = !!barCfg.bold;
+
+      // Icon: Typ wird aus dem tatsächlich gesetzten Feld abgeleitet, da
+      // icon/iconImage gegenseitig ausschließend sind (siehe
+      // js/shop/cart-preview-bars.js). "image" hat Vorrang vor "emoji",
+      // falls aus irgendeinem Grund beide Felder gesetzt wären.
+      const iconType = barCfg.iconImage ? "image" : (barCfg.icon ? "emoji" : "none");
+      const iconTypeSel = document.getElementById("cart-comp-previewbar-icon-type");
+      if (iconTypeSel) iconTypeSel.value = iconType;
+      document.getElementById("cart-comp-previewbar-icon-emoji-group")?.classList.toggle("hidden", iconType !== "emoji");
+      document.getElementById("cart-comp-previewbar-icon-image-group")?.classList.toggle("hidden", iconType !== "image");
+      const iconInput = document.getElementById("cart-comp-previewbar-icon");
+      if (iconInput && document.activeElement !== iconInput) iconInput.value = barCfg.icon || "";
     } else if (sel === "component:header") {
       // T1: editable title shown in the drawer-header preview at the top
       // of the stage (see renderFocusStage()) and in the real drawer
@@ -763,6 +790,41 @@
       const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
       fn?.({ bold: e.target.checked });
       window.WebBuilderCartPreviewBars?.render?.();
+    }, true);
+
+    // Icon-Typ: none/emoji/image — schaltet nur die Sichtbarkeit der
+    // Unterfelder um und leert dabei das jeweils nicht mehr passende Feld
+    // (icon/iconImage sind gegenseitig ausschließend, siehe
+    // js/shop/cart-preview-bars.js).
+    document.getElementById("cart-comp-previewbar-icon-type")?.addEventListener("change", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      const type = e.target.value;
+      if (type === "none") fn?.({ icon: null, iconImage: "" });
+      else if (type === "emoji") fn?.({ iconImage: "" });
+      else if (type === "image") fn?.({ icon: null });
+      window.WebBuilderCartPreviewBars?.render?.();
+      renderFocusPartPanel();
+    }, true);
+    document.getElementById("cart-comp-previewbar-icon")?.addEventListener("change", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      fn?.({ icon: e.target.value, iconImage: "" });
+      window.WebBuilderCartPreviewBars?.render?.();
+    }, true);
+    document.getElementById("cart-comp-previewbar-icon-image-file")?.addEventListener("change", e => {
+      const file = e.target.files?.[0];
+      if (!file || !file.type.startsWith("image/")) return;
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result !== "string") return;
+        fn?.({ iconImage: reader.result, icon: null });
+        window.WebBuilderCartPreviewBars?.render?.();
+        renderFocusPartPanel();
+      };
+      reader.readAsDataURL(file);
     }, true);
 
     document.getElementById("cart-part-x")?.addEventListener("change", e => {
