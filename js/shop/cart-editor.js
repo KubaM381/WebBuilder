@@ -518,11 +518,17 @@
     }
     renderPreviewBars(host);
     bindPreviewBarInteractions(host);
-    // Stage auf den Bereich zwischen Vorschau-Header und Vorschau-Footer
-    // begrenzen (siehe computeStageInsets() oben).
+    // Nur noch ein oberer Versatz (Platz für den Vorschau-Header) plus ein
+    // unterer Innenabstand (Platz für den Vorschau-Footer) — die Bühne hat
+    // bewusst KEIN festes "bottom"/keine feste Höhe mehr (siehe
+    // css/modals.css .cart-focus-stage), damit ihre tatsächliche Höhe
+    // sich nach dem Karteninhalt richtet. So wächst .canvas-container (der
+    // EINE bereits vorhandene Scroll-Container, siehe css/canvas.css) bei
+    // Bedarf mit, statt dass die Karte einen eigenen, zweiten Scrollbalken
+    // bekommt.
     const insets = computeStageInsets();
     stage.style.top = insets.top + "px";
-    stage.style.bottom = insets.bottom + "px";
+    stage.style.paddingBottom = insets.bottom + "px";
     const realItems = cart.getItems();
     const usingDemo = realItems.length === 0;
     let items = realItems;
