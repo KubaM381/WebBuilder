@@ -51,6 +51,11 @@
 .cart-recommend { border: 1px dashed var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 16px; }
 .cart-recommend-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
 .cart-recommend-card { display: flex; align-items: center; gap: 8px; }
+/* T4: Form der Empfehlungskarte (unabhängig von der Artikel-Form), siehe
+   cartConfig.recommendShape / js/shop/cart-render.js buildCartParts(). */
+.cart-recommend-card-square { border-radius: 0; }
+.cart-recommend-card-rounded { border-radius: 10px; }
+.cart-recommend-card-pill { border-radius: 999px; padding: 4px 14px; }
 .cart-recommend-icon { font-size: 1.4rem; }
 .cart-recommend-name { flex: 1; font-size: 0.85rem; }
 .cart-recommend-price { font-size: 0.8rem; color: var(--text-muted); }
