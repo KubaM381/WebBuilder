@@ -168,6 +168,19 @@
     if (state.cartConfig.shippingCost == null) state.cartConfig.shippingCost = 4.95;
     if (state.cartConfig.shippingFreeText == null) state.cartConfig.shippingFreeText = "Kostenlos";
     if (state.cartConfig.totalLabel == null) state.cartConfig.totalLabel = "Gesamt";
+    // T4: Empfehlungskarte — Form + Farbe des "+"-Buttons, sowie eine
+    // eigene Positions-Map für ihre Unterteile (Icon/Name/Preis/Plus).
+    // Eigene Map statt itemDisplay.layout, da die Empfehlungskarte kein
+    // Warenkorb-Artikel ist (anderes Elternelement) — siehe
+    // js/shop/cart-render.js buildRecommendCardContentHtml() und
+    // js/shop/cart-editor.js resolveLayoutMap(). Defaults entsprechen dem
+    // bisherigen fest verdrahteten Aussehen (css/modals.css
+    // .cart-recommend-card / .cart-recommend-add), damit bestehende
+    // Projekte unverändert bleiben.
+    if (state.cartConfig.recommendShape == null) state.cartConfig.recommendShape = "rounded";
+    if (state.cartConfig.recommendAddButtonColor == null) state.cartConfig.recommendAddButtonColor = "#4f46e5";
+    if (!state.cartConfig.recommendDisplay || typeof state.cartConfig.recommendDisplay !== "object") state.cartConfig.recommendDisplay = {};
+    if (!state.cartConfig.recommendDisplay.layout || typeof state.cartConfig.recommendDisplay.layout !== "object") state.cartConfig.recommendDisplay.layout = {};
     return state;
   }
   function getItems() { return state.cartItems; }
