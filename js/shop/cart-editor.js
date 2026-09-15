@@ -26,7 +26,8 @@
   // räumlichen Orientierung dienen. Da diese Balken feste Pixelhöhen aus
   // dem State beziehen statt aus gemessenen DOM-Rects, genügt eine reine
   // Konfigurationsabfrage statt getBoundingClientRect() — kein
-  // Resize-/Zoom-Listener mehr nötig.
+  // Resize-/Zoom-Listener mehr nötig für die Balken selbst (siehe aber
+  // den neuen Resize-Listener unten für die Kartenhöhe, T3).
   const STAGE_BAR_GAP = 10;
   function computeStageInsets() {
     const cfg = window.WebBuilderCartPreviewBars?.getConfig?.() || { header: {}, footer: {} };
@@ -520,15 +521,22 @@
     bindPreviewBarInteractions(host);
     // Nur noch ein oberer Versatz (Platz für den Vorschau-Header) plus ein
     // unterer Innenabstand (Platz für den Vorschau-Footer) — die Bühne hat
-    // bewusst KEIN festes "bottom"/keine feste Höhe mehr (siehe
-    // css/modals.css .cart-focus-stage), damit ihre tatsächliche Höhe
-    // sich nach dem Karteninhalt richtet. So wächst .canvas-container (der
-    // EINE bereits vorhandene Scroll-Container, siehe css/canvas.css) bei
-    // Bedarf mit, statt dass die Karte einen eigenen, zweiten Scrollbalken
-    // bekommt.
+    // bewusst KEIN festes "bottom" — die tatsächliche Höhe der Bühne
+    // richtet sich weiterhin nach dem Karteninhalt. Was NEU ist (T3): die
+    // Karte selbst (.cart-focus-card) bekommt unten eine per JS berechnete
+    // "max-height", damit nicht mehr die ganze Karte über den äußeren
+    // .canvas-container-Scrollbalken wächst, sondern nur noch die
+    // Artikelliste (.cart-focus-scroll) innerhalb der Karte scrollt.
     const insets = computeStageInsets();
     stage.style.top = insets.top + "px";
     stage.style.paddingBottom = insets.bottom + "px";
+    // STAGE_PADDING = oberer + unterer Innenabstand von .cart-focus-stage
+    // selbst (padding: 30px, siehe css/modals.css) — bleibt bei der
+    // Höhenberechnung der Karte unberücksichtigt, sonst würde die Karte
+    // ungewollt an den Bühnenrand stoßen.
+    const STAGE_PADDING = 60;
+    const viewportH = host.clientHeight || window.innerHeight;
+    const maxCardHeight = Math.max(280, viewportH - insets.top - insets.bottom - STAGE_PADDING);
     const realItems = cart.getItems();
     const usingDemo = realItems.length === 0;
     let items = realItems;
@@ -549,7 +557,12 @@
     // both stay visually identical. Selectable via data-cart-component
     // like the other top-level blocks, but NON_POSITIONABLE (see above).
     const headerSelectedClass = state.cartFocusSelectedPart === "component:header" ? " cart-component-selected" : "";
-    const cardBgStyle = config.cardBackgroundColor ? ` style="background-color:${config.cardBackgroundColor};"` : "";
+    // T3: max-height ist immer gesetzt (begrenzt die Karte auf die
+    // sichtbare Editor-Fläche), die optionale Hintergrundfarbe kommt
+    // zusätzlich dazu.
+    const cardStyleParts = [`max-height:${maxCardHeight}px`];
+    if (config.cardBackgroundColor) cardStyleParts.push(`background-color:${config.cardBackgroundColor}`);
+    const cardBgStyle = ` style="${cardStyleParts.join(";")};"`;
     const cartTitle = config.cartTitleLabel || "Dein Warenkorb";
     const previewCount = usingDemo ? (Number(items[0]?.qty) || 0) : cart.getCount();
     // T3: build the cart body as separate parts instead of one combined
@@ -771,6 +784,14 @@
     }, true);
 
     document.addEventListener("keydown", e => { if (e.key === "Escape" && state.cartFocusMode) exitFocusMode(); });
+
+    // T3: die Kartenhöhe (max-height) wird aus der sichtbaren Höhe von
+    // .canvas-container berechnet (siehe renderFocusStage()) — bei einer
+    // Fenstergrößenänderung muss sie neu berechnet werden, sonst bleibt
+    // sie auf dem Stand des letzten Renders "eingefroren".
+    window.addEventListener("resize", () => {
+      if (state.cartFocusMode) renderFocusStage();
+    });
   }
   document.addEventListener("DOMContentLoaded", () => setTimeout(bindFocusEditor, 0));
   window.WebBuilderCartFocus = {
