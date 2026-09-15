@@ -520,8 +520,19 @@
             <div id="cart-milestone-list" class="items-list"></div>
           </div>
 
-          <!-- Empfehlung: Position (unten) + Empfehlungs-Liste hier -->
+                    <!-- Empfehlung: Form/Farbe des "+"-Buttons (T4) + Position
+               (unten) + Empfehlungs-Liste hier. Icon/Name/Preis/Plus der
+               Empfehlungskarte sind zusätzlich einzeln direkt im Editor
+               anklickbar/verschiebbar (siehe js/shop/cart-editor.js). -->
           <div id="cart-comp-recommend-fields" class="hidden">
+            <div class="form-group"><label for="cart-comp-recommend-shape">Form der Empfehlungskarte</label>
+              <select id="cart-comp-recommend-shape">
+                <option value="rounded">Abgerundet</option>
+                <option value="square">Eckig</option>
+                <option value="pill">Rund (Pille)</option>
+              </select>
+            </div>
+            <div class="form-group"><label for="cart-comp-recommend-add-color">Farbe „+“-Button</label><input type="color" id="cart-comp-recommend-add-color"></div>
             <p class="help-text">Empfehlungen (angezeigt wird die erste passende):</p>
             <div class="mini-btn-row"><button type="button" id="btn-add-recommendation" class="btn btn-secondary btn-sm" style="width:100%;">+ Empfehlung aus Produkten</button></div>
             <div id="cart-recommend-list" class="items-list"></div>
