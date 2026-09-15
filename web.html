@@ -407,9 +407,10 @@
                bestehenden Sidebar-Steuerung in #panel-cart > "Vorschau:
                Kopf-/Fußzeile"). Nicht verschiebbar, siehe
                NON_POSITIONABLE in js/shop/cart-editor.js. Hintergrund
-               (einfarbig/Bild), Textfarbe, Schriftart und Fett-Schalter
-               ergänzen die schon vorhandenen Höhe/Farbe/Beschriftung-
-               Felder — Datenfelder existierten in
+               (einfarbig/Bild), Textfarbe, Schriftart, Fett-Schalter
+               sowie ein optionales Icon (Emoji/Text ODER eigenes Bild,
+               gegenseitig ausschließend) ergänzen die schon vorhandenen
+               Höhe/Farbe/Beschriftung-Felder — Datenfelder existierten in
                js/shop/cart-preview-bars.js bereits vorher, nur die UI
                dafür fehlte. -->
           <div id="cart-comp-previewbar-fields" class="hidden">
@@ -445,6 +446,26 @@
               <select id="cart-comp-previewbar-font-family"></select>
             </div>
             <label class="checkbox-row"><input type="checkbox" id="cart-comp-previewbar-bold"> Fett</label>
+
+            <div class="form-group">
+              <label for="cart-comp-previewbar-icon-type">Icon</label>
+              <select id="cart-comp-previewbar-icon-type">
+                <option value="none">Kein Icon</option>
+                <option value="emoji">Emoji / Text</option>
+                <option value="image">Eigenes Bild</option>
+              </select>
+            </div>
+            <div class="form-group hidden" id="cart-comp-previewbar-icon-emoji-group">
+              <label for="cart-comp-previewbar-icon">Icon (Emoji/Text)</label>
+              <input type="text" id="cart-comp-previewbar-icon" placeholder="z. B. 🚚">
+            </div>
+            <div class="form-group hidden" id="cart-comp-previewbar-icon-image-group">
+              <label>Bild hochladen</label>
+              <div class="file-input-wrapper">
+                <button type="button" class="file-input-btn">📁 Datei wählen</button>
+                <input type="file" id="cart-comp-previewbar-icon-image-file" accept="image/*">
+              </div>
+            </div>
           </div>
 
           <!-- Zur-Kasse-Button -->
