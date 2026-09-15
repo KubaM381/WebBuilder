@@ -212,8 +212,20 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    (siehe css/styles.css body.cart-focus-active). Seit T2 im Editor
    direkt anklickbar/auswählbar (nicht verschiebbar), dienen aber nach
    wie vor primär der räumlichen Orientierung beim Anordnen des
-   Warenkorbs. */
-.cart-preview-bar { position: absolute; left: 0; right: 0; z-index: 95; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; opacity: 0.92; }
+   Warenkorbs. gap: kommt dem optionalen Icon vor dem Beschriftungstext
+   zugute (siehe .cart-preview-bar-icon/-icon-img/-text unten) — ohne
+   Icon (die meisten Fälle) hat gap auf einem einzelnen Flex-Kind keine
+   sichtbare Wirkung. */
+.cart-preview-bar { position: absolute; left: 0; right: 0; z-index: 95; display: flex; align-items: center; justify-content: center; gap: 8px; color: #fff; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; opacity: 0.92; }
+/* Optionales Icon vor der Beschriftung — entweder ein Emoji/Text-Icon
+   oder ein eigenes hochgeladenes Bild (gegenseitig ausschließend, siehe
+   js/shop/cart-preview-bars.js state.cartPreviewHeaderIcon/-IconImage).
+   Gebaut von js/shop/cart-editor.js buildPreviewBarContentHtml(). Die
+   feste max-width verhindert, dass ein großformatiges hochgeladenes Bild
+   den schmalen Vorschau-Balken sprengt. */
+.cart-preview-bar-icon { font-size: 1.2em; line-height: 1; }
+.cart-preview-bar-icon-img { height: 1.4em; width: auto; max-width: 28px; object-fit: contain; border-radius: 4px; }
+.cart-preview-bar-text { line-height: 1; }
 /* T2: vorher pointer-events:none — diese Balken existieren ausschließlich
    während der Warenkorb-Editor offen ist (siehe renderPreviewBars() in
    js/shop/cart-editor.js), Klickbarkeit dort schadet also nirgendwo sonst. */
