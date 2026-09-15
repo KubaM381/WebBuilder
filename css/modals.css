@@ -143,76 +143,77 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 
 /* The centered stage showing the cart body on the canvas while the
    editor is active. Mounted into .canvas-container (position: relative,
-   see css/canvas.css) so it stays fixed regardless of zoom. */
-/* No "bottom"/fixed height here on purpose (see js/shop/cart-editor.js
-   renderFocusStage(), which only ever sets an inline "top" + "padding-
-   bottom" now, never "bottom") — the stage's height is left to its
-   content (the card), so it can grow taller than the visible area. Since
-   .canvas-container is both the containing block (position: relative)
-   AND the scroll container (overflow: auto, see css/canvas.css) for this
-   absolutely positioned stage, an overflowing card is picked up by that
-   ONE existing outer scrollbar instead of getting a second one of its
-   own. */
+   see css/canvas.css) so it stays fixed regardless of zoom. Only sets an
+   inline "top" + "padding-bottom" (see js/shop/cart-editor.js
+   renderFocusStage()) to make room for the preview header/footer bars —
+   the stage itself has no fixed height, it just centers the (now
+   fixed-size, drawer-like) card inside the available canvas area. */
 .cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px; pointer-events: none; }
-/* T3 fix: previously fixed at 600px, which forced the item list into one
-   narrow, tall column — with several products that meant a lot of
-   scrolling on the outer .canvas-container just to see them all. The
-   card now uses the full available stage width (up to a generous cap),
-   and the item list below renders as a responsive grid instead of a
-   single column, so multiple products sit next to each other like a
-   real, wide overview instead of a cramped drawer replica. Height stays
-   purely content-driven (no cap / no own overflow) — horizontal overflow
-   is still clipped so a custom "Artikel-Darstellung" width can never
-   push it into horizontal scrolling. Vertical scrolling, if the content
-   is still taller than the visible canvas area, is handled entirely by
-   the outer .canvas-container (see the comment above) — the card itself
-   never scrolls on its own. */
-.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 28px; width: 100%; max-width: 1100px; overflow-x: hidden; display: flex; flex-direction: column; }
-/* T1: .cart-focus-header reuses .drawer-header's flex/border-bottom look
-   (see the drawer-header rules above) for an accurate preview of the
-   real drawer's header. The negative margin cancels out
-   .cart-focus-card's own padding so the header still reaches the card's
-   edges, exactly like the real drawer. The close button inside is
-   disabled/non-functional — purely a visual preview, dimmed accordingly. */
-.cart-focus-header { margin: -28px -28px 16px -28px; flex-shrink: 0; }
+/* T3 (corrected): the card is sized and behaves like the REAL cart drawer
+   (.drawer above: narrow width, tall/deep, ONE internal scroll area for
+   the body) instead of a wide, content-driven card. This is exactly what
+   the person sees when opening the real cart in preview mode — so the
+   editor now matches it 1:1 instead of forcing the whole
+   .canvas-container to scroll to see more products. Height is capped
+   relative to the viewport so the card always fits comfortably on
+   screen; only .cart-focus-body (below) scrolls internally once the
+   content is taller than that. */
+.cart-focus-card {
+  pointer-events: auto;
+  background: var(--bg-panel);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  width: 420px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 220px);
+  max-height: 820px;
+  min-height: 380px;
+  overflow: hidden;
+}
+/* T1: .cart-focus-header also carries the .drawer-header class (see
+   js/shop/cart-editor.js renderFocusStage()), so it already gets the
+   exact same padding/border-bottom/flex layout as the real drawer's
+   header — no extra spacing needed here, just keep it from shrinking
+   inside the flex column. The close button inside is disabled/
+   non-functional — purely a visual preview, dimmed accordingly. */
+.cart-focus-header { flex-shrink: 0; margin: 0; }
 .cart-focus-header .close-btn { opacity: 0.5; }
-/* .cart-focus-body previously split into a fixed top/scrollable middle/
-   fixed bottom region (T3) so only the item list scrolled in its own
-   isolated area. That behaviour is reverted: there is now exactly ONE
-   scrollbar for the whole editor (the outer .canvas-container, see the
-   .cart-focus-stage comment above) — nothing inside the card scrolls on
-   its own anymore, so this is plain block flow. The three sub-divs
-   (fixed-top/scroll/fixed-bottom) built by js/shop/cart-render.js
-   buildCartParts()/js/shop/cart-editor.js renderFocusStage() are kept
-   only as markup hooks (still used for part/component selection), not as
-   separate scroll/flex regions. */
-.cart-focus-body { display: block; }
+/* Single scrollable region for the ENTIRE cart body — progress bar,
+   items, recommendation, discount and totals all scroll together as ONE
+   block, exactly like the real drawer's #cart-items-list inside
+   .drawer-body (overflow-y: auto). min-height:0 is required here: without
+   it, a flex child with overflow:auto refuses to shrink below its
+   content size in some browsers and never actually scrolls. The three
+   sub-divs built by js/shop/cart-render.js buildCartParts()/
+   js/shop/cart-editor.js renderFocusStage() (.cart-focus-fixed-top/
+   -scroll/-fixed-bottom) are kept only as markup hooks for part/
+   component selection, not as separate scroll/flex regions — see the
+   rules right below.
+*/
+.cart-focus-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+}
 .cart-focus-fixed-top:empty,
 .cart-focus-fixed-bottom:empty { display: none; }
-/* T3 fix: the item list is now a responsive grid (auto-fill columns, min
-   260px each) instead of a single stacked column, so products sit side
-   by side across the widened card — a big, wide overview like the real
-   preview instead of a narrow scrolling list. Falls back to a single
-   column automatically once the card is too narrow for a second one. No
-   scroll container of its own — see .cart-focus-body comment above. */
-.cart-focus-scroll { overflow: visible; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; align-items: start; }
-/* Grid gap already separates items visually — the extra bottom margin
-   from the shared .cart-item rule (used by the real, single-column
-   drawer) would just add uneven whitespace inside a grid cell here. */
-.cart-focus-stage .cart-item { margin-bottom: 0; }
-/* A horizontal divider line between items doesn't read well once items
-   sit side by side in a grid — hide it here (the real single-column
-   drawer above still shows it normally, this rule is scoped to the
-   editor stage only). */
-.cart-focus-scroll .cart-item-divider { display: none; }
-.cart-focus-checkout { margin-top: 16px; flex-shrink: 0; }
+.cart-focus-scroll { overflow: visible; }
+/* Fixed footer strip (Zur-Kasse-Button) — stays visible outside the
+   scrolling body above, exactly like the real drawer's .drawer-footer.
+   Margin (not padding) is used for the gutter so the button's own
+   border-radius (set inline per cartConfig.buttonShape) and background
+   color (set inline per cartConfig.buttonColor) stay untouched. */
+.cart-focus-checkout { flex-shrink: 0; margin: 16px 20px 20px 20px; }
 /* Only inside the editor stage does the transparent item shape get a
    dashed outline, so item bounds stay visible while editing (see
    .cart-item-transparent above for the "no lines" real-preview state). */
 .cart-focus-stage .cart-item.cart-item-transparent { border: 1px dashed var(--border-muted); }
 /* Keeps a custom "Artikel-Darstellung" width (cartConfig.itemWidth) from
-   ever pushing a grid cell wider than its track — the real drawer is
-   unaffected (this is scoped to the editor stage only). */
+   ever pushing the editor card into horizontal scrolling — the real
+   drawer is unaffected (this is scoped to the editor stage only). */
 .cart-focus-stage .cart-item { max-width: 100%; }
 
 /* Aufgabe D: konfigurierbare Trennlinie zwischen Warenkorb-Artikeln bei
@@ -221,8 +222,7 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    cart-render.js) zwischen jedem Artikel eingefügt, nicht vor dem
    ersten/nach dem letzten. Optisch bewusst identisch zur bestehenden
    .cart-totals-Border oberhalb, nur pro Artikel statt einmalig vor der
-   Summenzeile. Only applies to the real, single-column drawer — hidden
-   inside the editor's grid layout, see .cart-focus-scroll .cart-item-divider above. */
+   Summenzeile. */
 .cart-item-divider { border-top: 1px solid var(--border-color); margin: 4px 0; }
 
 /* Task 5: "Gruppe"-Variante der Mengenauswahl — ein zusammenhängender
