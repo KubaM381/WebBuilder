@@ -146,13 +146,29 @@
     });
   }
 
-  function getPartLayout(partKey) {
+  // T4: cart-item sub-parts (icon/qty/price/remove/description) live in
+  // cartConfig.itemDisplay.layout; recommend-card sub-parts (icon/name/
+  // price/add) live in a separate cartConfig.recommendDisplay.layout,
+  // since the recommend card isn't a cart item. Recommend part keys are
+  // prefixed "recommend:" (see cart-render.js buildRecommendCardContentHtml())
+  // so the correct layout map can be resolved from the key alone, without
+  // inspecting DOM ancestry.
+  function resolveLayoutMap(partKey) {
+    if (typeof partKey === "string" && partKey.startsWith("recommend:")) {
+      if (!state.cartConfig.recommendDisplay || typeof state.cartConfig.recommendDisplay !== "object") state.cartConfig.recommendDisplay = {};
+      if (!state.cartConfig.recommendDisplay.layout || typeof state.cartConfig.recommendDisplay.layout !== "object") state.cartConfig.recommendDisplay.layout = {};
+      return { map: state.cartConfig.recommendDisplay.layout, key: partKey.slice("recommend:".length) };
+    }
     const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
-    return layout[partKey] || { x: 0, y: 0 };
+    return { map: layout, key: partKey };
+  }
+  function getPartLayout(partKey) {
+    const { map, key } = resolveLayoutMap(partKey);
+    return map[key] || { x: 0, y: 0 };
   }
   function setPartLayoutSilent(partKey, x, y) {
-    const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
-    layout[partKey] = { x: Math.round(x) || 0, y: Math.round(y) || 0 };
+    const { map, key } = resolveLayoutMap(partKey);
+    map[key] = { x: Math.round(x) || 0, y: Math.round(y) || 0 };
   }
   function setPartLayout(partKey, x, y, recordHistory = true) {
     if (recordHistory) window.WebBuilderHistory?.arm();
@@ -162,10 +178,10 @@
   }
   function resetPartLayout(partKey) {
     window.WebBuilderHistory?.arm();
-    const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
-    delete layout[partKey];
+    const { map, key } = resolveLayoutMap(partKey);
+    delete map[key];
     window.WebBuilderHistory?.commit();
-    notify("cart", "part-layout", layout);
+    notify("cart", "part-layout", state.cartConfig.itemDisplay.layout);
   }
 
   function getSelectedLayout() {
@@ -272,8 +288,13 @@
     const positionFields = document.getElementById("cart-comp-position-fields");
     positionFields?.classList.toggle("hidden", NON_POSITIONABLE.has(sel));
 
+    // T4: recommend-card sub-parts (icon/name/price/add) show the same
+    // "Element" position panel as cart-item sub-parts — no dedicated
+    // field block exists for them (like "icon"/"description" for cart
+    // items), only the shared position X/Y fields further below.
     const labels = {
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
+      "recommend:icon": "Empfehlung: Icon", "recommend:name": "Empfehlung: Produktname", "recommend:price": "Empfehlung: Preis", "recommend:add": "Empfehlung: Plus-Button",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
       "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel",
@@ -367,7 +388,13 @@
       if (progressColorInput) progressColorInput.value = config.progressBarColor || "#10b981";
       window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
     } else if (sel === "component:recommend") {
+      // T4: Form der Empfehlungskarte + Farbe des "+"-Buttons, zusätzlich
+      // zur bestehenden Empfehlungs-Liste.
       document.getElementById("cart-comp-recommend-fields")?.classList.remove("hidden");
+      const shapeSel = document.getElementById("cart-comp-recommend-shape");
+      if (shapeSel) shapeSel.value = config.recommendShape || "rounded";
+      const addColorInput = document.getElementById("cart-comp-recommend-add-color");
+      if (addColorInput) addColorInput.value = config.recommendAddButtonColor || "#4f46e5";
       window.WebBuilderCartConfigRuntime?.renderRecommendList?.();
     } else if (sel === "component:background") {
       document.getElementById("cart-comp-background-fields")?.classList.remove("hidden");
@@ -526,17 +553,18 @@
         const startX = e.clientX, startY = e.clientY;
         let moved = false;
 
-        // Bounds relativ zur Eltern-Artikel-Box (.cart-item), damit sich
-        // Icon/Name, Menge, Preis, Entfernen-Button und Beschreibung nicht
-        // aus dem Produktfeld herausziehen lassen. Einmalig beim
+        // Bounds relativ zur Eltern-Box, damit sich die Teile nicht aus
+        // ihrem Container herausziehen lassen — für Artikel-Teile ist das
+        // die Artikel-Box (.cart-item), für Empfehlungs-Teile (T4) die
+        // Empfehlungskarte (.cart-recommend-card). Einmalig beim
         // Drag-Start berechnet: "natural*" = aktuelle Position minus dem
         // schon aktiven Transform-Offset (origin), daraus ergibt sich der
         // erlaubte x/y-Bereich, in dem die linke/obere bzw.
-        // rechte/untere Kante des Teils innerhalb der Artikel-Box bleibt.
-        const itemEl = partEl.closest(".cart-item");
+        // rechte/untere Kante des Teils innerhalb der Eltern-Box bleibt.
+        const parentBoxEl = partEl.closest(".cart-item") || partEl.closest(".cart-recommend-card");
         let bounds = null;
-        if (itemEl) {
-          const itemRect = itemEl.getBoundingClientRect();
+        if (parentBoxEl) {
+          const itemRect = parentBoxEl.getBoundingClientRect();
           const partRect = partEl.getBoundingClientRect();
           const naturalLeft = partRect.left - (origin.x || 0);
           const naturalTop = partRect.top - (origin.y || 0);
@@ -863,6 +891,16 @@
     }, true);
     document.getElementById("cart-comp-discount-shape")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ discountButtonShape: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
+    // T4: Empfehlungskarte — Form + Farbe des "+"-Buttons.
+    document.getElementById("cart-comp-recommend-shape")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ recommendShape: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-recommend-add-color")?.addEventListener("input", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ recommendAddButtonColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
