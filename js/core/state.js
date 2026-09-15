@@ -87,20 +87,44 @@ window.WebBuilderState = window.WebBuilderState || {
   cartPreviewHeaderHeight: 64,
   cartPreviewHeaderColor: "#111827",
   cartPreviewHeaderLabel: "Header",
+  // Advanced preview-bar styling, edited in the cart focus editor's
+  // right-hand panel (#cart-comp-previewbar-fields, see
+  // js/shop/cart-editor.js) — NOT duplicated into the sidebar. bgType
+  // "solid" uses cartPreviewHeaderColor as a plain background color;
+  // "image" additionally shows cartPreviewHeaderBgImage (cover/centered),
+  // with the color kept as a fallback while the image loads. icon/
+  // iconImage are mutually exclusive — picking one clears the other (see
+  // js/shop/cart-preview-bars.js updateHeader()).
+  cartPreviewHeaderBgType: "solid",
+  cartPreviewHeaderBgImage: "",
+  cartPreviewHeaderTextColor: "#ffffff",
+  cartPreviewHeaderFontFamily: "inherit",
+  cartPreviewHeaderBold: false,
+  cartPreviewHeaderIcon: null,
+  cartPreviewHeaderIconImage: "",
   cartPreviewFooterEnabled: false,
   cartPreviewFooterHeight: 70,
   cartPreviewFooterColor: "#111827",
   cartPreviewFooterLabel: "Footer",
+  cartPreviewFooterBgType: "solid",
+  cartPreviewFooterBgImage: "",
+  cartPreviewFooterTextColor: "#ffffff",
+  cartPreviewFooterFontFamily: "inherit",
+  cartPreviewFooterBold: false,
+  cartPreviewFooterIcon: null,
+  cartPreviewFooterIconImage: "",
   // Cart focus editor mode — like isPreviewMode, this is pure runtime UI
   // state, not persisted (not part of storage.js's snapshot).
   cartFocusMode: false,
   // Which cart-item sub-part or top-level component is currently selected
   // for editing in the focus editor's right panel (see
   // js/shop/cart-editor.js). Either a sub-part key
-  // ("icon"/"qty"/"price"/"remove"/"description") or a component key
+  // ("icon"/"qty"/"price"/"remove"/"description"), a component key
   // prefixed with "component:" ("component:progress"/"component:discount"/
   // "component:recommend"/"component:checkout"/"component:totals"/
-  // "component:background"/"component:itemRepresentation").
+  // "component:background"/"component:itemRepresentation"/
+  // "component:header"), or "previewHeader"/"previewFooter" for the cart
+  // editor's own preview bars.
   cartFocusSelectedPart: null,
   background: {
     type: "solid",
