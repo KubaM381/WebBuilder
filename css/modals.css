@@ -144,16 +144,25 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 /* The centered stage showing the cart body on the canvas while the
    editor is active. Mounted into .canvas-container (position: relative,
    see css/canvas.css) so it stays fixed regardless of zoom. */
-.cart-focus-stage { position: absolute; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 30px; pointer-events: none; }
+/* No "bottom"/fixed height here on purpose (see js/shop/cart-editor.js
+   renderFocusStage(), which only ever sets an inline "top" + "padding-
+   bottom" now, never "bottom") — the stage's height is left to its
+   content (the card), so it can grow taller than the visible area. Since
+   .canvas-container is both the containing block (position: relative)
+   AND the scroll container (overflow: auto, see css/canvas.css) for this
+   absolutely positioned stage, an overflowing card is picked up by that
+   ONE existing outer scrollbar instead of getting a second one of its
+   own. */
+.cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px; pointer-events: none; }
 /* Widened from the original 380px (drawer-matched) footprint so there is
-   more room to work with while editing. The card is now ALSO the single
-   scroll container for the whole cart body (header/progress/items/
-   recommend/discount/totals/checkout all scroll together as one normal
-   page, see .cart-focus-body/.cart-focus-scroll below) instead of only
-   the item list scrolling in its own isolated region — overflow-x is
-   clipped so a custom "Artikel-Darstellung" width can never push the
-   card into horizontal scrolling. */
-.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 600px; max-width: 100%; height: 100%; max-height: 100%; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+   more room to work with while editing. No height cap / no overflow here
+   anymore — the card's height is purely content-driven, and horizontal
+   overflow is clipped so a custom "Artikel-Darstellung" width can never
+   push it into horizontal scrolling. Vertical scrolling, if the content
+   is taller than the visible canvas area, is handled entirely by the
+   outer .canvas-container (see .cart-focus-stage comment above) — the
+   card itself never scrolls on its own. */
+.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 600px; max-width: 100%; overflow-x: hidden; display: flex; flex-direction: column; }
 /* T1: .cart-focus-header reuses .drawer-header's flex/border-bottom look
    (see the drawer-header rules above) for an accurate preview of the
    real drawer's header. The negative margin cancels out
@@ -164,19 +173,18 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 .cart-focus-header .close-btn { opacity: 0.5; }
 /* .cart-focus-body previously split into a fixed top/scrollable middle/
    fixed bottom region (T3) so only the item list scrolled in its own
-   isolated area. Per follow-up request that behaviour is reverted: the
-   whole card now scrolls together as one normal region (see
-   .cart-focus-card above), so this is plain block flow again — the three
-   sub-divs (fixed-top/scroll/fixed-bottom) built by
-   js/shop/cart-render.js buildCartParts()/js/shop/cart-editor.js
-   renderFocusStage() are kept only as markup hooks (still used for
-   part/component selection), not as separate scroll/flex regions. */
+   isolated area. That behaviour is reverted: there is now exactly ONE
+   scrollbar for the whole editor (the outer .canvas-container, see the
+   .cart-focus-stage comment above) — nothing inside the card scrolls on
+   its own anymore, so this is plain block flow. The three sub-divs
+   (fixed-top/scroll/fixed-bottom) built by js/shop/cart-render.js
+   buildCartParts()/js/shop/cart-editor.js renderFocusStage() are kept
+   only as markup hooks (still used for part/component selection), not as
+   separate scroll/flex regions. */
 .cart-focus-body { display: block; }
 .cart-focus-fixed-top:empty,
 .cart-focus-fixed-bottom:empty { display: none; }
-/* No longer its own scroll container (see .cart-focus-body comment
-   above) — the item list now scrolls along with the rest of the card,
-   with no separate/isolated scrollbar of its own. */
+/* No scroll container of its own (see .cart-focus-body comment above). */
 .cart-focus-scroll { overflow: visible; }
 .cart-focus-checkout { margin-top: 16px; flex-shrink: 0; }
 /* Only inside the editor stage does the transparent item shape get a
