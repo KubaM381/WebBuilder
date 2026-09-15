@@ -36,11 +36,39 @@
     return { top, bottom };
   }
 
+  // Wendet Hintergrund (einfarbig/Bild), Textfarbe, Schriftart und
+  // Fett-Schalter eines Vorschau-Balkens auf sein DOM-Element an. Alle
+  // Werte kommen aus window.WebBuilderCartPreviewBars.getConfig() (siehe
+  // js/shop/cart-preview-bars.js) — die Datenfelder existierten dort
+  // bereits, hier wird nur die visuelle Anwendung ergänzt. Inline-Styles
+  // gewinnen bewusst gegenüber den CSS-Defaults in
+  // css/modals.css .cart-preview-bar (color:#fff; font-weight:600;), die
+  // dadurch reine Fallbacks für den unkonfigurierten Fall bleiben.
+  function applyBarStyle(el, barCfg) {
+    if (!el || !barCfg) return;
+    if (barCfg.bgType === "image" && barCfg.bgImage) {
+      el.style.backgroundImage = `url("${barCfg.bgImage}")`;
+      el.style.backgroundSize = "cover";
+      el.style.backgroundPosition = "center";
+      el.style.backgroundRepeat = "no-repeat";
+      // Farbe bleibt als Fallback gesetzt, solange das Bild lädt.
+      el.style.backgroundColor = barCfg.color || "#111827";
+    } else {
+      el.style.backgroundImage = "none";
+      el.style.backgroundColor = barCfg.color || "#111827";
+    }
+    el.style.color = barCfg.textColor || "#ffffff";
+    el.style.fontFamily = barCfg.fontFamily || "inherit";
+    el.style.fontWeight = barCfg.bold ? "bold" : "600";
+  }
+
   // Baut/aktualisiert die beiden rein dekorativen Vorschau-Balken direkt
   // im selben Host wie #cart-focus-stage (siehe renderFocusStage()) —
   // keine Drag-Logik (siehe NON_POSITIONABLE/bindPreviewBarInteractions
-  // unten), aber seit T2 anklickbar/auswählbar. Ein/Aus + Höhe + Farbe +
-  // Beschriftung kommen weiterhin aus js/shop/cart-preview-bars.js.
+  // unten), aber seit T2 anklickbar/auswählbar. Ein/Aus + Höhe +
+  // Beschriftung kommen weiterhin aus js/shop/cart-preview-bars.js;
+  // Hintergrund/Textfarbe/Schriftart/Fett werden hier per applyBarStyle()
+  // angewendet.
   function renderPreviewBars(host) {
     const cfg = window.WebBuilderCartPreviewBars?.getConfig?.();
     if (!host || !cfg) return;
@@ -57,7 +85,7 @@
         host.appendChild(top);
       }
       top.style.height = (Number(cfg.header.height) || 64) + "px";
-      top.style.backgroundColor = cfg.header.color || "#111827";
+      applyBarStyle(top, cfg.header);
       top.textContent = cfg.header.label || "";
       top.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewHeader");
     } else if (top) {
@@ -73,7 +101,7 @@
         host.appendChild(bottom);
       }
       bottom.style.height = (Number(cfg.footer.height) || 70) + "px";
-      bottom.style.backgroundColor = cfg.footer.color || "#111827";
+      applyBarStyle(bottom, cfg.footer);
       bottom.textContent = cfg.footer.label || "";
       bottom.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewFooter");
     } else if (bottom) {
@@ -251,10 +279,40 @@
       const barCfg = (window.WebBuilderCartPreviewBars?.getConfig?.() || { header: {}, footer: {} })[isFooter ? "footer" : "header"];
       const heightInput = document.getElementById("cart-comp-previewbar-height");
       if (heightInput && document.activeElement !== heightInput) heightInput.value = barCfg.height != null ? barCfg.height : (isFooter ? 70 : 64);
-      const colorInput = document.getElementById("cart-comp-previewbar-color");
-      if (colorInput) colorInput.value = barCfg.color || "#111827";
       const labelInput = document.getElementById("cart-comp-previewbar-label");
       if (labelInput && document.activeElement !== labelInput) labelInput.value = barCfg.label || (isFooter ? "Footer" : "Header");
+
+      // Hintergrund-Typ: einfarbig/Bild — gleiches "solid"/"image"-Muster
+      // wie bei der echten Kopf-/Fußzeile (siehe web.html #header-bg-type
+      // / layout/header-footer.js syncBgControls()).
+      const bgTypeSel = document.getElementById("cart-comp-previewbar-bg-type");
+      if (bgTypeSel) bgTypeSel.value = barCfg.bgType === "image" ? "image" : "solid";
+      document.getElementById("cart-comp-previewbar-bg-solid-group")?.classList.toggle("hidden", barCfg.bgType === "image");
+      document.getElementById("cart-comp-previewbar-bg-image-group")?.classList.toggle("hidden", barCfg.bgType !== "image");
+      const colorInput = document.getElementById("cart-comp-previewbar-color");
+      if (colorInput) colorInput.value = barCfg.color || "#111827";
+      const bgImageUrlInput = document.getElementById("cart-comp-previewbar-bg-image-url");
+      if (bgImageUrlInput && document.activeElement !== bgImageUrlInput) bgImageUrlInput.value = barCfg.bgImage || "";
+
+      // Textfarbe.
+      const textColorInput = document.getElementById("cart-comp-previewbar-text-color");
+      if (textColorInput) textColorInput.value = barCfg.textColor || "#ffffff";
+
+      // Schriftart — Optionen einmalig aus ui/shared-markup.js befüllen
+      // (dieselbe feste Auswahl wie #prop-font-family/#bar-prop-font-family),
+      // Fallback falls das Modul aus irgendeinem Grund fehlt.
+      const fontSelect = document.getElementById("cart-comp-previewbar-font-family");
+      if (fontSelect) {
+        if (!fontSelect.dataset.webBuilderMarkupBound) {
+          fontSelect.innerHTML = window.WebBuilderSharedMarkup?.buildFontFamilyOptionsHtml?.() || '<option value="inherit">Standard</option>';
+          fontSelect.dataset.webBuilderMarkupBound = "true";
+        }
+        fontSelect.value = barCfg.fontFamily || "inherit";
+      }
+
+      // Fett.
+      const boldInput = document.getElementById("cart-comp-previewbar-bold");
+      if (boldInput) boldInput.checked = !!barCfg.bold;
     } else if (sel === "component:header") {
       // T1: editable title shown in the drawer-header preview at the top
       // of the stage (see renderFocusStage()) and in the real drawer
@@ -628,10 +686,30 @@
     // updateFooter() — dieselben Funktionen, die auch die Sidebar-
     // Steuerung in #panel-cart verwendet, damit beide Wege synchron
     // bleiben. render() dort synchronisiert zusätzlich die Sidebar-Felder.
+    // updateHeader()/updateFooter() rufen intern bereits
+    // window.WebBuilderCartFocus.renderStage() auf (siehe
+    // js/shop/cart-preview-bars.js), ein zusätzlicher renderFocusStage()-
+    // Aufruf hier ist daher nicht nötig.
     document.getElementById("cart-comp-previewbar-height")?.addEventListener("change", e => {
       const isFooter = state.cartFocusSelectedPart === "previewFooter";
       const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
       fn?.({ height: e.target.value });
+      window.WebBuilderCartPreviewBars?.render?.();
+      renderFocusPartPanel();
+    }, true);
+    document.getElementById("cart-comp-previewbar-label")?.addEventListener("change", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      fn?.({ label: e.target.value });
+      window.WebBuilderCartPreviewBars?.render?.();
+    }, true);
+
+    // Hintergrund-Typ (einfarbig/Bild) — Wechsel muss die beiden Gruppen
+    // im Panel neu ein-/ausblenden, daher renderFocusPartPanel() danach.
+    document.getElementById("cart-comp-previewbar-bg-type")?.addEventListener("change", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      fn?.({ bgType: e.target.value });
       window.WebBuilderCartPreviewBars?.render?.();
       renderFocusPartPanel();
     }, true);
@@ -641,10 +719,49 @@
       fn?.({ color: e.target.value });
       window.WebBuilderCartPreviewBars?.render?.();
     }, true);
-    document.getElementById("cart-comp-previewbar-label")?.addEventListener("change", e => {
+    document.getElementById("cart-comp-previewbar-bg-image-url")?.addEventListener("change", e => {
       const isFooter = state.cartFocusSelectedPart === "previewFooter";
       const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ label: e.target.value });
+      fn?.({ bgImage: e.target.value, bgType: "image" });
+      window.WebBuilderCartPreviewBars?.render?.();
+      renderFocusPartPanel();
+    }, true);
+    document.getElementById("cart-comp-previewbar-bg-image-file")?.addEventListener("change", e => {
+      const file = e.target.files?.[0];
+      if (!file || !file.type.startsWith("image/")) return;
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result !== "string") return;
+        fn?.({ bgImage: reader.result, bgType: "image" });
+        window.WebBuilderCartPreviewBars?.render?.();
+        renderFocusPartPanel();
+      };
+      reader.readAsDataURL(file);
+    }, true);
+
+    // Textfarbe.
+    document.getElementById("cart-comp-previewbar-text-color")?.addEventListener("input", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      fn?.({ textColor: e.target.value });
+      window.WebBuilderCartPreviewBars?.render?.();
+    }, true);
+
+    // Schriftart.
+    document.getElementById("cart-comp-previewbar-font-family")?.addEventListener("change", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      fn?.({ fontFamily: e.target.value });
+      window.WebBuilderCartPreviewBars?.render?.();
+    }, true);
+
+    // Fett.
+    document.getElementById("cart-comp-previewbar-bold")?.addEventListener("change", e => {
+      const isFooter = state.cartFocusSelectedPart === "previewFooter";
+      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
+      fn?.({ bold: e.target.checked });
       window.WebBuilderCartPreviewBars?.render?.();
     }, true);
 
