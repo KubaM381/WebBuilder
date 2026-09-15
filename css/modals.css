@@ -144,25 +144,17 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 /* The centered stage showing the cart body on the canvas while the
    editor is active. Mounted into .canvas-container (position: relative,
    see css/canvas.css) so it stays fixed regardless of zoom. */
-/* No "bottom"/fixed height here on purpose (see js/shop/cart-editor.js
-   renderFocusStage(), which only ever sets an inline "top" + "padding-
-   bottom" now, never "bottom") — the stage's height is left to its
-   content (the card), so it can grow taller than the visible area. Since
-   .canvas-container is both the containing block (position: relative)
-   AND the scroll container (overflow: auto, see css/canvas.css) for this
-   absolutely positioned stage, an overflowing card is picked up by that
-   ONE existing outer scrollbar instead of getting a second one of its
-   own. */
-.cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px; pointer-events: none; }
+.cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; align-items: flex-start; padding: 30px; pointer-events: none; }
 /* Widened from the original 380px (drawer-matched) footprint so there is
-   more room to work with while editing. No height cap / no overflow here
-   anymore — the card's height is purely content-driven, and horizontal
-   overflow is clipped so a custom "Artikel-Darstellung" width can never
-   push it into horizontal scrolling. Vertical scrolling, if the content
-   is taller than the visible canvas area, is handled entirely by the
-   outer .canvas-container (see .cart-focus-stage comment above) — the
-   card itself never scrolls on its own. */
-.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 600px; max-width: 100%; overflow-x: hidden; display: flex; flex-direction: column; }
+   more room to work with while editing. Height is capped via an inline
+   "max-height" set by js/shop/cart-editor.js renderFocusStage() (based on
+   the visible .canvas-container height minus the preview-bar insets), so
+   the card never grows taller than the visible editor area. Horizontal
+   overflow stays clipped so a custom "Artikel-Darstellung" width can
+   never push it into horizontal scrolling. Vertical overflow is handled
+   entirely by .cart-focus-scroll below (T3, restored) — the card itself
+   never scrolls as a whole, only its item-list region does. */
+.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 24px; width: 600px; max-width: 100%; overflow: hidden; display: flex; flex-direction: column; }
 /* T1: .cart-focus-header reuses .drawer-header's flex/border-bottom look
    (see the drawer-header rules above) for an accurate preview of the
    real drawer's header. The negative margin cancels out
@@ -171,21 +163,18 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    disabled/non-functional — purely a visual preview, dimmed accordingly. */
 .cart-focus-header { margin: -24px -24px 16px -24px; flex-shrink: 0; }
 .cart-focus-header .close-btn { opacity: 0.5; }
-/* .cart-focus-body previously split into a fixed top/scrollable middle/
-   fixed bottom region (T3) so only the item list scrolled in its own
-   isolated area. That behaviour is reverted: there is now exactly ONE
-   scrollbar for the whole editor (the outer .canvas-container, see the
-   .cart-focus-stage comment above) — nothing inside the card scrolls on
-   its own anymore, so this is plain block flow. The three sub-divs
-   (fixed-top/scroll/fixed-bottom) built by js/shop/cart-render.js
-   buildCartParts()/js/shop/cart-editor.js renderFocusStage() are kept
-   only as markup hooks (still used for part/component selection), not as
-   separate scroll/flex regions. */
-.cart-focus-body { display: block; }
+/* T3 (restored): .cart-focus-body is a flex column that fills the card's
+   remaining height (card has a fixed max-height, see .cart-focus-card
+   above). Only .cart-focus-scroll (the item list) is allowed to shrink
+   and scroll — the progress bar (fixed-top) and recommendation/discount/
+   totals (fixed-bottom) always stay fully visible, matching how the real
+   drawer never hides those blocks behind a scrollbar. */
+.cart-focus-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.cart-focus-fixed-top,
+.cart-focus-fixed-bottom { flex-shrink: 0; }
 .cart-focus-fixed-top:empty,
 .cart-focus-fixed-bottom:empty { display: none; }
-/* No scroll container of its own (see .cart-focus-body comment above). */
-.cart-focus-scroll { overflow: visible; }
+.cart-focus-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .cart-focus-checkout { margin-top: 16px; flex-shrink: 0; }
 /* Only inside the editor stage does the transparent item shape get a
    dashed outline, so item bounds stay visible while editing (see
