@@ -406,11 +406,45 @@
                direkt im Editor anklickbar/bearbeitbar (zusätzlich zur
                bestehenden Sidebar-Steuerung in #panel-cart > "Vorschau:
                Kopf-/Fußzeile"). Nicht verschiebbar, siehe
-               NON_POSITIONABLE in js/shop/cart-editor.js. -->
+               NON_POSITIONABLE in js/shop/cart-editor.js. Hintergrund
+               (einfarbig/Bild), Textfarbe, Schriftart und Fett-Schalter
+               ergänzen die schon vorhandenen Höhe/Farbe/Beschriftung-
+               Felder — Datenfelder existierten in
+               js/shop/cart-preview-bars.js bereits vorher, nur die UI
+               dafür fehlte. -->
           <div id="cart-comp-previewbar-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-previewbar-height">Höhe (px)</label><input type="number" id="cart-comp-previewbar-height" min="20" max="400"></div>
-            <div class="form-group"><label for="cart-comp-previewbar-color">Farbe</label><input type="color" id="cart-comp-previewbar-color"></div>
             <div class="form-group"><label for="cart-comp-previewbar-label">Beschriftung</label><input type="text" id="cart-comp-previewbar-label"></div>
+
+            <div class="form-group">
+              <label for="cart-comp-previewbar-bg-type">Hintergrund-Typ</label>
+              <select id="cart-comp-previewbar-bg-type">
+                <option value="solid">Einfarbig</option>
+                <option value="image">Bild</option>
+              </select>
+            </div>
+            <div id="cart-comp-previewbar-bg-solid-group" class="form-group">
+              <label for="cart-comp-previewbar-color">Hintergrundfarbe</label>
+              <input type="color" id="cart-comp-previewbar-color">
+            </div>
+            <div id="cart-comp-previewbar-bg-image-group" class="hidden form-group">
+              <label for="cart-comp-previewbar-bg-image-url">Bild</label>
+              <input type="text" id="cart-comp-previewbar-bg-image-url" placeholder="Bild URL eingeben...">
+              <div class="file-input-wrapper" style="margin-top:6px;">
+                <button type="button" class="file-input-btn">📁 Datei wählen</button>
+                <input type="file" id="cart-comp-previewbar-bg-image-file" accept="image/*">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="cart-comp-previewbar-text-color">Textfarbe</label>
+              <input type="color" id="cart-comp-previewbar-text-color">
+            </div>
+            <div class="form-group">
+              <label for="cart-comp-previewbar-font-family">Schriftart</label>
+              <select id="cart-comp-previewbar-font-family"></select>
+            </div>
+            <label class="checkbox-row"><input type="checkbox" id="cart-comp-previewbar-bold"> Fett</label>
           </div>
 
           <!-- Zur-Kasse-Button -->
