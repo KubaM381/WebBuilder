@@ -59,9 +59,8 @@
 .cart-milestone-reward { line-height: 1; }
 .cart-recommend { border: 1px dashed var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 16px; }
 .cart-recommend-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
-/* T11 (siehe docs/CART_EDITOR_TASKS.md): position: relative hinzugefügt,
-   damit die Ausrichtungslinien-Schicht (.alignment-guides,
-   position: absolute; inset: 0; — erzeugt von
+/* position: relative, damit die Ausrichtungslinien-Schicht
+   (.alignment-guides, position: absolute; inset: 0; — erzeugt von
    canvas/alignment.js createGuideLayer() und genutzt von
    js/shop/cart-editor.js für das Verschieben der Empfehlungskarten-Teile
    Icon/Name/Preis/Plus) korrekt an dieser Karte verankert wird, statt am
@@ -84,11 +83,10 @@
    und js/shop/cart-editor.js). margin-top/padding-top bleiben erhalten,
    damit der Abstand zum vorherigen Block auch ohne aktivierte Trennlinie
    unverändert bleibt.
-   T11: position: relative hinzugefügt — .cart-totals ist der Snap-
-   Container für die darin verschachtelten Komponenten "shipping" und
-   "totalsDivider" (siehe js/shop/cart-editor.js, snapContainer =
-   compEl.parentElement), analog zur Begründung bei .cart-recommend-card
-   oben. */
+   position: relative — .cart-totals ist der Snap-Container für die darin
+   verschachtelten Komponenten "shipping" und "totalsDivider" (siehe
+   js/shop/cart-editor.js, snapContainer = compEl.parentElement), analog
+   zur Begründung bei .cart-recommend-card oben. */
 .cart-totals { margin-top: 12px; padding-top: 12px; position: relative; }
 .cart-totals-divider { border-top: 1px solid var(--border-color); margin-bottom: 8px; }
 .cart-total-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
@@ -178,47 +176,53 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 
 /* The centered stage showing the cart body on the canvas while the
    editor is active. Mounted into .canvas-container (position: relative,
-   see css/canvas.css) so it stays fixed regardless of zoom. */
-.cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px; pointer-events: none; }
-/* T3 (final): the card matches the REAL cart drawer's proportions — same
-   narrow, "deep" shape (a bit wider than the 380px real drawer for more
-   comfortable editing, but still clearly a tall, narrow card, not a wide
-   one) — and it grows in height purely with its own content. There is
-   NO overflow/clip property here on purpose: nothing needs to be clipped
-   to the card's rounded corners anymore, since the one element that used
-   to need that (the footer bar, see .cart-focus-footer below) now gets
-   its own matching bottom-corner radius directly. This avoids a class of
-   bug where an `overflow: hidden` here could end up hiding content (e.g.
-   the checkout button) depending on how the browser computes the box's
-   own size — there is simply nothing left to hide. There is exactly ONE
-   scrollbar for the whole editor: the outer .canvas-container's existing
-   vertical scrollbar (overflow:auto, see css/canvas.css) — the very same
-   one that is already there next to the canvas during normal editing.
-   Nothing in here causes horizontal scrolling either (see also the
-   body.preview-mode / body.cart-focus-active overflow-x guards in
-   css/styles.css). */
-.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: 440px; max-width: 100%; display: flex; flex-direction: column; }
+   see css/canvas.css) so it stays fixed regardless of zoom. The generous
+   bottom padding gives the card room to grow downwards before it starts
+   fighting the outer .canvas-container's scroll. */
+.cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px 30px 90px; pointer-events: none; }
+/* T2: the card matches the REAL cart drawer exactly — same width (380px)
+   and the same 20px padding on header/body/footer (see .drawer and
+   .drawer-header/-body/-footer above). That keeps the "both stay
+   pixel-identical apart from editing affordances" invariant of
+   js/shop/cart-render.js intact: a pixel offset dragged into place here
+   lands in exactly the same spot in the real drawer.
+   min-height gives the editor more usable vertical room ("weiter nach
+   unten ausgebaut") — the card starts out as tall as a realistic
+   multi-item cart, and .cart-focus-body (flex: 1) absorbs the extra
+   space so the footer bar stays glued to the bottom edge. The card still
+   grows further with its own content.
+   There is NO overflow/clip property here on purpose: nothing needs to be
+   clipped to the card's rounded corners anymore, since the one element
+   that used to need that (the footer bar, see .cart-focus-footer below)
+   now gets its own matching bottom-corner radius directly. There is
+   exactly ONE scrollbar for the whole editor: the outer
+   .canvas-container's existing vertical scrollbar (overflow:auto, see
+   css/canvas.css) — the very same one that is already there next to the
+   canvas during normal editing. Nothing in here causes horizontal
+   scrolling either (see also the body.preview-mode /
+   body.cart-focus-active overflow-x guards in css/styles.css). */
+.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: 380px; max-width: 100%; min-height: 640px; display: flex; flex-direction: column; }
 /* .cart-focus-header already carries the .drawer-header class (see
    js/shop/cart-editor.js renderFocusStage()), which supplies the
-   padding/border-bottom/flex layout of the real drawer's header — the
-   slightly larger padding here (22px vs. the real drawer's 20px) is the
-   "etwas größer" sizing bump, scoped to the editor only. The close
-   button inside is disabled/non-functional — purely a visual preview,
-   dimmed accordingly. */
-.cart-focus-header { flex-shrink: 0; padding: 22px; }
+   padding/border-bottom/flex layout of the real drawer's header; the
+   padding is repeated here only to keep it explicitly in sync with
+   .cart-focus-body/-footer. The close button inside is disabled/
+   non-functional — purely a visual preview, dimmed accordingly. */
+.cart-focus-header { flex-shrink: 0; padding: 20px; }
 .cart-focus-header .close-btn { opacity: 0.5; }
-/* Plain block flow, WITHOUT its own overflow-y:auto — this is the actual
-   T3 fix: no internal scroll region inside the card at all. Content
-   (progress bar, items, recommendation, discount, totals) just flows in
-   normal order and the card grows as tall as it needs to; the outer
-   .canvas-container takes care of any vertical scrolling once the card
-   no longer fits the visible area (see .cart-focus-card comment above).
+/* Plain block flow, WITHOUT its own overflow-y:auto — no internal scroll
+   region inside the card at all. Content (progress bar, items,
+   recommendation, discount, totals) just flows in normal order; the
+   outer .canvas-container takes care of any vertical scrolling once the
+   card no longer fits the visible area (see .cart-focus-card comment
+   above). flex: 1 lets this area soak up the card's min-height, which is
+   what gives components room to be dragged further down.
    The three sub-divs built by js/shop/cart-render.js buildCartParts()/
    js/shop/cart-editor.js renderFocusStage() (.cart-focus-fixed-top/
    -scroll/-fixed-bottom) are kept only as markup hooks for part/
    component selection, not as separate scroll/flex regions. */
-.cart-focus-body { display: block; padding: 22px; }
-/* T11: position: relative auf -fixed-top/-fixed-bottom, damit die
+.cart-focus-body { display: block; flex: 1; padding: 20px; }
+/* position: relative auf -fixed-top/-fixed-bottom, damit die
    Ausrichtungslinien-Schicht (siehe canvas/alignment.js createGuideLayer(),
    genutzt von js/shop/cart-editor.js beim Verschieben der Top-Level-
    Komponenten Fortschrittsbalken/Empfehlung/Rabattfeld/Kosten-Übersicht)
@@ -231,7 +235,7 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 .cart-focus-fixed-top:empty,
 .cart-focus-fixed-bottom:empty { display: none; }
 .cart-focus-scroll { overflow: visible; }
-/* The checkout button now sits inside its own ".drawer-footer"-styled
+/* The checkout button sits inside its own ".drawer-footer"-styled
    wrapper (see js/shop/cart-editor.js renderFocusStage()) — the same
    footer bar (padding/border-top/background) the real drawer already
    uses (css/modals.css .drawer-footer above), so the editor accurately
@@ -240,11 +244,11 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    background (var(--bg-main) by default, or the configured
    footerBackgroundColor) doesn't show square corners poking past the
    card's rounded outline.
-   T11: position: relative hinzugefügt — dieser Balken ist der Snap-
-   Container für den Zur-Kasse-Button (siehe js/shop/cart-editor.js,
-   snapContainer = compEl.parentElement), analog zur Begründung bei
+   position: relative — dieser Balken ist der Snap-Container für den
+   Zur-Kasse-Button (siehe js/shop/cart-editor.js, snapContainer =
+   compEl.parentElement), analog zur Begründung bei
    .cart-focus-fixed-top/-fixed-bottom oben. */
-.cart-focus-footer { flex-shrink: 0; padding: 22px; border-radius: 0 0 12px 12px; position: relative; }
+.cart-focus-footer { flex-shrink: 0; padding: 20px; border-radius: 0 0 12px 12px; position: relative; }
 /* Only inside the editor stage does the transparent item shape get a
    dashed outline, so item bounds stay visible while editing (see
    .cart-item-transparent above for the "no lines" real-preview state). */
