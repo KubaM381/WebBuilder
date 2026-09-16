@@ -7,15 +7,14 @@
 // data/CRUD lives in cart-data.js, shared HTML building + the real drawer
 // live in cart-render.js — this file only adds the editing affordances.
 //
-// T11 (see docs/CART_EDITOR_TASKS.md): both the cart-item/recommend-card
-// SUB-PART dragging ([data-cart-part] branch) and the top-level COMPONENT
-// dragging ([data-cart-component] branch) now show the same Canva-style
-// alignment guides as canvas/canvas.js and layout/header-footer.js, by
-// reusing canvas/alignment.js's exported snapping primitives
-// (collectSnapTargets/snapPosition/guide-layer helpers) — NOT
-// attachInteraction() itself, since positioning here works via a CSS
-// transform offset from each element's natural flow position on an
-// unscaled stage, not via attachInteraction()'s absolute left/top +
+// Both the cart-item/recommend-card SUB-PART dragging ([data-cart-part]
+// branch) and the top-level COMPONENT dragging ([data-cart-component]
+// branch) show the same Canva-style alignment guides as canvas/canvas.js
+// and layout/header-footer.js, by reusing canvas/alignment.js's exported
+// snapping primitives (collectSnapTargets/snapPosition/guide-layer
+// helpers) — NOT attachInteraction() itself, since positioning here works
+// via a CSS transform offset from each element's natural flow position on
+// an unscaled stage, not via attachInteraction()'s absolute left/top +
 // zoom-scaled model. See the comment block at the top of
 // canvas/alignment.js for the full reasoning.
 //
@@ -41,17 +40,12 @@
 
   function refreshCartViews() { window.WebBuilderCartRuntime?.refresh?.(); }
 
-  // T11 bugfix (found while wiring up snapping for recommend-card parts):
-  // this used to always read/write cartConfig.itemDisplay.layout, even for
   // "recommend:"-prefixed part keys (icon/name/price/add of the
   // recommendation card, see cart-render.js buildRecommendCardContentHtml())
-  // which actually belong in cartConfig.recommendDisplay.layout (see
-  // cart-data.js normalizeState()). That meant dragging a recommend-card
-  // part silently wrote its offset to the wrong map and it was never
-  // reflected in cart-render.js's rendering (which reads the correct map
-  // per part family). resolveLayoutMap() is now the single place that
-  // decides which map a given partKey belongs to — every getter/setter
-  // below goes through it.
+  // belong in cartConfig.recommendDisplay.layout, every other part key in
+  // cartConfig.itemDisplay.layout (see cart-data.js normalizeState()).
+  // resolveLayoutMap() is the single place deciding which map a given
+  // partKey belongs to — every getter/setter below goes through it.
   function resolveLayoutMap(partKey) {
     if (String(partKey).startsWith("recommend:")) {
       const key = partKey.slice("recommend:".length);
@@ -129,6 +123,12 @@
   // like progress/discount/recommend/checkout/totals.
   const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation", "component:header", "component:footer"]);
 
+  // Every cart item renders the same data-cart-part keys, because one
+  // shared pixel offset per part type applies to all items
+  // (cartConfig.itemDisplay.layout, see cart-render.js
+  // buildCartItemHTML()). The highlight therefore has to mark EVERY
+  // match, not just the first one — otherwise clicking a part on the
+  // second item visibly highlighted the first item's part instead.
   function applySelectionHighlight() {
     const stage = document.getElementById("cart-focus-stage");
     if (!stage) return;
@@ -140,9 +140,9 @@
       if (key === "background") stage.querySelector(".cart-focus-card")?.classList.add("cart-component-selected");
       else if (key === "itemRepresentation") stage.querySelectorAll(".cart-item").forEach(el => el.classList.add("cart-component-selected"));
       else if (key === "footer") stage.querySelector(".cart-focus-footer")?.classList.add("cart-component-selected");
-      else stage.querySelector(`[data-cart-component="${key}"]`)?.classList.add("cart-component-selected");
+      else stage.querySelectorAll(`[data-cart-component="${key}"]`).forEach(el => el.classList.add("cart-component-selected"));
     } else {
-      stage.querySelector(`[data-cart-part="${sel}"]`)?.classList.add("cart-item-part-selected");
+      stage.querySelectorAll(`[data-cart-part="${sel}"]`).forEach(el => el.classList.add("cart-item-part-selected"));
     }
   }
 
@@ -398,8 +398,8 @@
           };
         }
 
-        // T11: sibling scope for snapping is simply the component's own
-        // DOM parent (see the file-level comment above for why this is
+        // Sibling scope for snapping is simply the component's own DOM
+        // parent (see the file-level comment above for why this is
         // always correct without per-component special-casing). Kept
         // deliberately separate from `bounds`/`parentEl` above — the
         // *bounds* box (how far a component may be dragged) and the
@@ -431,10 +431,10 @@
             nextY = Math.min(bounds.maxY, Math.max(bounds.minY, nextY));
           }
 
-          // T11: snap nextX/nextY against sibling components' edges/
-          // centers (plus the snap container's own center). The stage is
-          // unscaled — zoom is passed explicitly as 1, never taken from
-          // state.zoomLevel (see canvas/alignment.js's comment on
+          // Snap nextX/nextY against sibling components' edges/centers
+          // (plus the snap container's own edges and center). The stage
+          // is unscaled — zoom is passed explicitly as 1, never taken
+          // from state.zoomLevel (see canvas/alignment.js's comment on
           // collectSnapTargets()'s zoomOverride parameter).
           if (guides && snapContainer && naturalLeft != null && window.WebBuilderAlignment?.collectSnapTargets) {
             const containerRect = snapContainer.getBoundingClientRect();
@@ -520,11 +520,12 @@
             nextY = Math.min(bounds.maxY, Math.max(bounds.minY, nextY));
           }
 
-          // Snap nextX/nextY against sibling parts' edges/centers. The
-          // cart editor stage is unscaled (it sits outside the
-          // zoom-scaled #canvas-column) — zoom is passed explicitly as 1,
-          // never taken from state.zoomLevel (see canvas/alignment.js
-          // comment on collectSnapTargets()'s zoomOverride parameter).
+          // Snap nextX/nextY against sibling parts' edges/centers plus
+          // the parent box's own edges/center. The cart editor stage is
+          // unscaled (it sits outside the zoom-scaled #canvas-column) —
+          // zoom is passed explicitly as 1, never taken from
+          // state.zoomLevel (see canvas/alignment.js comment on
+          // collectSnapTargets()'s zoomOverride parameter).
           if (guides && parentEl && naturalLeft != null && window.WebBuilderAlignment?.collectSnapTargets) {
             const parentRect = parentEl.getBoundingClientRect();
             const partRect = partEl.getBoundingClientRect();
