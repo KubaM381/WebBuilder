@@ -151,6 +151,11 @@
     if (!state.cartConfig.componentLayout || typeof state.cartConfig.componentLayout !== "object") state.cartConfig.componentLayout = {};
     if (state.cartConfig.itemBackgroundColor == null) state.cartConfig.itemBackgroundColor = "";
     if (state.cartConfig.cardBackgroundColor == null) state.cartConfig.cardBackgroundColor = "";
+    // Hintergrundfarbe des Fußbereichs (component:footer, enthält den
+    // Zur-Kasse-Button) — unabhängig von cardBackgroundColor (der Karte
+    // selbst). Leer = Default aus css/modals.css (.drawer-footer,
+    // var(--bg-main)), damit unveränderte Projekte unverändert aussehen.
+    if (state.cartConfig.footerBackgroundColor == null) state.cartConfig.footerBackgroundColor = "";
     if (state.cartConfig.itemWidth === undefined) state.cartConfig.itemWidth = null;
     if (state.cartConfig.itemMinHeight === undefined) state.cartConfig.itemMinHeight = null;
     // T1: editable title of the cart drawer/editor header (e.g. "Dein
