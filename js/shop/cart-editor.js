@@ -254,6 +254,23 @@
       if (discountInput && document.activeElement !== discountInput) discountInput.value = config.discountLabel || "Rabatt";
       const totalLabelInput = document.getElementById("cart-comp-total-label");
       if (totalLabelInput && document.activeElement !== totalLabelInput) totalLabelInput.value = config.totalLabel || "Gesamt";
+      // T10: "Gratis-Produkt"-Zeile in der Kosten-Übersicht — das
+      // Eingabefeld-Paar (Label + Wert-Text) wird nur eingeblendet, wenn
+      // im Projekt tatsächlich ein Meilenstein mit Aktion "free-product"
+      // existiert (sonst kann die Zeile ohnehin nie erscheinen, siehe
+      // js/shop/cart-render.js buildCartParts()). Sichtbarkeit wird auch
+      // von renderMilestoneList() (cart-render.js) nach jeder
+      // Meilenstein-Änderung neu ausgewertet, indem es diese Funktion
+      // erneut aufruft.
+      const hasFreeProductMilestone = (config.milestones || []).some(m => m.action === "free-product");
+      const freeProductGroup = document.getElementById("cart-comp-free-product-group");
+      freeProductGroup?.classList.toggle("hidden", !hasFreeProductMilestone);
+      if (hasFreeProductMilestone) {
+        const freeProductLabelInput = document.getElementById("cart-comp-free-product-label");
+        if (freeProductLabelInput && document.activeElement !== freeProductLabelInput) freeProductLabelInput.value = config.freeProductLabel || "🎁 Gratis-Produkt";
+        const freeProductValueInput = document.getElementById("cart-comp-free-product-value");
+        if (freeProductValueInput && document.activeElement !== freeProductValueInput) freeProductValueInput.value = config.freeProductValueText || "freigeschaltet";
+      }
       // T9.3: "+ Trennlinie hinzufügen" nur anzeigen, solange die
       // Komponente noch nicht aktiv ist — sobald sie existiert, wird sie
       // stattdessen über component:totalsDivider selbst verwaltet
@@ -682,6 +699,19 @@
     }, true);
     document.getElementById("cart-comp-total-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ totalLabel: e.target.value.trim() || "Gesamt" }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
+    // T10 — component:totals: "Gratis-Produkt"-Zeile. Label fällt bei
+    // leerem Feld auf das Standard-Emoji-Label zurück, der Wert-Text auf
+    // "freigeschaltet" — exakt die bisherigen hartkodierten Strings, damit
+    // ein versehentlich geleertes Feld nicht zu einer leeren Zeile führt.
+    document.getElementById("cart-comp-free-product-label")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ freeProductLabel: e.target.value.trim() || "🎁 Gratis-Produkt" }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-free-product-value")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ freeProductValueText: e.target.value.trim() || "freigeschaltet" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
