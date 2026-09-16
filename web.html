@@ -470,11 +470,30 @@
             <div class="form-group"><label for="cart-comp-subtotal-label">Label „Zwischensumme“</label><input type="text" id="cart-comp-subtotal-label" placeholder="Zwischensumme"></div>
             <div class="form-group"><label for="cart-comp-discount-label">Label „Rabatt“</label><input type="text" id="cart-comp-discount-label" placeholder="Rabatt"></div>
             <div class="form-group"><label for="cart-comp-total-label">Label „Gesamt“</label><input type="text" id="cart-comp-total-label" placeholder="Gesamt"></div>
+            <hr class="divider modal-divider-tight">
+            <!-- T9.3: fügt eine eigene, im Editor frei verschiebbare
+                 Trennlinie direkt über der Zwischensumme-Zeile hinzu
+                 (component:totalsDivider). Nur sichtbar, solange sie noch
+                 nicht existiert — danach übernimmt deren eigenes Panel
+                 (#cart-comp-totals-divider-fields) mit der
+                 "Entfernen"-Option. -->
+            <button type="button" id="btn-add-totals-divider" class="btn btn-secondary btn-sm" style="width:100%;">+ Trennlinie hinzufügen</button>
+          </div>
+
+          <!-- T9.3: eigenes Panel für die Trennlinie über der
+               Zwischensumme (component:totalsDivider) — keine Stil-
+               Optionen, nur Position (automatisch über
+               #cart-comp-position-fields) und Entfernen. -->
+          <div id="cart-comp-totals-divider-fields" class="hidden">
+            <p class="help-text">Diese Trennlinie sitzt über der Zwischensumme-Zeile und lässt sich frei verschieben, z. B. weiter nach rechts.</p>
+            <button type="button" id="btn-remove-totals-divider" class="btn btn-danger-outline" style="width:100%;">🗑️ Trennlinie entfernen</button>
           </div>
 
           <!-- Fortschrittsbalken: Farbe + Position (unten) + Meilenstein-Liste hier -->
           <div id="cart-comp-progress-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-progress-color">Balkenfarbe</label><input type="color" id="cart-comp-progress-color"></div>
+            <div class="form-group"><label for="cart-comp-progress-complete-text">Text bei „alle Ziele erreicht“</label><input type="text" id="cart-comp-progress-complete-text" placeholder="✓ Alle Ziele freigeschaltet"></div>
+            <p class="help-text" style="margin-top:-6px;">Wird angezeigt, sobald der höchste Meilenstein erreicht ist und dieser selbst kein eigenes „Text bei Erreichen“ gesetzt hat (siehe unten in der Meilenstein-Liste).</p>
             <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel im Versand-Panel synchron, ein Meilenstein „Extra-Rabatt“ entsprechend mit dem Rabatt-Ziel im Rabattfeld-Panel:</p>
             <div class="mini-btn-row"><button type="button" id="btn-add-milestone" class="btn btn-secondary btn-sm" style="width:100%;">+ Meilenstein</button></div>
             <div id="cart-milestone-list" class="items-list"></div>
