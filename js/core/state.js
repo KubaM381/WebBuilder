@@ -82,8 +82,13 @@ window.WebBuilderState = window.WebBuilderState || {
   // deliberately separate from headerItems/footerItems/headerEnabled/
   // footerEnabled above: the cart focus editor no longer shows or lets
   // you edit the REAL site header/footer. Persisted like any other
-  // project setting (see core/storage.js createSnapshot()).
-  cartPreviewHeaderEnabled: false,
+  // project setting (see core/storage.js createSnapshot()). Default is
+  // "true" (always shown) for brand-new projects — this only affects
+  // projects that have never set the field before; a saved project that
+  // explicitly disabled the preview keeps that choice on reload (see
+  // js/shop/cart-preview-bars.js normalizeState(), which coerces via
+  // `!!` rather than re-defaulting).
+  cartPreviewHeaderEnabled: true,
   cartPreviewHeaderHeight: 64,
   cartPreviewHeaderColor: "#111827",
   cartPreviewHeaderLabel: "Header",
@@ -102,7 +107,7 @@ window.WebBuilderState = window.WebBuilderState || {
   cartPreviewHeaderBold: false,
   cartPreviewHeaderIcon: null,
   cartPreviewHeaderIconImage: "",
-  cartPreviewFooterEnabled: false,
+  cartPreviewFooterEnabled: true,
   cartPreviewFooterHeight: 70,
   cartPreviewFooterColor: "#111827",
   cartPreviewFooterLabel: "Footer",
