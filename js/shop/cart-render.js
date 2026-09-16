@@ -273,7 +273,16 @@
     // works on its own even with no milestone at all.
     const shippingThreshold = config.shippingFreeThreshold;
     const free = reached.some(m => m.action === "free-shipping") || (shippingThreshold != null && subtotal >= Number(shippingThreshold));
-    const extra = reached.some(m => m.action === "discount") ? 10 : 0;
+    // T8 (Spiegelbild von T7): der Extra-Rabatt gilt über einen erreichten
+    // Meilenstein mit action "discount" ODER über das eigenständige
+    // milestoneDiscountThreshold — beides wirkt unabhängig voneinander
+    // (Standardentscheidung (a) der T8-Spec, identisch zu "free" oben).
+    // Der Prozentsatz kommt aus cartConfig.milestoneDiscountPercent
+    // (Default 10 = bisheriger hartkodierter Wert).
+    const discountThreshold = config.milestoneDiscountThreshold;
+    const milestoneDiscountActive = reached.some(m => m.action === "discount") || (discountThreshold != null && subtotal >= Number(discountThreshold));
+    const configuredDiscountPercent = Number(config.milestoneDiscountPercent);
+    const extra = milestoneDiscountActive ? (Number.isFinite(configuredDiscountPercent) ? configuredDiscountPercent : 10) : 0;
     const discountPercent = Number(state.appliedDiscountPercent || 0) + extra;
     const discountAmount = subtotal * discountPercent / 100;
     // Versandkosten-Betrag und "Kostenlos"-Text sind im Warenkorb-Editor
@@ -425,6 +434,11 @@
     const listEl = document.getElementById("cart-milestone-list");
     if (!listEl) return;
     const milestones = Array.isArray(cart.getConfig()?.milestones) ? cart.getConfig().milestones : [];
+    // T8: der Extra-Rabatt ist jetzt konfigurierbar
+    // (cartConfig.milestoneDiscountPercent), deshalb zeigt die Option den
+    // aktuellen Wert statt der früher fest verdrahteten "(10%)".
+    const milestoneDiscountPercent = Number(cart.getConfig()?.milestoneDiscountPercent);
+    const discountOptionLabel = `Extra-Rabatt (${Number.isFinite(milestoneDiscountPercent) ? milestoneDiscountPercent : 10}%)`;
     listEl.innerHTML = milestones.length ? "" : '<p class="help-text">Noch keine Meilensteine.</p>';
     milestones.forEach(m => {
       const row = document.createElement("div");
@@ -435,7 +449,7 @@
         <input type="text" class="ms-reached-text" data-id="${esc(m.id)}" value="${esc(m.reachedText || "")}" placeholder="Text bei Erreichen (optional)" title="Wird anstelle der Standardmeldung gezeigt, sobald dies der zuletzt erreichte Meilenstein ist">
         <select class="ms-action" data-id="${esc(m.id)}">
           <option value="free-shipping" ${m.action === "free-shipping" ? "selected" : ""}>Kostenloser Versand</option>
-          <option value="discount" ${m.action === "discount" ? "selected" : ""}>Extra-Rabatt (10%)</option>
+          <option value="discount" ${m.action === "discount" ? "selected" : ""}>${esc(discountOptionLabel)}</option>
           <option value="free-product" ${m.action === "free-product" ? "selected" : ""}>Gratis-Produkt Hinweis</option>
           <option value="message" ${m.action === "message" ? "selected" : ""}>Nur Hinweistext</option>
         </select>
@@ -454,8 +468,10 @@
         // T7: reverse direction of cart.syncFreeShippingMilestone() —
         // editing a "free-shipping" milestone's own amount here keeps the
         // shipping panel's threshold field (component:shipping) in sync
-        // too.
+        // too. T8 does the same for a "discount" milestone and the
+        // discount panel's threshold (cartConfig.milestoneDiscountThreshold).
         if (m.action === "free-shipping") state.cartConfig.shippingFreeThreshold = m.amount;
+        else if (m.action === "discount") state.cartConfig.milestoneDiscountThreshold = m.amount;
         window.WebBuilderHistory?.commit();
         refreshCartViews();
       }
@@ -473,10 +489,11 @@
       if (m) {
         window.WebBuilderHistory?.arm();
         m.action = e.target.value;
-        // T7: if this milestone just became the free-shipping milestone,
-        // sync the shipping panel's threshold to its current amount right
-        // away (matches the amount-edit sync above).
+        // T7/T8: if this milestone just became the free-shipping /
+        // discount milestone, sync the matching panel's threshold to its
+        // current amount right away (matches the amount-edit sync above).
         if (m.action === "free-shipping") state.cartConfig.shippingFreeThreshold = m.amount;
+        else if (m.action === "discount") state.cartConfig.milestoneDiscountThreshold = m.amount;
         window.WebBuilderHistory?.commit();
         refreshCartViews();
       }
