@@ -59,16 +59,17 @@
 .cart-milestone-reward { line-height: 1; }
 .cart-recommend { border: 1px dashed var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 16px; }
 .cart-recommend-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
-.cart-recommend-card { display: flex; align-items: center; gap: 8px; }
-/* T11 (siehe docs/CART_EDITOR_TASKS.md): relative Positionierung nötig,
+/* T11 (siehe docs/CART_EDITOR_TASKS.md): position: relative hinzugefügt,
    damit die Ausrichtungslinien-Schicht (.alignment-guides,
    position: absolute; inset: 0; — erzeugt von
    canvas/alignment.js createGuideLayer() und genutzt von
    js/shop/cart-editor.js für das Verschieben der Empfehlungskarten-Teile
    Icon/Name/Preis/Plus) korrekt an dieser Karte verankert wird, statt am
    nächsten positionierten Vorfahren weiter oben in der Seite. Analog zu
-   .cart-item oben, das aus demselben Grund bereits position: relative hat. */
-.cart-recommend-card { position: relative; }
+   .cart-item oben, das aus demselben Grund bereits position: relative hat.
+   In eine Deklaration zusammengeführt statt einer zweiten, separaten
+   Regel für denselben Selektor (siehe css/README.md Regel 1). */
+.cart-recommend-card { display: flex; align-items: center; gap: 8px; position: relative; }
 .cart-recommend-icon { font-size: 1.4rem; }
 .cart-recommend-name { flex: 1; font-size: 0.85rem; }
 .cart-recommend-price { font-size: 0.8rem; color: var(--text-muted); }
@@ -82,8 +83,13 @@
    (component:totalsDivider, siehe js/shop/cart-render.js buildCartParts()
    und js/shop/cart-editor.js). margin-top/padding-top bleiben erhalten,
    damit der Abstand zum vorherigen Block auch ohne aktivierte Trennlinie
-   unverändert bleibt. */
-.cart-totals { margin-top: 12px; padding-top: 12px; }
+   unverändert bleibt.
+   T11: position: relative hinzugefügt — .cart-totals ist der Snap-
+   Container für die darin verschachtelten Komponenten "shipping" und
+   "totalsDivider" (siehe js/shop/cart-editor.js, snapContainer =
+   compEl.parentElement), analog zur Begründung bei .cart-recommend-card
+   oben. */
+.cart-totals { margin-top: 12px; padding-top: 12px; position: relative; }
 .cart-totals-divider { border-top: 1px solid var(--border-color); margin-bottom: 8px; }
 .cart-total-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
 .cart-total-final { font-weight: 700; font-size: 1rem; margin-top: 8px; }
@@ -212,6 +218,16 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    -scroll/-fixed-bottom) are kept only as markup hooks for part/
    component selection, not as separate scroll/flex regions. */
 .cart-focus-body { display: block; padding: 22px; }
+/* T11: position: relative auf -fixed-top/-fixed-bottom, damit die
+   Ausrichtungslinien-Schicht (siehe canvas/alignment.js createGuideLayer(),
+   genutzt von js/shop/cart-editor.js beim Verschieben der Top-Level-
+   Komponenten Fortschrittsbalken/Empfehlung/Rabattfeld/Kosten-Übersicht)
+   korrekt an diesen Containern verankert wird statt am nächsten
+   positionierten Vorfahren weiter oben (.cart-focus-stage). */
+.cart-focus-fixed-top,
+.cart-focus-fixed-bottom {
+  position: relative;
+}
 .cart-focus-fixed-top:empty,
 .cart-focus-fixed-bottom:empty { display: none; }
 .cart-focus-scroll { overflow: visible; }
@@ -223,8 +239,12 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    matches the card's own bottom corners so the footer's opaque
    background (var(--bg-main) by default, or the configured
    footerBackgroundColor) doesn't show square corners poking past the
-   card's rounded outline. */
-.cart-focus-footer { flex-shrink: 0; padding: 22px; border-radius: 0 0 12px 12px; }
+   card's rounded outline.
+   T11: position: relative hinzugefügt — dieser Balken ist der Snap-
+   Container für den Zur-Kasse-Button (siehe js/shop/cart-editor.js,
+   snapContainer = compEl.parentElement), analog zur Begründung bei
+   .cart-focus-fixed-top/-fixed-bottom oben. */
+.cart-focus-footer { flex-shrink: 0; padding: 22px; border-radius: 0 0 12px 12px; position: relative; }
 /* Only inside the editor stage does the transparent item shape get a
    dashed outline, so item bounds stay visible while editing (see
    .cart-item-transparent above for the "no lines" real-preview state). */
