@@ -125,12 +125,16 @@ body.cart-focus-active [data-cart-component],
 body.cart-focus-active [data-cart-component] * { cursor: grab; }
 body.cart-focus-active [data-cart-component]:active,
 body.cart-focus-active [data-cart-component] * :active { cursor: grabbing; }
-/* T1: the header preview is selectable but never draggable (see
+/* Header and footer bars are selectable but never draggable (see
    NON_POSITIONABLE in cart-editor.js) — override the generic grab cursor
-   above specifically for it. Must come after the general rule above to
-   win on equal specificity. */
+   above specifically for them. Must come after the general rule above to
+   win on equal specificity. The checkout button inside the footer keeps
+   its own grab cursor via the general rule (it IS draggable). */
 body.cart-focus-active [data-cart-component="header"],
-body.cart-focus-active [data-cart-component="header"] * { cursor: pointer; }
+body.cart-focus-active [data-cart-component="header"] *,
+body.cart-focus-active [data-cart-component="footer"] {
+  cursor: pointer;
+}
 
 /* Clicking an article's empty background (not a specific sub-part)
    selects the overall "Artikel-Darstellung". */
@@ -143,11 +147,7 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 
 /* The centered stage showing the cart body on the canvas while the
    editor is active. Mounted into .canvas-container (position: relative,
-   see css/canvas.css) so it stays fixed regardless of zoom. Only sets an
-   inline "top" + "padding-bottom" (see js/shop/cart-editor.js
-   renderFocusStage()) to make room for the preview header/footer bars —
-   the stage itself has no fixed height, it just centers the card inside
-   the available canvas area. */
+   see css/canvas.css) so it stays fixed regardless of zoom. */
 .cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px; pointer-events: none; }
 /* T3 (final): the card matches the REAL cart drawer's proportions — same
    narrow, "deep" shape (a bit wider than the 380px real drawer for more
@@ -196,10 +196,9 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    uses (css/modals.css .drawer-footer above), so the editor accurately
    previews it instead of showing a bare button. border-radius here
    matches the card's own bottom corners so the footer's opaque
-   background (var(--bg-main), set by .drawer-footer) doesn't show square
-   corners poking past the card's rounded outline — this is the one place
-   that still needs an explicit radius now that the card itself no longer
-   clips via overflow:hidden. */
+   background (var(--bg-main) by default, or the configured
+   footerBackgroundColor) doesn't show square corners poking past the
+   card's rounded outline. */
 .cart-focus-footer { flex-shrink: 0; padding: 22px; border-radius: 0 0 12px 12px; }
 /* Only inside the editor stage does the transparent item shape get a
    dashed outline, so item bounds stay visible while editing (see
@@ -230,18 +229,3 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 .cart-qty-group.cart-qty-group-pill { border-radius: 999px; }
 .cart-qty-group-btn { background: transparent; border: none; width: 26px; height: 26px; cursor: pointer; color: inherit; font-weight: 700; font-size: 0.85rem; }
 .cart-qty-group-value { min-width: 22px; text-align: center; font-size: 0.8rem; border-left: 1px solid currentColor; border-right: 1px solid currentColor; padding: 0 8px; height: 26px; line-height: 26px; }
-
-/* Warenkorb-Editor: eigene, rein visuelle Vorschau-Balken (js/shop/
-   cart-preview-bars.js) — unabhängig von der echten Kopf-/Fußzeile
-   (.builder-bar), die während des Warenkorb-Editors ausgeblendet bleibt
-   (siehe css/styles.css body.cart-focus-active). Seit T2 im Editor
-   direkt anklickbar/auswählbar (nicht verschiebbar), dienen aber nach
-   wie vor primär der räumlichen Orientierung beim Anordnen des
-   Warenkorbs. */
-.cart-preview-bar { position: absolute; left: 0; right: 0; z-index: 95; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; opacity: 0.92; }
-/* T2: vorher pointer-events:none — diese Balken existieren ausschließlich
-   während der Warenkorb-Editor offen ist (siehe renderPreviewBars() in
-   js/shop/cart-editor.js), Klickbarkeit dort schadet also nirgendwo sonst. */
-body.cart-focus-active .cart-preview-bar { pointer-events: auto; cursor: pointer; }
-.cart-preview-bar-top { top: 0; }
-.cart-preview-bar-bottom { bottom: 0; }
