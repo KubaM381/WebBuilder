@@ -60,6 +60,15 @@
 .cart-recommend { border: 1px dashed var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 16px; }
 .cart-recommend-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
 .cart-recommend-card { display: flex; align-items: center; gap: 8px; }
+/* T11 (siehe docs/CART_EDITOR_TASKS.md): relative Positionierung nötig,
+   damit die Ausrichtungslinien-Schicht (.alignment-guides,
+   position: absolute; inset: 0; — erzeugt von
+   canvas/alignment.js createGuideLayer() und genutzt von
+   js/shop/cart-editor.js für das Verschieben der Empfehlungskarten-Teile
+   Icon/Name/Preis/Plus) korrekt an dieser Karte verankert wird, statt am
+   nächsten positionierten Vorfahren weiter oben in der Seite. Analog zu
+   .cart-item oben, das aus demselben Grund bereits position: relative hat. */
+.cart-recommend-card { position: relative; }
 .cart-recommend-icon { font-size: 1.4rem; }
 .cart-recommend-name { flex: 1; font-size: 0.85rem; }
 .cart-recommend-price { font-size: 0.8rem; color: var(--text-muted); }
