@@ -6,6 +6,22 @@
 // components, and drives the right-hand #cart-inspector-form panel. Cart
 // data/CRUD lives in cart-data.js, shared HTML building + the real drawer
 // live in cart-render.js — this file only adds the editing affordances.
+//
+// T11 (see docs/CART_EDITOR_TASKS.md): cart-item/recommend-card SUB-PART
+// dragging (the [data-cart-part] branch below) now shows the same
+// Canva-style alignment guides as canvas/canvas.js and
+// layout/header-footer.js, by reusing canvas/alignment.js's exported
+// snapping primitives (collectSnapTargets/snapPosition/guide-layer
+// helpers) — NOT attachInteraction() itself, since parts here are
+// positioned via a CSS transform offset from their natural flow position
+// on an unscaled stage, not via attachInteraction()'s absolute left/top +
+// zoom-scaled model. See the comment block at the top of
+// canvas/alignment.js for the full reasoning.
+// Top-level COMPONENT dragging (the [data-cart-component] branch) is NOT
+// yet migrated — see docs/CART_EDITOR_TASKS.md T11 for the remaining
+// scope and why it needs a bit more design work (components' siblings are
+// split across three separate parent containers instead of one shared
+// parent).
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCartFocus: WebBuilderState is not available."); return; }
@@ -16,24 +32,46 @@
 
   function refreshCartViews() { window.WebBuilderCartRuntime?.refresh?.(); }
 
-  function getPartLayout(partKey) {
+  // T11 bugfix (found while wiring up snapping for recommend-card parts):
+  // this used to always read/write cartConfig.itemDisplay.layout, even for
+  // "recommend:"-prefixed part keys (icon/name/price/add of the
+  // recommendation card, see cart-render.js buildRecommendCardContentHtml())
+  // which actually belong in cartConfig.recommendDisplay.layout (see
+  // cart-data.js normalizeState()). That meant dragging a recommend-card
+  // part silently wrote its offset to the wrong map and it was never
+  // reflected in cart-render.js's rendering (which reads the correct map
+  // per part family). resolveLayoutMap() is now the single place that
+  // decides which map a given partKey belongs to — every getter/setter
+  // below goes through it.
+  function resolveLayoutMap(partKey) {
+    if (String(partKey).startsWith("recommend:")) {
+      const key = partKey.slice("recommend:".length);
+      if (!state.cartConfig.recommendDisplay || typeof state.cartConfig.recommendDisplay !== "object") state.cartConfig.recommendDisplay = {};
+      const layout = state.cartConfig.recommendDisplay.layout || (state.cartConfig.recommendDisplay.layout = {});
+      return { layout, key };
+    }
     const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
-    return layout[partKey] || { x: 0, y: 0 };
+    return { layout, key: partKey };
+  }
+  function getPartLayout(partKey) {
+    const { layout, key } = resolveLayoutMap(partKey);
+    return layout[key] || { x: 0, y: 0 };
   }
   function setPartLayoutSilent(partKey, x, y) {
-    const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
-    layout[partKey] = { x: Math.round(x) || 0, y: Math.round(y) || 0 };
+    const { layout, key } = resolveLayoutMap(partKey);
+    layout[key] = { x: Math.round(x) || 0, y: Math.round(y) || 0 };
   }
   function setPartLayout(partKey, x, y, recordHistory = true) {
     if (recordHistory) window.WebBuilderHistory?.arm();
     setPartLayoutSilent(partKey, x, y);
     if (recordHistory) window.WebBuilderHistory?.commit();
-    notify("cart", "part-layout", state.cartConfig.itemDisplay.layout);
+    const { layout } = resolveLayoutMap(partKey);
+    notify("cart", "part-layout", layout);
   }
   function resetPartLayout(partKey) {
     window.WebBuilderHistory?.arm();
-    const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
-    delete layout[partKey];
+    const { layout, key } = resolveLayoutMap(partKey);
+    delete layout[key];
     window.WebBuilderHistory?.commit();
     notify("cart", "part-layout", layout);
   }
@@ -169,12 +207,6 @@
       if (colorInput) colorInput.value = config.discountButtonColor || "#4f46e5";
       const shapeSel = document.getElementById("cart-comp-discount-shape");
       if (shapeSel) shapeSel.value = config.discountButtonShape || "rounded";
-      // T8 (Spiegelbild von T7/component:shipping): Prozentsatz des
-      // meilenstein-getriebenen Extra-Rabatts plus ein optionales
-      // Rabatt-Ziel, das bidirektional mit einem Meilenstein mit action
-      // "discount" synchronisiert wird (siehe cart.syncDiscountMilestone()
-      // in cart-data.js und der ".ms-amount"/".ms-action"-Sync in
-      // cart-render.js renderMilestoneList()).
       const percentInput = document.getElementById("cart-comp-discount-percent");
       if (percentInput && document.activeElement !== percentInput) percentInput.value = config.milestoneDiscountPercent != null ? config.milestoneDiscountPercent : 10;
       const discountThresholdInput = document.getElementById("cart-comp-discount-threshold");
@@ -183,8 +215,6 @@
       document.getElementById("cart-comp-progress-fields")?.classList.remove("hidden");
       const progressColorInput = document.getElementById("cart-comp-progress-color");
       if (progressColorInput) progressColorInput.value = config.progressBarColor || "#10b981";
-      // T9.2: globaler Fallback-Text, wenn kein weiterer Meilenstein mehr
-      // folgt und der erreichte Meilenstein kein eigenes reachedText hat.
       const completeTextInput = document.getElementById("cart-comp-progress-complete-text");
       if (completeTextInput && document.activeElement !== completeTextInput) completeTextInput.value = config.progressCompleteText || "✓ Alle Ziele freigeschaltet";
       window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
@@ -205,20 +235,11 @@
       if (wInput && document.activeElement !== wInput) wInput.value = config.itemWidth || "";
       if (hInput && document.activeElement !== hInput) hInput.value = config.itemMinHeight || "";
       const sd = document.getElementById("cid-show-description"); if (sd) sd.checked = !!config.itemDisplay.showDescription;
-      // Divider option only visible on a transparent item shape — every
-      // other shape already gives visual separation via the item box.
       const dividerGroup = document.getElementById("cart-item-divider-group");
       dividerGroup?.classList.toggle("hidden", config.itemShape !== "transparent");
       const dividerCb = document.getElementById("cid-show-item-dividers");
       if (dividerCb) dividerCb.checked = !!config.itemDisplay.showItemDividers;
     } else if (sel === "component:shipping") {
-      // T7: Versand als eigene, positionierbare Komponente — Label,
-      // Betrag, Text bei kostenlosem Versand sowie ein optionales
-      // Freibetrag-Ziel, das bidirektional mit einem "Kostenloser
-      // Versand"-Meilenstein synchronisiert wird (siehe
-      // cart.syncFreeShippingMilestone() in cart-data.js und der
-      // ".ms-amount"/".ms-action"-Sync in cart-render.js
-      // renderMilestoneList()).
       document.getElementById("cart-comp-shipping-fields")?.classList.remove("hidden");
       const shippingLabelInput = document.getElementById("cart-comp-shipping-label");
       if (shippingLabelInput && document.activeElement !== shippingLabelInput) shippingLabelInput.value = config.shippingLabel || "Versand";
@@ -229,16 +250,7 @@
       const shippingThresholdInput = document.getElementById("cart-comp-shipping-free-threshold");
       if (shippingThresholdInput && document.activeElement !== shippingThresholdInput) shippingThresholdInput.value = config.shippingFreeThreshold != null ? config.shippingFreeThreshold : "";
     } else if (sel === "component:totals") {
-      // "Kosten-Übersicht": Texte/Labels für Zwischensumme, Rabatt, Gesamt,
-      // plus die Währung. Versand ist seit T7 ein eigenes Panel
-      // (component:shipping, siehe oben), der meilenstein-getriebene
-      // Extra-Rabatt seit T8 Teil des Rabattfeld-Panels
-      // (component:discount).
       document.getElementById("cart-comp-totals-fields")?.classList.remove("hidden");
-      // T6: currency preset select, synced to whichever preset the
-      // current cartConfig.currency matches (falls back to "eur" if the
-      // stored value doesn't match any preset, e.g. a manually edited
-      // save file).
       const currencySelect = document.getElementById("cart-comp-currency");
       if (currencySelect) {
         const currency = config.currency || {};
@@ -254,14 +266,6 @@
       if (discountInput && document.activeElement !== discountInput) discountInput.value = config.discountLabel || "Rabatt";
       const totalLabelInput = document.getElementById("cart-comp-total-label");
       if (totalLabelInput && document.activeElement !== totalLabelInput) totalLabelInput.value = config.totalLabel || "Gesamt";
-      // T10: "Gratis-Produkt"-Zeile in der Kosten-Übersicht — das
-      // Eingabefeld-Paar (Label + Wert-Text) wird nur eingeblendet, wenn
-      // im Projekt tatsächlich ein Meilenstein mit Aktion "free-product"
-      // existiert (sonst kann die Zeile ohnehin nie erscheinen, siehe
-      // js/shop/cart-render.js buildCartParts()). Sichtbarkeit wird auch
-      // von renderMilestoneList() (cart-render.js) nach jeder
-      // Meilenstein-Änderung neu ausgewertet, indem es diese Funktion
-      // erneut aufruft.
       const hasFreeProductMilestone = (config.milestones || []).some(m => m.action === "free-product");
       const freeProductGroup = document.getElementById("cart-comp-free-product-group");
       freeProductGroup?.classList.toggle("hidden", !hasFreeProductMilestone);
@@ -271,15 +275,8 @@
         const freeProductValueInput = document.getElementById("cart-comp-free-product-value");
         if (freeProductValueInput && document.activeElement !== freeProductValueInput) freeProductValueInput.value = config.freeProductValueText || "freigeschaltet";
       }
-      // T9.3: "+ Trennlinie hinzufügen" nur anzeigen, solange die
-      // Komponente noch nicht aktiv ist — sobald sie existiert, wird sie
-      // stattdessen über component:totalsDivider selbst verwaltet
-      // (eigenes Panel mit "Trennlinie entfernen", siehe unten).
       document.getElementById("btn-add-totals-divider")?.classList.toggle("hidden", !!config.totalsDividerEnabled);
     } else if (sel === "component:totalsDivider") {
-      // T9.3: die Trennlinie selbst hat keine eigenen Stil-Felder — nur
-      // Position (automatisch über #cart-comp-position-fields, da nicht
-      // in NON_POSITIONABLE) und die Möglichkeit, sie wieder zu entfernen.
       document.getElementById("cart-comp-totals-divider-fields")?.classList.remove("hidden");
     } else if (sel === "qty") {
       document.getElementById("cart-comp-qty-fields")?.classList.remove("hidden");
@@ -363,17 +360,17 @@
         // out before any drag tracking is set up.
         if (NON_POSITIONABLE.has(`component:${key}`)) return;
 
+        // T11 (not yet migrated — see docs/CART_EDITOR_TASKS.md T11):
+        // component dragging still has no alignment guides. Its siblings
+        // are split across three separate parent containers
+        // (.cart-focus-fixed-top / .cart-focus-scroll / .cart-focus-fixed-bottom
+        // — see renderFocusStage() below), so a straight reuse of the
+        // part-drag approach below (single shared parent) doesn't apply
+        // as-is. Left as bespoke, unsnapped dragging for now.
         const origin = state.cartConfig.componentLayout[key] || { x: 0, y: 0 };
         const startX = e.clientX, startY = e.clientY;
         let moved = false;
 
-        // Bounds relative to the component's positioning parent — same
-        // reasoning as the [data-cart-part] bounds below: keeps
-        // progress/discount/recommend/checkout/shipping/totals inside the
-        // visible card area instead of letting them be dragged out
-        // arbitrarily far. Falls back through the most specific ancestor
-        // first (footer bar for the checkout button, otherwise the card
-        // body, otherwise the card itself).
         const parentEl = compEl.closest(".cart-focus-footer") || compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
         let bounds = null;
         if (parentEl) {
@@ -426,25 +423,29 @@
         const origin = getPartLayout(partKey);
         const startX = e.clientX, startY = e.clientY;
         let moved = false;
+        let guides = null;
 
-        // Bounds relativ zur Eltern-Artikel-Box (.cart-item), damit sich
-        // Icon/Name, Menge, Preis, Entfernen-Button und Beschreibung nicht
-        // aus dem Produktfeld herausziehen lassen. Einmalig beim
-        // Drag-Start berechnet: "natural*" = aktuelle Position minus dem
-        // schon aktiven Transform-Offset (origin), daraus ergibt sich der
-        // erlaubte x/y-Bereich, in dem die linke/obere bzw.
-        // rechte/untere Kante des Teils innerhalb der Artikel-Box bleibt.
-        const itemEl = partEl.closest(".cart-item");
+        // Bounds relativ zur Eltern-Box (.cart-item für Artikel-Teile,
+        // .cart-recommend-card für Empfehlungskarten-Teile — beide Fälle
+        // sind hier bewusst gleich behandelt, siehe resolveLayoutMap()
+        // oben). Einmalig beim Drag-Start berechnet: "natural*" = aktuelle
+        // Position minus dem schon aktiven Transform-Offset (origin),
+        // daraus ergibt sich sowohl der erlaubte x/y-Bereich als auch (für
+        // T11) die Umrechnung zwischen Transform-Offset und absoluter
+        // Position innerhalb der Eltern-Box, die die Snap-Berechnung
+        // braucht.
+        const parentEl = partEl.closest(".cart-item") || partEl.closest(".cart-recommend-card");
         let bounds = null;
-        if (itemEl) {
-          const itemRect = itemEl.getBoundingClientRect();
+        let naturalLeft = null, naturalTop = null;
+        if (parentEl) {
+          const parentRect = parentEl.getBoundingClientRect();
           const partRect = partEl.getBoundingClientRect();
-          const naturalLeft = partRect.left - (origin.x || 0);
-          const naturalTop = partRect.top - (origin.y || 0);
-          const rawMinX = itemRect.left - naturalLeft;
-          const rawMaxX = itemRect.right - partRect.width - naturalLeft;
-          const rawMinY = itemRect.top - naturalTop;
-          const rawMaxY = itemRect.bottom - partRect.height - naturalTop;
+          naturalLeft = partRect.left - (origin.x || 0);
+          naturalTop = partRect.top - (origin.y || 0);
+          const rawMinX = parentRect.left - naturalLeft;
+          const rawMaxX = parentRect.right - partRect.width - naturalLeft;
+          const rawMinY = parentRect.top - naturalTop;
+          const rawMaxY = parentRect.bottom - partRect.height - naturalTop;
           bounds = {
             minX: Math.min(rawMinX, rawMaxX), maxX: Math.max(rawMinX, rawMaxX),
             minY: Math.min(rawMinY, rawMaxY), maxY: Math.max(rawMinY, rawMaxY)
@@ -455,12 +456,46 @@
         function onMove(moveEvent) {
           const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
           if (!moved && Math.hypot(dx, dy) < 3) return;
-          moved = true;
+          if (!moved) {
+            moved = true;
+            // T11: guide layer is created lazily on the first real move,
+            // same convention as canvas/alignment.js attachInteraction().
+            if (parentEl && window.WebBuilderAlignment?.createGuideLayer) {
+              guides = window.WebBuilderAlignment.createGuideLayer(parentEl);
+            }
+          }
           let nextX = origin.x + dx, nextY = origin.y + dy;
           if (bounds) {
             nextX = Math.min(bounds.maxX, Math.max(bounds.minX, nextX));
             nextY = Math.min(bounds.maxY, Math.max(bounds.minY, nextY));
           }
+
+          // T11: snap nextX/nextY against sibling parts' edges/centers.
+          // The cart editor stage is unscaled (it sits outside the
+          // zoom-scaled #canvas-column) — zoom is passed explicitly as 1,
+          // never taken from state.zoomLevel (see canvas/alignment.js
+          // comment on collectSnapTargets()'s zoomOverride parameter).
+          if (guides && parentEl && naturalLeft != null && window.WebBuilderAlignment?.collectSnapTargets) {
+            const parentRect = parentEl.getBoundingClientRect();
+            const partRect = partEl.getBoundingClientRect();
+            // Absolute position (relative to parentEl's top-left) this
+            // part would occupy at nextX/nextY, before snapping — derived
+            // from the same "natural position minus origin offset" base
+            // used for bounds above, so it stays correct even mid-drag
+            // (partRect.width/height don't change while dragging).
+            const localX = (naturalLeft - parentRect.left) + nextX;
+            const localY = (naturalTop - parentRect.top) + nextY;
+            const targets = window.WebBuilderAlignment.collectSnapTargets(parentEl, partEl, "[data-cart-part]", 1);
+            const snapped = window.WebBuilderAlignment.snapPosition(localX, localY, partRect.width, partRect.height, targets, 1);
+            // Snapping adjusts the part's ABSOLUTE position; since the
+            // transform offset (nextX/nextY) is additive on top of the
+            // unchanged natural flow position, the same delta applies
+            // directly to the offset.
+            nextX += (snapped.x - localX);
+            nextY += (snapped.y - localY);
+            window.WebBuilderAlignment.updateGuideVisibility(guides, snapped.guideX, snapped.guideY);
+          }
+
           partEl.style.transform = `translate(${nextX}px, ${nextY}px)`;
           setPartLayoutSilent(partKey, nextX, nextY);
         }
@@ -469,7 +504,12 @@
           partEl.removeEventListener("pointerup", onUp);
           partEl.removeEventListener("pointercancel", onUp);
           try { partEl.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-          if (moved) { window.WebBuilderHistory?.commit(); notify("cart", "part-layout", state.cartConfig.itemDisplay.layout); }
+          if (guides) { window.WebBuilderAlignment?.removeGuideLayer?.(guides); guides = null; }
+          if (moved) {
+            window.WebBuilderHistory?.commit();
+            const { layout } = resolveLayoutMap(partKey);
+            notify("cart", "part-layout", layout);
+          }
         }
         window.WebBuilderHistory?.arm();
         partEl.addEventListener("pointermove", onMove);
@@ -517,17 +557,7 @@
     const checkoutLayout = config.componentLayout.checkout || { x: 0, y: 0 };
     const checkoutSelectedClass = state.cartFocusSelectedPart === "component:checkout" ? " cart-component-selected" : "";
     const bgSelectedClass = state.cartFocusSelectedPart === "component:background" ? " cart-component-selected" : "";
-    // T1: replaces the old static hint text + inline "✖" exit button with
-    // an accurate, non-interactive preview of the real drawer header
-    // (title + live/demo item count), reusing .drawer-header's styling so
-    // both stay visually identical. Selectable via data-cart-component
-    // like the other top-level blocks, but NON_POSITIONABLE (see above).
     const headerSelectedClass = state.cartFocusSelectedPart === "component:header" ? " cart-component-selected" : "";
-    // Fußbereich (component:footer): eigener Hintergrund, unabhängig von
-    // der Kartenfarbe. Auswählbar über den generischen
-    // [data-cart-component]-Zweig in bindFocusStageInteractions() —
-    // Klicks auf den Button selbst treffen "checkout" (closest() nimmt
-    // das nächstliegende Element mit data-cart-component).
     const footerSelectedClass = state.cartFocusSelectedPart === "component:footer" ? " cart-component-selected" : "";
     const footerBgStyle = config.footerBackgroundColor ? ` style="background-color:${config.footerBackgroundColor};"` : "";
     const cardBgStyle = config.cardBackgroundColor ? ` style="background-color:${config.cardBackgroundColor};"` : "";
@@ -537,12 +567,6 @@
     const parts = buildCartParts
       ? buildCartParts(items, { interactive: true, isDemo: usingDemo })
       : { progress: "", items: "", recommend: "", discount: "", totals: "" };
-    // The checkout button sits inside its own ".drawer-footer"-styled
-    // block (like the real drawer's <div class="drawer-footer">), now
-    // additionally selectable/colorable as "component:footer" — a click
-    // on the button itself still selects "component:checkout". The
-    // shipping row (T7) is rendered inside parts.totals (see
-    // cart-render.js buildCartParts()), so no separate slot is needed here.
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
         <div class="drawer-header cart-focus-header${headerSelectedClass}" data-cart-component="header"><h3>${esc(cartTitle)} (${previewCount})</h3><button type="button" class="close-btn" disabled>&times;</button></div>
@@ -634,18 +658,10 @@
       refreshCartViews();
     }, true);
 
-    // T8 — component:discount: Prozentsatz des meilenstein-getriebenen
-    // Extra-Rabatts (leer/ungültig fällt auf den Default 10 zurück) und
-    // das optionale Rabatt-Ziel. Das Ziel synct (falls vorhanden) den
-    // Meilenstein mit action "discount" und informiert per Toast darüber —
-    // exakt dasselbe Muster wie das Freibetrag-Ziel in T7.
     document.getElementById("cart-comp-discount-percent")?.addEventListener("change", e => {
       const raw = e.target.value;
       const v = raw === "" ? 10 : Math.max(0, Math.min(100, Number(raw) || 0));
       window.WebBuilderHistory?.arm(); cart.setConfig({ milestoneDiscountPercent: v }, false); window.WebBuilderHistory?.commit();
-      // Die Meilenstein-Option zeigt den Prozentsatz mit an
-      // (cart-render.js renderMilestoneList()), deshalb hier mit
-      // aktualisieren.
       window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
       refreshCartViews();
     }, true);
@@ -663,12 +679,10 @@
       refreshCartViews();
     }, true);
 
-    // Fortschrittsbalken-Farbe (component:progress).
     document.getElementById("cart-comp-progress-color")?.addEventListener("input", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ progressBarColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
-    // T9.2: globaler Fallback-Text bei "alle Meilensteine erreicht".
     document.getElementById("cart-comp-progress-complete-text")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ progressCompleteText: e.target.value.trim() || "✓ Alle Ziele freigeschaltet" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -679,16 +693,12 @@
       refreshCartViews();
     }, true);
 
-    // T6: currency preset. cart.CURRENCY_PRESETS is the single closed set
-    // used everywhere (cart-data.js formatCurrency(), this select).
     document.getElementById("cart-comp-currency")?.addEventListener("change", e => {
       const preset = cart.CURRENCY_PRESETS[e.target.value] || cart.CURRENCY_PRESETS.eur;
       window.WebBuilderHistory?.arm(); cart.setConfig({ currency: Object.assign({}, preset) }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
-    // "Kosten-Übersicht" (component:totals): Texte/Labels. Versand (T7)
-    // und der Meilenstein-Rabatt (T8) haben ihre eigenen Panels.
     document.getElementById("cart-comp-subtotal-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ subtotalLabel: e.target.value.trim() || "Zwischensumme" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -702,10 +712,6 @@
       refreshCartViews();
     }, true);
 
-    // T10 — component:totals: "Gratis-Produkt"-Zeile. Label fällt bei
-    // leerem Feld auf das Standard-Emoji-Label zurück, der Wert-Text auf
-    // "freigeschaltet" — exakt die bisherigen hartkodierten Strings, damit
-    // ein versehentlich geleertes Feld nicht zu einer leeren Zeile führt.
     document.getElementById("cart-comp-free-product-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ freeProductLabel: e.target.value.trim() || "🎁 Gratis-Produkt" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -715,11 +721,6 @@
       refreshCartViews();
     }, true);
 
-    // T9.3: "+ Trennlinie hinzufügen" schaltet die eigene, positionierbare
-    // Trennlinien-Komponente über der Zwischensumme frei und wählt sie
-    // direkt zur Bearbeitung/zum Verschieben aus. "🗑️ Trennlinie entfernen"
-    // schaltet sie wieder ab und räumt eine evtl. gesetzte Position auf,
-    // damit ein erneutes Hinzufügen wieder an der Standardposition startet.
     document.getElementById("btn-add-totals-divider")?.addEventListener("click", e => {
       e.preventDefault(); e.stopImmediatePropagation();
       window.WebBuilderHistory?.arm(); cart.setConfig({ totalsDividerEnabled: true }, false); window.WebBuilderHistory?.commit();
@@ -736,10 +737,6 @@
       selectFocusPart("component:totals");
     }, true);
 
-    // T7 — component:shipping: Label/Betrag/Freitext fallen jeweils auf
-    // ihren Default zurück, wenn geleert. Das Freibetrag-Ziel synct (falls
-    // vorhanden) den "Kostenloser Versand"-Meilenstein und informiert per
-    // Toast darüber.
     document.getElementById("cart-comp-shipping-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ shippingLabel: e.target.value.trim() || "Versand" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
