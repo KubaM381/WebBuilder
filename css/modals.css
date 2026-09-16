@@ -149,49 +149,65 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    the stage itself has no fixed height, it just centers the card inside
    the available canvas area. */
 .cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px; pointer-events: none; }
-/* T3 (final): the card matches the REAL cart drawer 1:1 — same width
-   (380px, like .drawer above) and it grows in height with its own
-   content instead of using a fixed/capped height with its own internal
-   scrollbar. There is exactly ONE scrollbar for the whole editor: the
-   outer .canvas-container's existing vertical scrollbar (overflow:auto,
-   see css/canvas.css) — the very same one that is already there next to
-   the canvas during normal editing. No scrollbar is ever created inside
-   the card itself (neither vertical nor horizontal), and nothing in here
-   causes horizontal scrolling either (see also the body.preview-mode /
-   body.cart-focus-active overflow-x guards in css/styles.css). */
-.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: 380px; max-width: 100%; display: flex; flex-direction: column; overflow: hidden; }
+/* T3 (final): the card matches the REAL cart drawer's proportions — same
+   narrow, "deep" shape (a bit wider than the 380px real drawer for more
+   comfortable editing, but still clearly a tall, narrow card, not a wide
+   one) — and it grows in height purely with its own content. There is
+   NO overflow/clip property here on purpose: nothing needs to be clipped
+   to the card's rounded corners anymore, since the one element that used
+   to need that (the footer bar, see .cart-focus-footer below) now gets
+   its own matching bottom-corner radius directly. This avoids a class of
+   bug where an `overflow: hidden` here could end up hiding content (e.g.
+   the checkout button) depending on how the browser computes the box's
+   own size — there is simply nothing left to hide. There is exactly ONE
+   scrollbar for the whole editor: the outer .canvas-container's existing
+   vertical scrollbar (overflow:auto, see css/canvas.css) — the very same
+   one that is already there next to the canvas during normal editing.
+   Nothing in here causes horizontal scrolling either (see also the
+   body.preview-mode / body.cart-focus-active overflow-x guards in
+   css/styles.css). */
+.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: 440px; max-width: 100%; display: flex; flex-direction: column; }
 /* .cart-focus-header already carries the .drawer-header class (see
-   js/shop/cart-editor.js renderFocusStage()), which supplies the exact
-   same padding/border-bottom/flex layout as the real drawer's header —
-   no extra spacing/negative-margin tricks needed now that the card
-   itself has no own padding. The close button inside is disabled/
-   non-functional — purely a visual preview, dimmed accordingly. */
-.cart-focus-header { flex-shrink: 0; }
+   js/shop/cart-editor.js renderFocusStage()), which supplies the
+   padding/border-bottom/flex layout of the real drawer's header — the
+   slightly larger padding here (22px vs. the real drawer's 20px) is the
+   "etwas größer" sizing bump, scoped to the editor only. The close
+   button inside is disabled/non-functional — purely a visual preview,
+   dimmed accordingly. */
+.cart-focus-header { flex-shrink: 0; padding: 22px; }
 .cart-focus-header .close-btn { opacity: 0.5; }
-/* Same padding as the real drawer's .drawer-body, but deliberately
-   WITHOUT its overflow-y:auto — this is the actual T3 fix: no internal
-   scroll region here at all. Content (progress bar, items,
-   recommendation, discount, totals) just flows in normal block order and
-   the card grows as tall as it needs to; the outer .canvas-container
-   takes care of any vertical scrolling once the card no longer fits the
-   visible area (same single scrollbar as always). The three sub-divs
-   built by js/shop/cart-render.js buildCartParts()/js/shop/
-   cart-editor.js renderFocusStage() (.cart-focus-fixed-top/-scroll/
-   -fixed-bottom) are kept only as markup hooks for part/component
-   selection, not as separate scroll/flex regions. */
-.cart-focus-body { display: block; padding: 20px; }
+/* Plain block flow, WITHOUT its own overflow-y:auto — this is the actual
+   T3 fix: no internal scroll region inside the card at all. Content
+   (progress bar, items, recommendation, discount, totals) just flows in
+   normal order and the card grows as tall as it needs to; the outer
+   .canvas-container takes care of any vertical scrolling once the card
+   no longer fits the visible area (see .cart-focus-card comment above).
+   The three sub-divs built by js/shop/cart-render.js buildCartParts()/
+   js/shop/cart-editor.js renderFocusStage() (.cart-focus-fixed-top/
+   -scroll/-fixed-bottom) are kept only as markup hooks for part/
+   component selection, not as separate scroll/flex regions. */
+.cart-focus-body { display: block; padding: 22px; }
 .cart-focus-fixed-top:empty,
 .cart-focus-fixed-bottom:empty { display: none; }
 .cart-focus-scroll { overflow: visible; }
-.cart-focus-checkout { flex-shrink: 0; margin: 16px 20px 20px 20px; }
+/* The checkout button now sits inside its own ".drawer-footer"-styled
+   wrapper (see js/shop/cart-editor.js renderFocusStage()) — the same
+   footer bar (padding/border-top/background) the real drawer already
+   uses (css/modals.css .drawer-footer above), so the editor accurately
+   previews it instead of showing a bare button. border-radius here
+   matches the card's own bottom corners so the footer's opaque
+   background (var(--bg-main), set by .drawer-footer) doesn't show square
+   corners poking past the card's rounded outline — this is the one place
+   that still needs an explicit radius now that the card itself no longer
+   clips via overflow:hidden. */
+.cart-focus-footer { flex-shrink: 0; padding: 22px; border-radius: 0 0 12px 12px; }
 /* Only inside the editor stage does the transparent item shape get a
    dashed outline, so item bounds stay visible while editing (see
    .cart-item-transparent above for the "no lines" real-preview state). */
 .cart-focus-stage .cart-item.cart-item-transparent { border: 1px dashed var(--border-muted); }
 /* Keeps a custom "Artikel-Darstellung" width (cartConfig.itemWidth) from
-   visually poking out of the card before the card's own overflow:hidden
-   (above) clips it — the real drawer is unaffected (this is scoped to
-   the editor stage only). */
+   ever pushing the editor card into horizontal scrolling — the real
+   drawer is unaffected (this is scoped to the editor stage only). */
 .cart-focus-stage .cart-item { max-width: 100%; }
 
 /* Aufgabe D: konfigurierbare Trennlinie zwischen Warenkorb-Artikeln bei
