@@ -158,6 +158,15 @@
     if (state.cartConfig.discountButtonShape == null) state.cartConfig.discountButtonShape = "rounded";
     // Fill color of the progress bar track.
     if (state.cartConfig.progressBarColor == null) state.cartConfig.progressBarColor = "#10b981";
+    // T9.2: editierbarer Fallback-Text, wenn kein weiterer Meilenstein
+    // mehr folgt UND der zuletzt erreichte Meilenstein selbst kein
+    // eigenes reachedText gesetzt hat (siehe js/shop/cart-render.js
+    // buildCartParts() progressMsg-Berechnung). Verschieden vom
+    // per-Meilenstein reachedText-Feld (bereits vorhanden, siehe
+    // renderMilestoneList()) — das hier ist der globale Fallback. Default
+    // entspricht dem bisher hartkodierten String, damit bestehende
+    // Projekte unverändert bleiben.
+    if (state.cartConfig.progressCompleteText == null) state.cartConfig.progressCompleteText = "✓ Alle Ziele freigeschaltet";
     // Quantity selector "group" variant shape + the closed +/- color
     // palette. Defaults keep existing projects' look unchanged (stepper
     // style, black buttons) until explicitly edited.
@@ -217,6 +226,14 @@
     if (state.cartConfig.milestoneDiscountPercent == null) state.cartConfig.milestoneDiscountPercent = 10;
     if (state.cartConfig.milestoneDiscountThreshold === undefined) state.cartConfig.milestoneDiscountThreshold = null;
     if (state.cartConfig.totalLabel == null) state.cartConfig.totalLabel = "Gesamt";
+    // T9.3: eigene, optionale, positionierbare Trennlinie direkt über der
+    // Zwischensumme-Zeile in der Kosten-Übersicht (component:totalsDivider,
+    // siehe js/shop/cart-editor.js). Ersetzt die bisher fest in CSS
+    // verdrahtete border-top-Linie auf .cart-totals (css/modals.css) —
+    // Default false, da es sich um eine neue, ausdrücklich über den
+    // "+ Trennlinie hinzufügen"-Button zuschaltbare Komponente handelt,
+    // nicht um eine immer sichtbare Linie.
+    if (state.cartConfig.totalsDividerEnabled == null) state.cartConfig.totalsDividerEnabled = false;
     // T4: Empfehlungskarte — Form + Farbe des "+"-Buttons, sowie eine
     // eigene Positions-Map für ihre Unterteile (Icon/Name/Preis/Plus).
     // Eigene Map statt itemDisplay.layout, da die Empfehlungskarte kein
