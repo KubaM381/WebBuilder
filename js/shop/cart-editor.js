@@ -115,7 +115,7 @@
     "cart-comp-header-fields", "cart-comp-footer-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields", "cart-comp-shipping-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
-    "cart-comp-totals-fields"
+    "cart-comp-totals-fields", "cart-comp-totals-divider-fields"
   ];
 
   function renderFocusPartPanel() {
@@ -135,7 +135,7 @@
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
       "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel", "component:footer": "Fußbereich (Zur-Kasse)",
-      "component:shipping": "Versand"
+      "component:shipping": "Versand", "component:totalsDivider": "Trennlinie (über Zwischensumme)"
     };
     const labelEl = document.getElementById("cart-part-label");
     if (labelEl) labelEl.textContent = labels[sel] || sel;
@@ -183,6 +183,10 @@
       document.getElementById("cart-comp-progress-fields")?.classList.remove("hidden");
       const progressColorInput = document.getElementById("cart-comp-progress-color");
       if (progressColorInput) progressColorInput.value = config.progressBarColor || "#10b981";
+      // T9.2: globaler Fallback-Text, wenn kein weiterer Meilenstein mehr
+      // folgt und der erreichte Meilenstein kein eigenes reachedText hat.
+      const completeTextInput = document.getElementById("cart-comp-progress-complete-text");
+      if (completeTextInput && document.activeElement !== completeTextInput) completeTextInput.value = config.progressCompleteText || "✓ Alle Ziele freigeschaltet";
       window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
     } else if (sel === "component:recommend") {
       document.getElementById("cart-comp-recommend-fields")?.classList.remove("hidden");
@@ -250,6 +254,16 @@
       if (discountInput && document.activeElement !== discountInput) discountInput.value = config.discountLabel || "Rabatt";
       const totalLabelInput = document.getElementById("cart-comp-total-label");
       if (totalLabelInput && document.activeElement !== totalLabelInput) totalLabelInput.value = config.totalLabel || "Gesamt";
+      // T9.3: "+ Trennlinie hinzufügen" nur anzeigen, solange die
+      // Komponente noch nicht aktiv ist — sobald sie existiert, wird sie
+      // stattdessen über component:totalsDivider selbst verwaltet
+      // (eigenes Panel mit "Trennlinie entfernen", siehe unten).
+      document.getElementById("btn-add-totals-divider")?.classList.toggle("hidden", !!config.totalsDividerEnabled);
+    } else if (sel === "component:totalsDivider") {
+      // T9.3: die Trennlinie selbst hat keine eigenen Stil-Felder — nur
+      // Position (automatisch über #cart-comp-position-fields, da nicht
+      // in NON_POSITIONABLE) und die Möglichkeit, sie wieder zu entfernen.
+      document.getElementById("cart-comp-totals-divider-fields")?.classList.remove("hidden");
     } else if (sel === "qty") {
       document.getElementById("cart-comp-qty-fields")?.classList.remove("hidden");
       const qs = document.getElementById("cid-quantity-style"); if (qs) qs.value = config.itemDisplay.quantityStyle || "stepper";
@@ -637,6 +651,11 @@
       window.WebBuilderHistory?.arm(); cart.setConfig({ progressBarColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
+    // T9.2: globaler Fallback-Text bei "alle Meilensteine erreicht".
+    document.getElementById("cart-comp-progress-complete-text")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ progressCompleteText: e.target.value.trim() || "✓ Alle Ziele freigeschaltet" }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
 
     document.getElementById("cart-comp-bg-color")?.addEventListener("input", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ cardBackgroundColor: e.target.value }, false); window.WebBuilderHistory?.commit();
@@ -664,6 +683,27 @@
     document.getElementById("cart-comp-total-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ totalLabel: e.target.value.trim() || "Gesamt" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
+    }, true);
+
+    // T9.3: "+ Trennlinie hinzufügen" schaltet die eigene, positionierbare
+    // Trennlinien-Komponente über der Zwischensumme frei und wählt sie
+    // direkt zur Bearbeitung/zum Verschieben aus. "🗑️ Trennlinie entfernen"
+    // schaltet sie wieder ab und räumt eine evtl. gesetzte Position auf,
+    // damit ein erneutes Hinzufügen wieder an der Standardposition startet.
+    document.getElementById("btn-add-totals-divider")?.addEventListener("click", e => {
+      e.preventDefault(); e.stopImmediatePropagation();
+      window.WebBuilderHistory?.arm(); cart.setConfig({ totalsDividerEnabled: true }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+      selectFocusPart("component:totalsDivider");
+    }, true);
+    document.getElementById("btn-remove-totals-divider")?.addEventListener("click", e => {
+      e.preventDefault(); e.stopImmediatePropagation();
+      window.WebBuilderHistory?.arm();
+      cart.setConfig({ totalsDividerEnabled: false }, false);
+      delete state.cartConfig.componentLayout.totalsDivider;
+      window.WebBuilderHistory?.commit();
+      refreshCartViews();
+      selectFocusPart("component:totals");
     }, true);
 
     // T7 — component:shipping: Label/Betrag/Freitext fallen jeweils auf
