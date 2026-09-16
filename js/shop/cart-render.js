@@ -209,14 +209,32 @@
       } else if (highestReached && highestReached.reachedText) {
         progressMsg = esc(highestReached.reachedText);
       } else {
-        progressMsg = "✓ Alle Ziele freigeschaltet";
+        // T9.2: globaler, editierbarer Fallback-Text statt hartkodierter
+        // String — siehe cartConfig.progressCompleteText in
+        // cart-data.js normalizeState().
+        progressMsg = esc(config.progressCompleteText || "✓ Alle Ziele freigeschaltet");
       }
-      const progressHtml = `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%; background-color:${barColor};"></div>${milestones.map(m => `<div class="cart-progress-mark ${subtotal >= Number(m.amount) ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%" title="${esc(m.label)}"></div>`).join("")}</div>${rewardsHtml}<p class="cart-progress-msg">${progressMsg}</p></div>`;
+      // T9.1: erreichte Meilenstein-Marker bekommen dieselbe Farbe wie der
+      // Balken (barColor) als Inline-Style statt der bisher in
+      // css/modals.css hartkodierten var(--success) — die CSS-Regel
+      // .cart-progress-mark.reached wurde entsprechend entfernt, da sie
+      // durch das Inline-Style ohnehin immer überschrieben wurde (toter
+      // Fallback).
+      const marksHtml = milestones.map(m => {
+        const isReached = subtotal >= Number(m.amount);
+        const colorStyle = isReached ? ` background-color:${barColor}; border-color:${barColor};` : "";
+        return `<div class="cart-progress-mark ${isReached ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%;${colorStyle}" title="${esc(m.label)}"></div>`;
+      }).join("");
+      const progressHtml = `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%; background-color:${barColor};"></div>${marksHtml}</div>${rewardsHtml}<p class="cart-progress-msg">${progressMsg}</p></div>`;
       progressPart = wrapComponent(progressHtml, "progress", interactive);
     }
 
     // Divider between items on a transparent item shape, only if enabled
     // — between each item, not before the first / after the last.
+    // T9.4: die Trennlinie selbst ist jetzt schmaler/kleiner als zuvor
+    // (siehe .cart-item-divider in css/modals.css) statt über die volle
+    // Artikel-Breite zu gehen — das Markup/die Auslöse-Logik hier bleibt
+    // unverändert, nur die Optik der Linie wurde angepasst.
     const showDividers = config.itemShape === "transparent" && !!(config.itemDisplay || {}).showItemDividers;
     const itemsPart = items.length
       ? items.map((i, idx) => (showDividers && idx > 0 ? '<div class="cart-item-divider"></div>' : "") + buildCartItemHTML(i, isDemo, interactive)).join("")
@@ -312,7 +330,23 @@
       : "";
     const shippingPart = wrapComponent(shippingRowHtml, "shipping", interactive);
 
-    let totalsHtml = `<div class="cart-totals"><div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
+    // T9.3: eigene, optionale Trennlinie direkt über der
+    // Zwischensumme-Zeile — anders als die übrigen Blöcke (progress/
+    // discount/recommend/checkout/shipping/totals) standardmäßig
+    // AUSGESCHALTET (cartConfig.totalsDividerEnabled, Default false) und
+    // nur über den "+ Trennlinie hinzufügen"-Button im Kosten-Übersicht-
+    // Panel zuschaltbar (js/shop/cart-editor.js). Einmal zugeschaltet,
+    // ist sie über denselben wrapComponent()-Mechanismus wie jede andere
+    // Komponente frei verschiebbar (cartConfig.componentLayout.totalsDivider).
+    // Ersetzt die bisher fest in CSS verdrahtete border-top-Linie auf
+    // .cart-totals (css/modals.css) — die Zeile selbst rendert nur, wenn
+    // die Komponente aktiv ist, sonst bleibt lediglich der bisherige
+    // Abstand (margin-top/padding-top) erhalten.
+    const totalsDividerPart = config.totalsDividerEnabled
+      ? wrapComponent(`<div class="cart-totals-divider"></div>`, "totalsDivider", interactive)
+      : "";
+
+    let totalsHtml = `<div class="cart-totals">${totalsDividerPart}<div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
     if (discountAmount > 0) totalsHtml += `<div class="cart-total-row"><span>${discountLabel}</span><span>−${eur(discountAmount)}</span></div>`;
     totalsHtml += shippingPart;
     if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>🎁 Gratis-Produkt</span><span>freigeschaltet</span></div>`;
