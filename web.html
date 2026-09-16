@@ -408,7 +408,15 @@
             </div>
           </div>
 
-          <!-- Rabattfeld -->
+          <!-- Rabattfeld. Enthält seit T8 zusätzlich den meilenstein-
+               getriebenen Extra-Rabatt: Prozentsatz
+               (cartConfig.milestoneDiscountPercent) und ein optionales
+               Rabatt-Ziel (cartConfig.milestoneDiscountThreshold), das
+               bidirektional mit einem Meilenstein „Extra-Rabatt“ im
+               Fortschrittsbalken-Panel synchron gehalten wird — exakt
+               dasselbe Muster wie das Freibetrag-Ziel im Versand-Panel
+               (T7, siehe js/shop/cart-data.js syncDiscountMilestone()
+               und js/shop/cart-render.js renderMilestoneList()). -->
           <div id="cart-comp-discount-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-discount-color">Farbe</label><input type="color" id="cart-comp-discount-color"></div>
             <div class="form-group"><label for="cart-comp-discount-shape">Form</label>
@@ -418,6 +426,10 @@
                 <option value="pill">Rund (Pille)</option>
               </select>
             </div>
+            <hr class="divider modal-divider-tight">
+            <div class="form-group"><label for="cart-comp-discount-percent">Extra-Rabatt bei Meilenstein (%)</label><input type="number" id="cart-comp-discount-percent" min="0" max="100" step="1" placeholder="10"></div>
+            <div class="form-group"><label for="cart-comp-discount-threshold">Rabatt ab Warenkorbwert (€)</label><input type="number" id="cart-comp-discount-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
+            <p class="help-text">Der Extra-Rabatt gilt, sobald entweder ein Meilenstein „Extra-Rabatt“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert. Er kommt zusätzlich zu einem eingelösten Rabattcode obendrauf.</p>
           </div>
 
           <!-- Versand (T7) — eigene, positionierbare Komponente
@@ -443,9 +455,10 @@
 
           <!-- Kosten-Übersicht (Zwischensumme/Rabatt/Gesamt) — Labels
                sowie die Währung editierbar. Versand ist seit T7 ein
-               eigenes Panel (component:shipping, siehe oben). Siehe
-               js/shop/cart-data.js normalizeState() für die
-               Default-Werte. -->
+               eigenes Panel (component:shipping, siehe oben), der
+               Meilenstein-Rabatt seit T8 Teil des Rabattfeld-Panels
+               (component:discount). Siehe js/shop/cart-data.js
+               normalizeState() für die Default-Werte. -->
           <div id="cart-comp-totals-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-currency">Währung</label>
               <select id="cart-comp-currency">
@@ -462,7 +475,7 @@
           <!-- Fortschrittsbalken: Farbe + Position (unten) + Meilenstein-Liste hier -->
           <div id="cart-comp-progress-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-progress-color">Balkenfarbe</label><input type="color" id="cart-comp-progress-color"></div>
-            <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel im Versand-Panel synchron:</p>
+            <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel im Versand-Panel synchron, ein Meilenstein „Extra-Rabatt“ entsprechend mit dem Rabatt-Ziel im Rabattfeld-Panel:</p>
             <div class="mini-btn-row"><button type="button" id="btn-add-milestone" class="btn btn-secondary btn-sm" style="width:100%;">+ Meilenstein</button></div>
             <div id="cart-milestone-list" class="items-list"></div>
           </div>
