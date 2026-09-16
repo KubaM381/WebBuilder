@@ -42,7 +42,16 @@
 .cart-progress-track { position: relative; height: 8px; background: var(--border-color); border-radius: 4px; margin: 10px 0 8px; }
 .cart-progress-fill { height: 100%; background: var(--success); border-radius: 4px; transition: width 0.3s ease; }
 .cart-progress-mark { position: absolute; top: -4px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--border-color); transform: translateX(-50%); }
-.cart-progress-mark.reached { border-color: var(--success); background: var(--success); }
+/* T9.1: die Farbe eines erreichten Meilensteins kommt jetzt als
+   Inline-Style aus js/shop/cart-render.js (buildCartParts(), Variable
+   barColor = cartConfig.progressBarColor), damit Marker und Balken immer
+   dieselbe konfigurierte Farbe zeigen. Die frühere hartkodierte
+   "border-color: var(--success); background: var(--success);"-Regel
+   wurde entfernt, da das Inline-Style sie ohnehin immer überschrieben
+   hätte (toter Fallback) — die .reached-Klasse bleibt als reiner
+   Zustands-/Selektor-Hook bestehen (z. B. für zukünftige, nicht
+   farbbezogene Styling-Erweiterungen). */
+.cart-progress-mark.reached { border-width: 2px; }
 .cart-progress-msg { font-size: 0.78rem; color: var(--text-muted); }
 /* Task 9: reached-milestone reward icons, shown between the progress
    track and the progress message. */
@@ -59,7 +68,14 @@
 .cart-discount input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 6px; font-size: 0.85rem; }
 .cart-discount button { width: 100%; padding: 7px; border: none; border-radius: 6px; background: var(--primary); color: #fff; cursor: pointer; font-weight: 600; }
 .cart-discount-msg.ok { color: var(--success); font-size: 0.8rem; margin-top: 6px; }
-.cart-totals { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); }
+/* T9.3: kein hartkodiertes border-top mehr — die Trennlinie über der
+   Zwischensumme ist jetzt eine optionale, positionierbare Komponente
+   (component:totalsDivider, siehe js/shop/cart-render.js buildCartParts()
+   und js/shop/cart-editor.js). margin-top/padding-top bleiben erhalten,
+   damit der Abstand zum vorherigen Block auch ohne aktivierte Trennlinie
+   unverändert bleibt. */
+.cart-totals { margin-top: 12px; padding-top: 12px; }
+.cart-totals-divider { border-top: 1px solid var(--border-color); margin-bottom: 8px; }
 .cart-total-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
 .cart-total-final { font-weight: 700; font-size: 1rem; margin-top: 8px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
@@ -213,10 +229,12 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    durchsichtiger Artikel-Form (cartConfig.itemShape === "transparent" &&
    itemDisplay.showItemDividers). Wird in buildCartHtml() (js/shop/
    cart-render.js) zwischen jedem Artikel eingefügt, nicht vor dem
-   ersten/nach dem letzten. Optisch bewusst identisch zur bestehenden
-   .cart-totals-Border oberhalb, nur pro Artikel statt einmalig vor der
-   Summenzeile. */
-.cart-item-divider { border-top: 1px solid var(--border-color); margin: 4px 0; }
+   ersten/nach dem letzten.
+   T9.4: bewusst schmaler als die volle Artikelbreite (statt wie zuvor
+   100%) und zentriert, damit sie als dezente Abtrennung zwischen den
+   Produkten wirkt statt wie eine durchgehende Linie über die ganze
+   Breite. */
+.cart-item-divider { border-top: 1px solid var(--border-color); margin: 4px auto; width: 70%; }
 
 /* Task 5: "Gruppe"-Variante der Mengenauswahl — ein zusammenhängender
    Container statt zweier separater Buttons (siehe .cart-qty-stepper
