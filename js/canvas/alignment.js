@@ -4,6 +4,19 @@
 // layout/header-footer.js (bar items) can share exactly the same drag
 // controller and Canva-style center/edge snapping without either file
 // depending on the other. Must load before both.
+//
+// T11 (see docs/CART_EDITOR_TASKS.md): shop/cart-editor.js also uses the
+// snapping primitives below (collectSnapTargets/snapPosition/guide-layer
+// helpers), but NOT attachInteraction() itself — the cart editor positions
+// parts/components via a CSS transform offset from their natural flow
+// position, on an unscaled stage (outside #canvas-column, so never
+// affected by state.zoomLevel), whereas attachInteraction() assumes
+// absolute left/top positioning inside a zoom-scaled container. Forcing
+// that model onto the cart editor would have meant restructuring its
+// layout system; instead the snapping building blocks are exported here
+// with an explicit, overridable zoom parameter so a caller with a
+// different coordinate space (like cart-editor.js, always zoom=1) can
+// reuse them safely without inheriting canvas.js's zoom assumption.
 (() => {
   const state = window.WebBuilderState;
   if (!state) {
@@ -63,9 +76,16 @@
   // centers — as local (unscaled) coordinates, i.e. the same coordinate
   // space toLocalCoords() produces and item.x/item.y already live in.
   // siblingSelector scopes this to direct children of the same container
-  // (".placed-element" for the canvas, ".bar-item" for a header/footer bar).
-  function collectSnapTargets(containerEl, excludeEl, siblingSelector) {
-    const zoom = Number(state.zoomLevel) || 1;
+  // (".placed-element" for the canvas, ".bar-item" for a header/footer bar,
+  // "[data-cart-part]" for the cart editor — see shop/cart-editor.js).
+  //
+  // zoomOverride: callers whose container isn't affected by
+  // state.zoomLevel (e.g. the cart editor stage, which sits outside the
+  // zoom-scaled #canvas-column) MUST pass 1 here explicitly — omitting it
+  // falls back to state.zoomLevel, which is only correct for canvas
+  // elements and header/footer bar items.
+  function collectSnapTargets(containerEl, excludeEl, siblingSelector, zoomOverride) {
+    const zoom = zoomOverride != null ? zoomOverride : (Number(state.zoomLevel) || 1);
     const containerRect = containerEl.getBoundingClientRect();
     const xTargets = [containerRect.width / zoom / 2];
     const yTargets = [containerRect.height / zoom / 2];
@@ -197,5 +217,19 @@
     });
   }
 
-  window.WebBuilderAlignment = { attachInteraction, toLocalCoords };
+  window.WebBuilderAlignment = {
+    attachInteraction,
+    toLocalCoords,
+    // T11: exported so shop/cart-editor.js can reuse the same snapping
+    // math/guide rendering from its own bespoke (transform-offset-based,
+    // unscaled) pointer handling instead of duplicating it. Not used by
+    // canvas/canvas.js or layout/header-footer.js directly — they go
+    // through attachInteraction() above, which already calls these
+    // internally.
+    collectSnapTargets,
+    snapPosition,
+    createGuideLayer,
+    removeGuideLayer,
+    updateGuideVisibility
+  };
 })();
