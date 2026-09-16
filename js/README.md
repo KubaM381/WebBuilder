@@ -55,22 +55,15 @@ js/
 │   │                          wrapPart/wrapComponent), drawer bindings,
 │   │                          base toggles — window.WebBuilderCartRuntime
 │   │                          + window.WebBuilderCartConfigRuntime
-│   ├── cart-preview-bars.js     two purely visual, independently
-│   │                          configurable header/footer preview bars
-│   │                          shown only inside the cart focus editor —
-│   │                          deliberately unrelated to the REAL header/
-│   │                          footer in layout/header-footer.js (that
-│   │                          real one stays hidden while the cart editor
-│   │                          is open). State lives directly on
-│   │                          window.WebBuilderState (cartPreviewHeader*/
-│   │                          cartPreviewFooter*), not inside cartConfig.
-│   │                          window.WebBuilderCartPreviewBars.
 │   └── cart-editor.js           cart focus editor: stage, drag
-│                              interactions, part/component panel,
+│                              interactions (reusing canvas/alignment.js's
+│                              snapping primitives, not its shared
+│                              controller), part/component panel,
 │                              recommendation/milestone list UI —
 │                              window.WebBuilderCartFocus. See
 │                              ../docs/CART_EDITOR_TASKS.md for the
-│                              current task list before changing this file.
+│                              current task list before changing this
+│                              file.
 │
 ├── pages/                       reserved for a future multi-page client
 │                              feature (currently only rudimentary support
@@ -127,8 +120,10 @@ Dependencies that matter most (each module reads the ones before it via
 - **`canvas/alignment.js` before `canvas/canvas.js` and
   `layout/header-footer.js`** — both call
   `window.WebBuilderAlignment.attachInteraction()`/`toLocalCoords()` for
-  drag/click handling and snapping. Not currently used by
-  `shop/cart-editor.js` — see `../docs/CART_EDITOR_TASKS.md` task T11.
+  drag/click handling and snapping. `shop/cart-editor.js` loads after it
+  too, but only reuses its exported snapping primitives
+  (`collectSnapTargets`/`snapPosition`/guide-layer helpers), not
+  `attachInteraction()` itself — see the module sections below for why.
 - **`core/storage.js` and `canvas/canvas.js` before `toolbar.js`** —
   `toolbar.js` reads `window.WebBuilderCanvas` and `window.WebBuilderHistory`
   at top-level parse time.
@@ -239,14 +234,18 @@ a movement threshold and `state.dragLock`) plus Canva-style center/edge
 alignment-guide snapping (`window.WebBuilderAlignment`). Used by
 `canvas/canvas.js` for canvas elements and by `layout/header-footer.js`
 for bar items — neither of those files implements its own drag/snap
-logic. `shop/cart-editor.js` does **not** use this yet (bespoke pointer
-handling instead) — see `../docs/CART_EDITOR_TASKS.md` task T11 for the
-planned migration; if picking that up, `attachInteraction()`'s
-`snapSelector`/`getBounds()` options and `collectSnapTargets()`'s
-`:scope > selector` sibling lookup are the parts most likely to need a
-small generalization — re-test `canvas.js` and `header-footer.js`'s
-dragging after any change here. Also exposes `toLocalCoords()`, used for
-translating pointer/drop coordinates into the zoom-adjusted canvas
+logic. `shop/cart-editor.js` does **not** use `attachInteraction()` itself
+— its stage positions parts/components via a CSS transform offset from
+their natural flow position on an unscaled surface (outside the
+zoom-scaled `#canvas-column`), whereas `attachInteraction()` assumes
+absolute left/top positioning inside a zoom-scaled container. It does
+reuse this file's exported snapping primitives directly
+(`collectSnapTargets`/`snapPosition`/`createGuideLayer`/`removeGuideLayer`/
+`updateGuideVisibility`, each accepting an explicit `zoomOverride` since
+the cart stage is never zoom-scaled) so cart dragging shows the same
+alignment guides without inheriting `canvas.js`'s zoom assumption — see
+`shop/cart-editor.js` below for how. Also exposes `toLocalCoords()`, used
+for translating pointer/drop coordinates into the zoom-adjusted canvas
 coordinate space.
 
 ### `canvas/canvas.js`
@@ -323,17 +322,6 @@ markup. Exposes `window.WebBuilderCartRuntime` (`render`, `refresh`,
 `open`, `close`, `buildCartHtml`) and `window.WebBuilderCartConfigRuntime`
 (`render`, `renderRecommendList`, `renderMilestoneList`).
 
-### `shop/cart-preview-bars.js`
-Two purely visual, non-interactive preview header/footer bars
-(enabled/height/color/label) shown only inside the cart focus editor
-stage, so the cart layout can be arranged with a sense of where real
-header/footer space would sit. Deliberately independent from
-`layout/header-footer.js` — shares no state, DOM, or click/drag logic.
-State lives directly on `window.WebBuilderState`
-(`cartPreviewHeaderEnabled`/`-Height`/`-Color`/`-Label` and the footer
-equivalents), NOT inside `cartConfig`. Configured today only from the
-sidebar (`web.html` `#panel-cart` → "Vorschau: Kopf-/Fußzeile").
-
 ### `shop/cart-editor.js`
 The cart focus editor ("Warenkorb-Editor", `state.cartFocusMode`): a
 dedicated editing stage mounted into `.canvas-container`, showing the full
@@ -342,16 +330,28 @@ canvas. Every top-level block (progress bar, discount field,
 recommendation, checkout button, totals) is individually
 selectable/draggable via `cartConfig.componentLayout`; individual
 cart-item sub-parts (icon/name, qty, price, remove, description) via
-`cartConfig.itemDisplay.layout`; the article box as a whole ("Artikel-
-Darstellung") is selectable via its background and resizable via a drag
-handle; the card background is selectable too. Drives the right-hand
-`#cart-inspector-form` panel. Exposed as `window.WebBuilderCartFocus`
-(`enter`, `exit`, `isActive`, `renderStage`, `renderPartPanel`). Dragging
-here is **not** implemented via `canvas/alignment.js`'s shared controller
-— it has its own raw pointer-event handling in
-`bindFocusStageInteractions()`, which is why it has no Canva-style snap
-guides yet. **Read `../docs/CART_EDITOR_TASKS.md` before changing this
-file** — it is the current, authoritative task/bug list for this module.
+`cartConfig.itemDisplay.layout`; recommend-card sub-parts (icon/name/
+price/add) via `cartConfig.recommendDisplay.layout`; the article box as a
+whole ("Artikel-Darstellung") is selectable via its background and
+resizable via a drag handle; the card background is selectable too.
+Drives the right-hand `#cart-inspector-form` panel. Exposed as
+`window.WebBuilderCartFocus` (`enter`, `exit`, `isActive`, `renderStage`,
+`renderPartPanel`). Dragging here is **not** implemented via
+`canvas/alignment.js`'s shared `attachInteraction()` controller — it has
+its own raw pointer-event handling in `bindFocusStageInteractions()`,
+positioning parts/components via a CSS transform offset instead of
+absolute left/top — but it reuses `alignment.js`'s exported snapping
+primitives (`collectSnapTargets`/`snapPosition`/guide-layer helpers,
+always with `zoomOverride: 1` since the stage is never zoom-scaled) so
+both cart-item/recommend-card sub-part dragging and top-level component
+dragging show the same Canva-style alignment guides as `canvas/canvas.js`
+and `layout/header-footer.js`. `resolveLayoutMap()` is the single place
+deciding whether a given part key belongs to `itemDisplay.layout` or
+`recommendDisplay.layout`. The resize handle on the article
+representation (`component:itemRepresentation`) is a resize, not a move,
+and has no snapping — that has always been out of scope. **Read
+`../docs/CART_EDITOR_TASKS.md` before changing this file** — it is the
+current, authoritative task/bug list for this module.
 
 ### `toolbar.js`
 Top toolbar: zoom controls (delegates to `canvas/canvas.js`), undo/redo
@@ -390,8 +390,8 @@ UI layer (`supabase-ui.js`) — **details and rationale in
   must respect this flag (see `scheduleRender()` in `canvas/canvas.js` and
   `render()` in `layout/header-footer.js`), otherwise a re-render
   mid-drag can replace the DOM node under the cursor and abort the move.
-  `shop/cart-editor.js` does not use `canvas/alignment.js` yet — see
-  `../docs/CART_EDITOR_TASKS.md` T11.
+  `shop/cart-editor.js` uses its own pointer handling (see its module
+  section above) and does not set `state.dragLock`.
 - Header/footer changes do NOT go through `state.notify()` — see
   `layout/header-footer.js` above (`emitChange()`/`onChange()`).
 - Supabase password recovery: `Supabase/supabase-data.js` dispatches
