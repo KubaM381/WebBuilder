@@ -6,12 +6,6 @@
 // components, and drives the right-hand #cart-inspector-form panel. Cart
 // data/CRUD lives in cart-data.js, shared HTML building + the real drawer
 // live in cart-render.js — this file only adds the editing affordances.
-//
-// NOTE: the previous "Vorschau: Kopf-/Fußzeile" feature
-// (js/shop/cart-preview-bars.js) has been removed entirely — the cart
-// editor no longer shows or manages any preview header/footer bars. The
-// stage now only shows its own card (header preview / items / footer with
-// the checkout button), positioned purely via CSS (.cart-focus-stage).
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCartFocus: WebBuilderState is not available."); return; }
@@ -207,6 +201,19 @@
       // Default-Werte (entsprechen dem bisherigen fest verdrahteten
       // Verhalten in cart-render.js).
       document.getElementById("cart-comp-totals-fields")?.classList.remove("hidden");
+      // T6: currency preset select, synced to whichever preset the
+      // current cartConfig.currency matches (falls back to "eur" if the
+      // stored value doesn't match any preset, e.g. a manually edited
+      // save file).
+      const currencySelect = document.getElementById("cart-comp-currency");
+      if (currencySelect) {
+        const currency = config.currency || {};
+        const presetKey = Object.keys(cart.CURRENCY_PRESETS).find(key => {
+          const p = cart.CURRENCY_PRESETS[key];
+          return p.symbol === currency.symbol && p.position === currency.position && p.decimal === currency.decimal;
+        }) || "eur";
+        currencySelect.value = presetKey;
+      }
       const subtotalInput = document.getElementById("cart-comp-subtotal-label");
       if (subtotalInput && document.activeElement !== subtotalInput) subtotalInput.value = config.subtotalLabel || "Zwischensumme";
       const discountInput = document.getElementById("cart-comp-discount-label");
@@ -471,11 +478,6 @@
     const cardBgStyle = config.cardBackgroundColor ? ` style="background-color:${config.cardBackgroundColor};"` : "";
     const cartTitle = config.cartTitleLabel || "Dein Warenkorb";
     const previewCount = usingDemo ? (Number(items[0]?.qty) || 0) : cart.getCount();
-    // T3: build the cart body as separate parts instead of one combined
-    // string — see css/modals.css for how the resulting markup is laid
-    // out (single flowing block, no internal scroll region). The real
-    // drawer keeps rendering via buildCartHtml() unchanged (cart-render.js
-    // renderCart()).
     const buildCartParts = window.WebBuilderCartRuntime?.buildCartParts;
     const parts = buildCartParts
       ? buildCartParts(items, { interactive: true, isDemo: usingDemo })
@@ -586,6 +588,14 @@
       refreshCartViews();
     }, true);
 
+    // T6: currency preset. cart.CURRENCY_PRESETS is the single closed set
+    // used everywhere (cart-data.js formatCurrency(), this select).
+    document.getElementById("cart-comp-currency")?.addEventListener("change", e => {
+      const preset = cart.CURRENCY_PRESETS[e.target.value] || cart.CURRENCY_PRESETS.eur;
+      window.WebBuilderHistory?.arm(); cart.setConfig({ currency: Object.assign({}, preset) }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
     // "Kosten-Übersicht" (component:totals): Texte/Labels + Versandkosten.
     // Alle setConfig()-Aufrufe fallen auf den jeweiligen Default zurück,
     // falls das Feld geleert wird, statt eine leere Zeile im Warenkorb
@@ -678,8 +688,6 @@
     enter: enterFocusMode,
     exit: exitFocusMode,
     isActive: () => !!state.cartFocusMode,
-    // Exposed for cart-render.js's refreshCartViews()/renderConfig(), so
-    // the editor stage stays in sync whenever the drawer/config re-renders.
     renderStage: renderFocusStage,
     renderPartPanel: renderFocusPartPanel
   };
