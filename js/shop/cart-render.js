@@ -489,6 +489,12 @@
     // not just the editor preview.
     const drawer = document.getElementById("cart-drawer");
     if (drawer) drawer.style.backgroundColor = config.cardBackgroundColor || "";
+    // "Fußbereich" (component:footer) — Hintergrundfarbe des
+    // Footer-Balkens (in dem der Zur-Kasse-Button sitzt), gilt genauso im
+    // echten Drawer wie in der Editor-Vorschau (siehe cart-editor.js
+    // renderFocusStage()).
+    const footerEl = document.querySelector("#cart-drawer .drawer-footer");
+    if (footerEl) footerEl.style.backgroundColor = config.footerBackgroundColor || "";
   }
 
   // Re-renders every place the cart's content is currently visible: the
