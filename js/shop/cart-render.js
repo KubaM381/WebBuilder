@@ -223,7 +223,12 @@
     if (config.recommendEnabled) {
       // T4: Form der Empfehlungskarte (unabhängig von der Artikel-Form).
       const recShapeClass = "cart-recommend-card-" + (config.recommendShape === "square" ? "square" : (config.recommendShape === "pill" ? "pill" : "rounded"));
-      const picked = cart.pickRecommendation(items, subtotal);
+      // T5 fix: opts.isDemo durchreichen, damit der synthetische
+      // Demo-Artikel (leerer Warenkorb, siehe cart-editor.js
+      // renderFocusStage()) in pickRecommendation() nicht fälschlich als
+      // "schon im Warenkorb" gezählt wird — siehe cart-data.js
+      // pickRecommendation() Kommentar für die volle Erklärung.
+      const picked = cart.pickRecommendation(items, subtotal, { isDemo });
       if (picked) {
         const { rec, product } = picked;
         const recHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(rec.text || cart.defaultRecommendationText())}</p><div class="cart-recommend-card ${recShapeClass}">${buildRecommendCardContentHtml(product, interactive)}</div></div>`;
