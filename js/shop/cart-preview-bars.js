@@ -110,6 +110,17 @@
 
   const byId = id => document.getElementById(id);
 
+  // Zeigt/markiert die passende Vorschau-Leiste im Warenkorb-Editor zur
+  // Bearbeitung, sobald der Nutzer eines der Sidebar-Felder hier bedient
+  // — öffnet den Editor bei Bedarf automatisch (siehe
+  // js/shop/cart-editor.js selectPreviewBarFromSidebar()). So bleibt eine
+  // Änderung in der Sidebar nicht "unsichtbar" im Hintergrund, sondern
+  // wird sofort im Editor hervorgehoben, genau wie ein direkter Klick auf
+  // die Leiste in der Bühne.
+  function notifyFocusSelection(key) {
+    window.WebBuilderCartFocus?.selectPreviewBar?.(key);
+  }
+
   // Sidebar stays basic (enable/height/background color/label) — the
   // fuller styling fields are synced separately by
   // js/shop/cart-editor.js's renderFocusPartPanel() whenever the
@@ -127,14 +138,14 @@
   }
 
   function bind() {
-    byId("cart-preview-header-toggle")?.addEventListener("change", e => { updateHeader({ enabled: e.target.checked }); render(); }, true);
-    byId("cart-preview-header-height")?.addEventListener("change", e => { updateHeader({ height: e.target.value }); render(); }, true);
-    byId("cart-preview-header-color")?.addEventListener("input", e => updateHeader({ color: e.target.value }), true);
-    byId("cart-preview-header-label")?.addEventListener("change", e => updateHeader({ label: e.target.value }), true);
-    byId("cart-preview-footer-toggle")?.addEventListener("change", e => { updateFooter({ enabled: e.target.checked }); render(); }, true);
-    byId("cart-preview-footer-height")?.addEventListener("change", e => { updateFooter({ height: e.target.value }); render(); }, true);
-    byId("cart-preview-footer-color")?.addEventListener("input", e => updateFooter({ color: e.target.value }), true);
-    byId("cart-preview-footer-label")?.addEventListener("change", e => updateFooter({ label: e.target.value }), true);
+    byId("cart-preview-header-toggle")?.addEventListener("change", e => { updateHeader({ enabled: e.target.checked }); render(); notifyFocusSelection("previewHeader"); }, true);
+    byId("cart-preview-header-height")?.addEventListener("change", e => { updateHeader({ height: e.target.value }); render(); notifyFocusSelection("previewHeader"); }, true);
+    byId("cart-preview-header-color")?.addEventListener("input", e => { updateHeader({ color: e.target.value }); notifyFocusSelection("previewHeader"); }, true);
+    byId("cart-preview-header-label")?.addEventListener("change", e => { updateHeader({ label: e.target.value }); notifyFocusSelection("previewHeader"); }, true);
+    byId("cart-preview-footer-toggle")?.addEventListener("change", e => { updateFooter({ enabled: e.target.checked }); render(); notifyFocusSelection("previewFooter"); }, true);
+    byId("cart-preview-footer-height")?.addEventListener("change", e => { updateFooter({ height: e.target.value }); render(); notifyFocusSelection("previewFooter"); }, true);
+    byId("cart-preview-footer-color")?.addEventListener("input", e => { updateFooter({ color: e.target.value }); notifyFocusSelection("previewFooter"); }, true);
+    byId("cart-preview-footer-label")?.addEventListener("change", e => { updateFooter({ label: e.target.value }); notifyFocusSelection("previewFooter"); }, true);
     render();
   }
 
