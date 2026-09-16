@@ -18,6 +18,27 @@
   const QUANTITY_BUTTON_COLORS = { green: "#10b981", red: "#ef4444", black: "#111827", gray: "#6b7280" };
   function quantityColorHex(key) { return QUANTITY_BUTTON_COLORS[key] || QUANTITY_BUTTON_COLORS.black; }
 
+  // T6: closed set of currency presets (symbol + position relative to the
+  // amount + decimal separator). "eur" matches the previous hardcoded
+  // formatting exactly, so untouched projects render byte-identical.
+  // Locale-correct decimal separators beyond this are explicitly out of
+  // scope (see docs/CART_EDITOR_TASKS.md T6).
+  const CURRENCY_PRESETS = {
+    eur: { symbol: "€", position: "after", decimal: "," },
+    usd: { symbol: "$", position: "before", decimal: "." },
+    gbp: { symbol: "£", position: "before", decimal: "." }
+  };
+  // Shared formatter — used by cart-render.js instead of its own local
+  // eur() helper, and by T7 (shipping)/T8 (discount) once they add their
+  // own amount fields, so every price in the cart uses one consistent
+  // currency everywhere.
+  function formatCurrency(value) {
+    const currency = getConfig()?.currency || CURRENCY_PRESETS.eur;
+    const amount = Number(value || 0).toFixed(2).replace(".", currency.decimal || ",");
+    const symbol = currency.symbol || "€";
+    return currency.position === "before" ? `${symbol}${amount}` : `${amount} ${symbol}`;
+  }
+
   function normalizeCartItem(item = {}) {
     const price = Number(item.price) || 0;
     const discountPrice = item.discountPrice != null && item.discountPrice !== "" ? Number(item.discountPrice) || 0 : null;
@@ -58,19 +79,12 @@
       condition: { type: cond.type || "none", value: Number(cond.value) || 0 }
     };
   }
-  // BUGFIX: previously `.map(normalizeRecommendation)` — this built a
-  // brand-new object for every recommendation on every normalize pass.
-  // cart-data.js's own updateRecommendation()/addRecommendation()/
-  // removeRecommendation() call window.WebBuilderHistory?.arm() before
-  // mutating, and arm() triggers normalizeRuntimeState() ->
-  // cart.normalizeState() -> this function. That replaced
-  // state.cartConfig.recommendations with all-new objects *before* the
-  // caller's own patch was applied to the (now orphaned) old reference —
-  // the edit silently never reached the live array (same reference-
-  // stability class of bug as normalizeState()/normalizeItem() for
-  // cartItems, see project README "Key learnings"). Fixed by normalizing
-  // in place (WebBuilderUtils.normalizeInPlace) so an existing
-  // recommendation object keeps its identity across a normalize pass.
+  // Normalizes in place (WebBuilderUtils.normalizeInPlace): a fresh
+  // .map(normalizeRecommendation) here would replace every recommendation
+  // object on each normalize pass, which runs before every history commit
+  // (see armHistory()) — a caller's own patch on the previous object
+  // reference would then silently miss the live array. Same reference-
+  // stability requirement as normalizeCartItem() above.
   function normalizeRecommendations(list) {
     return window.WebBuilderUtils.normalizeInPlace(Array.isArray(list) ? list : [], normalizeRecommendation);
   }
@@ -101,17 +115,13 @@
   // If its primary product is already in the cart, falls back to the
   // configured alternative (if any and if that one isn't also in the cart).
   //
-  // T5 fix: `opts.isDemo` must be set when `items` is the synthetic
-  // placeholder cart item built by js/shop/cart-editor.js
-  // renderFocusStage() for an empty real cart — that demo item is not an
-  // actual cart item. It used to also feed the "already in cart"
-  // exclusion below, which silently swallowed a recommendation whenever
-  // it pointed at the very product the demo item happened to show (most
-  // often products[0]) — the editor then rendered the "no matching
-  // recommendation configured" dummy card even though everything was
-  // configured correctly. count/subtotal are still computed from `items`
-  // unchanged, so cartCountEquals/subtotalBelow/etc. keep reacting
-  // sensibly in the preview — only the in-cart exclusion is skipped.
+  // opts.isDemo must be set when `items` is the synthetic placeholder cart
+  // item built by cart-editor.js renderFocusStage() for an empty real
+  // cart — that demo item must not feed the "already in cart" exclusion
+  // below, or a recommendation pointing at the same product the demo item
+  // happens to show gets silently swallowed. count/subtotal still come
+  // from `items` unchanged, so the condition types keep reacting normally
+  // in the editor preview — only the in-cart exclusion is skipped.
   function pickRecommendation(items, subtotal, opts = {}) {
     const list = Array.isArray(getConfig()?.recommendations) ? getConfig().recommendations : [];
     if (!list.length) return null;
@@ -199,6 +209,12 @@
     if (state.cartConfig.recommendAddButtonColor == null) state.cartConfig.recommendAddButtonColor = "#4f46e5";
     if (!state.cartConfig.recommendDisplay || typeof state.cartConfig.recommendDisplay !== "object") state.cartConfig.recommendDisplay = {};
     if (!state.cartConfig.recommendDisplay.layout || typeof state.cartConfig.recommendDisplay.layout !== "object") state.cartConfig.recommendDisplay.layout = {};
+    // T6: global currency. Default matches the previously hardcoded
+    // "19,99 €"-style formatting exactly, so existing projects render
+    // byte-identical until someone explicitly picks a different currency.
+    if (!state.cartConfig.currency || typeof state.cartConfig.currency !== "object") {
+      state.cartConfig.currency = Object.assign({}, CURRENCY_PRESETS.eur);
+    }
     return state;
   }
   function getItems() { return state.cartItems; }
@@ -302,6 +318,6 @@
     // Internal helpers also used by shop/cart-render.js and
     // shop/cart-editor.js (kept here since they operate on the cart data/
     // config shape owned by this file).
-    quantityColorHex, pickRecommendation, defaultRecommendationText, CONDITION_LABELS
+    quantityColorHex, formatCurrency, CURRENCY_PRESETS, pickRecommendation, defaultRecommendationText, CONDITION_LABELS
   };
 })();
