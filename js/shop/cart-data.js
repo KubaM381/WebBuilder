@@ -205,6 +205,17 @@
     // js/shop/cart-render.js renderMilestoneList()). null = kein
     // automatisches Ziel konfiguriert, unverändertes Verhalten.
     if (state.cartConfig.shippingFreeThreshold === undefined) state.cartConfig.shippingFreeThreshold = null;
+    // T8 (Spiegelbild von T7): meilenstein-getriebener Extra-Rabatt.
+    // milestoneDiscountPercent ersetzt den bisher in
+    // js/shop/cart-render.js hartkodierten Wert 10 — der Default ist
+    // deshalb exakt 10, damit bestehende Projekte identisch rechnen.
+    // milestoneDiscountThreshold ist wie shippingFreeThreshold nullable
+    // ("kein automatisches Ziel") und wird bidirektional mit einem
+    // Meilenstein mit action "discount" synchronisiert (siehe
+    // syncDiscountMilestone() unten + der ".ms-amount"/".ms-action"-Sync
+    // in js/shop/cart-render.js renderMilestoneList()).
+    if (state.cartConfig.milestoneDiscountPercent == null) state.cartConfig.milestoneDiscountPercent = 10;
+    if (state.cartConfig.milestoneDiscountThreshold === undefined) state.cartConfig.milestoneDiscountThreshold = null;
     if (state.cartConfig.totalLabel == null) state.cartConfig.totalLabel = "Gesamt";
     // T4: Empfehlungskarte — Form + Farbe des "+"-Buttons, sowie eine
     // eigene Positions-Map für ihre Unterteile (Icon/Name/Preis/Plus).
@@ -334,6 +345,24 @@
     return true;
   }
 
+  // T8: exaktes Pendant zu syncFreeShippingMilestone() — hält den
+  // Meilenstein mit action "discount" und
+  // cartConfig.milestoneDiscountThreshold synchron. Aufgerufen aus dem
+  // Rabatt-Panel (js/shop/cart-editor.js); die Rückrichtung (Bearbeiten
+  // von amount/action direkt in der Meilenstein-Liste) liegt in
+  // js/shop/cart-render.js renderMilestoneList(). Rückgabe false = kein
+  // passender Meilenstein vorhanden; das Ziel gilt trotzdem eigenständig
+  // (siehe "extra"-Berechnung in js/shop/cart-render.js buildCartParts()).
+  function syncDiscountMilestone(amount, recordHistory = true) {
+    const milestone = (state.cartConfig.milestones || []).find(m => m.action === "discount");
+    if (!milestone) return false;
+    if (recordHistory) window.WebBuilderHistory?.arm();
+    milestone.amount = amount;
+    if (recordHistory) window.WebBuilderHistory?.commit();
+    notify("cart", "milestones", state.cartConfig.milestones);
+    return true;
+  }
+
   normalizeState();
   window.WebBuilderCart = {
     getItems, getConfig, getCount, getSubtotal, getEffectivePrice,
@@ -342,7 +371,7 @@
     normalizeCartItem, normalizeState,
     applyDiscountCode,
     addRecommendation, removeRecommendation, updateRecommendation,
-    addMilestone, removeMilestone, syncFreeShippingMilestone,
+    addMilestone, removeMilestone, syncFreeShippingMilestone, syncDiscountMilestone,
     // Internal helpers also used by shop/cart-render.js and
     // shop/cart-editor.js (kept here since they operate on the cart data/
     // config shape owned by this file).
