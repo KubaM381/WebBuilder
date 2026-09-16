@@ -167,7 +167,7 @@
     // so existing projects look unchanged until explicitly enabled.
     if (state.cartConfig.itemDisplay.showItemDividers == null) state.cartConfig.itemDisplay.showItemDividers = false;
     // Cart editor: per-component position offsets (progress, discount,
-    // recommend, checkout, totals) plus "Artikel-Darstellung"
+    // recommend, checkout, shipping, totals) plus "Artikel-Darstellung"
     // background/size overrides. Empty string / null mean "no override,
     // use the shape's/CSS's own default" so existing projects keep their
     // exact current look until someone explicitly customizes these.
@@ -186,15 +186,25 @@
     // exactly, so existing projects render byte-identical until changed.
     if (state.cartConfig.cartTitleLabel == null) state.cartConfig.cartTitleLabel = "Dein Warenkorb";
     // "Kosten-Übersicht" (component:totals, cart-editor.js): editable
-    // labels for the subtotal/discount/shipping/total rows plus the
-    // shipping cost amount and the free-shipping text. Defaults match the
-    // previously hardcoded strings/values exactly, so existing projects
-    // render byte-identical until someone explicitly edits these.
+    // labels for the subtotal/discount/total rows. Versand-spezifische
+    // Felder (Label/Betrag/Freitext/Freibetrag-Ziel) sind seit T7 eine
+    // eigene Komponente (component:shipping), siehe shippingLabel/
+    // shippingCost/shippingFreeText/shippingFreeThreshold unten. Defaults
+    // entsprechen dem bisherigen fest verdrahteten Verhalten, damit
+    // bestehende Projekte unverändert bleiben.
     if (state.cartConfig.subtotalLabel == null) state.cartConfig.subtotalLabel = "Zwischensumme";
     if (state.cartConfig.discountLabel == null) state.cartConfig.discountLabel = "Rabatt";
     if (state.cartConfig.shippingLabel == null) state.cartConfig.shippingLabel = "Versand";
     if (state.cartConfig.shippingCost == null) state.cartConfig.shippingCost = 4.95;
     if (state.cartConfig.shippingFreeText == null) state.cartConfig.shippingFreeText = "Kostenlos";
+    // T7: optionales Freibetrag-Ziel (Warenkorbwert, ab dem der Versand
+    // automatisch kostenlos wird) — unabhängig von einem "Kostenloser
+    // Versand"-Meilenstein, aber mit einem solchen bidirektional
+    // synchronisiert, falls er existiert (siehe syncFreeShippingMilestone()
+    // unten sowie den ".ms-amount"/".ms-action"-Sync in
+    // js/shop/cart-render.js renderMilestoneList()). null = kein
+    // automatisches Ziel konfiguriert, unverändertes Verhalten.
+    if (state.cartConfig.shippingFreeThreshold === undefined) state.cartConfig.shippingFreeThreshold = null;
     if (state.cartConfig.totalLabel == null) state.cartConfig.totalLabel = "Gesamt";
     // T4: Empfehlungskarte — Form + Farbe des "+"-Buttons, sowie eine
     // eigene Positions-Map für ihre Unterteile (Icon/Name/Preis/Plus).
@@ -306,6 +316,24 @@
     notify("cart", "milestones", state.cartConfig.milestones);
   }
 
+  // T7: keeps a "free-shipping" milestone's amount and
+  // cartConfig.shippingFreeThreshold in sync. Called from the shipping
+  // panel's threshold field (js/shop/cart-editor.js) whenever it changes;
+  // the reverse direction (editing the milestone's own amount/action) is
+  // handled directly in js/shop/cart-render.js renderMilestoneList().
+  // Returns false (no-op) when no free-shipping milestone exists yet —
+  // the threshold still applies on its own in that case (see
+  // js/shop/cart-render.js buildCartHtml()'s "free" calculation).
+  function syncFreeShippingMilestone(amount, recordHistory = true) {
+    const milestone = (state.cartConfig.milestones || []).find(m => m.action === "free-shipping");
+    if (!milestone) return false;
+    if (recordHistory) window.WebBuilderHistory?.arm();
+    milestone.amount = amount;
+    if (recordHistory) window.WebBuilderHistory?.commit();
+    notify("cart", "milestones", state.cartConfig.milestones);
+    return true;
+  }
+
   normalizeState();
   window.WebBuilderCart = {
     getItems, getConfig, getCount, getSubtotal, getEffectivePrice,
@@ -314,7 +342,7 @@
     normalizeCartItem, normalizeState,
     applyDiscountCode,
     addRecommendation, removeRecommendation, updateRecommendation,
-    addMilestone, removeMilestone,
+    addMilestone, removeMilestone, syncFreeShippingMilestone,
     // Internal helpers also used by shop/cart-render.js and
     // shop/cart-editor.js (kept here since they operate on the cart data/
     // config shape owned by this file).
