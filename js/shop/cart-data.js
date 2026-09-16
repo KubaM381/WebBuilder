@@ -226,6 +226,16 @@
     if (state.cartConfig.milestoneDiscountPercent == null) state.cartConfig.milestoneDiscountPercent = 10;
     if (state.cartConfig.milestoneDiscountThreshold === undefined) state.cartConfig.milestoneDiscountThreshold = null;
     if (state.cartConfig.totalLabel == null) state.cartConfig.totalLabel = "Gesamt";
+    // T10: "Gratis-Produkt"-Zeile in der Kosten-Übersicht — Label und
+    // Wert-Text waren bisher in js/shop/cart-render.js hartkodiert
+    // ("🎁 Gratis-Produkt" / "freigeschaltet") und sind jetzt editierbar.
+    // Defaults entsprechen exakt dem bisherigen Text, damit bestehende
+    // Projekte unverändert bleiben. Im Warenkorb-Editor (siehe
+    // js/shop/cart-editor.js renderFocusPartPanel()) wird das zugehörige
+    // Eingabefeld-Paar nur angezeigt, wenn im Projekt tatsächlich ein
+    // Meilenstein mit Aktion "free-product" existiert.
+    if (state.cartConfig.freeProductLabel == null) state.cartConfig.freeProductLabel = "🎁 Gratis-Produkt";
+    if (state.cartConfig.freeProductValueText == null) state.cartConfig.freeProductValueText = "freigeschaltet";
     // T9.3: eigene, optionale, positionierbare Trennlinie direkt über der
     // Zwischensumme-Zeile in der Kosten-Übersicht (component:totalsDivider,
     // siehe js/shop/cart-editor.js). Ersetzt die bisher fest in CSS
