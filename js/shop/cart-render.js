@@ -12,10 +12,11 @@
   const cart = window.WebBuilderCart;
   if (!cart) { console.error("WebBuilderCartRender: WebBuilderCart is not available."); return; }
 
-  // esc/eur centralized here since only rendering needs HTML-escaping and
-  // currency formatting.
+  // esc for HTML-escaping. eur() delegates to the shared, configurable
+  // formatter (cart-data.js WebBuilderCart.formatCurrency, cartConfig.currency)
+  // instead of hardcoding "€" — every call site below is unchanged.
   const esc = window.WebBuilderUtils.escapeHtml;
-  const eur = v => `${Number(v || 0).toFixed(2).replace(".", ",")} €`;
+  const eur = v => cart.formatCurrency(v);
 
   // T4: generic "positioned sub-part" wrapper, shared by cart-item parts
   // (icon/qty/price/remove/description, keyed in
