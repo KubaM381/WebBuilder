@@ -1,9 +1,9 @@
 // js/shop/cart-render.js
 // WebBuilder cart rendering domain
 // Builds the shared cart HTML (progress bar, items, recommendation,
-// discount, totals) and owns the real slide-in drawer plus the sidebar
-// config toggles. Used by both the drawer (interactive=false) and the
-// cart editor stage in cart-editor.js (interactive=true), so both stay
+// discount, shipping, totals) and owns the real slide-in drawer plus the
+// sidebar config toggles. Used by both the drawer (interactive=false) and
+// the cart editor stage in cart-editor.js (interactive=true), so both stay
 // pixel-identical apart from editing affordances. Cart data/CRUD lives in
 // cart-data.js (window.WebBuilderCart) — this file only reads it.
 (() => {
@@ -41,11 +41,12 @@
   }
 
   // Wraps a top-level cart block (progress bar / discount field /
-  // recommendation card / totals) in a positionable, selectable wrapper —
-  // same "only wrap when needed" rule as wrapPart() inside
-  // buildCartItemHTML(): outside the editor (interactive=false), a block
-  // without a custom offset renders exactly as before (no extra DOM), so
-  // projects that never touch the cart editor see zero markup change.
+  // recommendation card / shipping row / totals) in a positionable,
+  // selectable wrapper — same "only wrap when needed" rule as wrapPart()
+  // inside buildCartItemHTML(): outside the editor (interactive=false), a
+  // block without a custom offset renders exactly as before (no extra
+  // DOM), so projects that never touch the cart editor see zero markup
+  // change.
   function wrapComponent(innerHtml, componentKey, interactive) {
     const layout = (cart.getConfig().componentLayout || {})[componentKey] || { x: 0, y: 0 };
     const hasOffset = !!(layout.x || layout.y);
@@ -173,11 +174,12 @@
   }
 
   // Builds the shared cart body split into its five logical blocks
-  // (progress / items / recommendation / discount / totals) instead of a
-  // single concatenated string. buildCartHtml() below just joins them in
-  // the original order for the real drawer — the split itself exists so
-  // the cart focus editor stage (js/shop/cart-editor.js renderFocusStage(),
-  // see docs/CART_EDITOR_TASKS.md T3) can place the item block in its own
+  // (progress / items / recommendation / discount / totals — shipping is
+  // nested inside totals, see below) instead of a single concatenated
+  // string. buildCartHtml() below just joins them in the original order
+  // for the real drawer — the split itself exists so the cart focus
+  // editor stage (js/shop/cart-editor.js renderFocusStage(), see
+  // docs/CART_EDITOR_TASKS.md T3) can place the item block in its own
   // scrollable region while progress/recommend/discount/totals stay fixed
   // on screen, without duplicating any of this HTML-building logic.
   function buildCartParts(items, opts = {}) {
@@ -263,12 +265,19 @@
     }
 
     const reached = milestones.filter(m => subtotal >= Number(m.amount || 0));
-    const free = reached.some(m => m.action === "free-shipping");
+    // T7: shipping is free via a "free-shipping" milestone OR via the
+    // standalone shippingFreeThreshold configured in component:shipping —
+    // either applies independently. The two are kept in sync in both
+    // directions (cart.syncFreeShippingMilestone() in cart-data.js, plus
+    // the reverse sync in renderMilestoneList() below), but a threshold
+    // works on its own even with no milestone at all.
+    const shippingThreshold = config.shippingFreeThreshold;
+    const free = reached.some(m => m.action === "free-shipping") || (shippingThreshold != null && subtotal >= Number(shippingThreshold));
     const extra = reached.some(m => m.action === "discount") ? 10 : 0;
     const discountPercent = Number(state.appliedDiscountPercent || 0) + extra;
     const discountAmount = subtotal * discountPercent / 100;
     // Versandkosten-Betrag und "Kostenlos"-Text sind im Warenkorb-Editor
-    // konfigurierbar (component:totals, siehe cart-editor.js) — Defaults
+    // konfigurierbar (component:shipping, siehe cart-editor.js) — Defaults
     // (4,95 €, "Kostenlos") kommen aus cartConfig.shippingCost /
     // cartConfig.shippingFreeText (Default-Werte in cart-data.js
     // normalizeState()), damit unveränderte Projekte exakt wie zuvor
@@ -283,9 +292,20 @@
     const shippingFreeText = esc(config.shippingFreeText || "Kostenlos");
     const totalLabel = esc(config.totalLabel || "Gesamt");
 
+    // T7: shipping is now its own positionable component
+    // (component:shipping) instead of a fixed row baked directly into
+    // totalsHtml — same wrapComponent() mechanism as progress/discount/
+    // recommend/checkout/totals, just nested inside the totals block so it
+    // still visually sits where the "Versand"-row always sat. Still only
+    // rendered while progressEnabled, exactly as before.
+    const shippingRowHtml = config.progressEnabled
+      ? `<div class="cart-total-row"><span>${shippingLabel}</span><span>${shipping === 0 ? shippingFreeText : eur(shipping)}</span></div>`
+      : "";
+    const shippingPart = wrapComponent(shippingRowHtml, "shipping", interactive);
+
     let totalsHtml = `<div class="cart-totals"><div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
     if (discountAmount > 0) totalsHtml += `<div class="cart-total-row"><span>${discountLabel}</span><span>−${eur(discountAmount)}</span></div>`;
-    if (config.progressEnabled) totalsHtml += `<div class="cart-total-row"><span>${shippingLabel}</span><span>${shipping === 0 ? shippingFreeText : eur(shipping)}</span></div>`;
+    totalsHtml += shippingPart;
     if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>🎁 Gratis-Produkt</span><span>freigeschaltet</span></div>`;
     totalsHtml += `<div class="cart-total-row cart-total-final"><span>${totalLabel}</span><span>${eur(total)}</span></div></div>`;
     const totalsPart = wrapComponent(totalsHtml, "totals", interactive);
@@ -428,7 +448,17 @@
     }, true));
     listEl.querySelectorAll(".ms-amount").forEach(inp => inp.addEventListener("input", e => {
       const m = (cart.getConfig().milestones || []).find(x => x.id === e.target.dataset.id);
-      if (m) { window.WebBuilderHistory?.arm(); m.amount = parseFloat(e.target.value) || 0; window.WebBuilderHistory?.commit(); refreshCartViews(); }
+      if (m) {
+        window.WebBuilderHistory?.arm();
+        m.amount = parseFloat(e.target.value) || 0;
+        // T7: reverse direction of cart.syncFreeShippingMilestone() —
+        // editing a "free-shipping" milestone's own amount here keeps the
+        // shipping panel's threshold field (component:shipping) in sync
+        // too.
+        if (m.action === "free-shipping") state.cartConfig.shippingFreeThreshold = m.amount;
+        window.WebBuilderHistory?.commit();
+        refreshCartViews();
+      }
     }, true));
     listEl.querySelectorAll(".ms-label").forEach(inp => inp.addEventListener("input", e => {
       const m = (cart.getConfig().milestones || []).find(x => x.id === e.target.dataset.id);
@@ -440,7 +470,16 @@
     }, true));
     listEl.querySelectorAll(".ms-action").forEach(sel => sel.addEventListener("change", e => {
       const m = (cart.getConfig().milestones || []).find(x => x.id === e.target.dataset.id);
-      if (m) { window.WebBuilderHistory?.arm(); m.action = e.target.value; window.WebBuilderHistory?.commit(); refreshCartViews(); }
+      if (m) {
+        window.WebBuilderHistory?.arm();
+        m.action = e.target.value;
+        // T7: if this milestone just became the free-shipping milestone,
+        // sync the shipping panel's threshold to its current amount right
+        // away (matches the amount-edit sync above).
+        if (m.action === "free-shipping") state.cartConfig.shippingFreeThreshold = m.amount;
+        window.WebBuilderHistory?.commit();
+        refreshCartViews();
+      }
     }, true));
     listEl.querySelectorAll(".item-delete").forEach(btn => btn.addEventListener("click", e => {
       e.preventDefault(); e.stopImmediatePropagation();
