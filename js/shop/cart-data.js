@@ -100,12 +100,25 @@
   // Finds the first matching recommendation for the given cart contents.
   // If its primary product is already in the cart, falls back to the
   // configured alternative (if any and if that one isn't also in the cart).
-  function pickRecommendation(items, subtotal) {
+  //
+  // T5 fix: `opts.isDemo` must be set when `items` is the synthetic
+  // placeholder cart item built by js/shop/cart-editor.js
+  // renderFocusStage() for an empty real cart — that demo item is not an
+  // actual cart item. It used to also feed the "already in cart"
+  // exclusion below, which silently swallowed a recommendation whenever
+  // it pointed at the very product the demo item happened to show (most
+  // often products[0]) — the editor then rendered the "no matching
+  // recommendation configured" dummy card even though everything was
+  // configured correctly. count/subtotal are still computed from `items`
+  // unchanged, so cartCountEquals/subtotalBelow/etc. keep reacting
+  // sensibly in the preview — only the in-cart exclusion is skipped.
+  function pickRecommendation(items, subtotal, opts = {}) {
     const list = Array.isArray(getConfig()?.recommendations) ? getConfig().recommendations : [];
     if (!list.length) return null;
     const count = items.reduce((s, i) => s + (Number(i.qty) || 0), 0);
-    const inCartIds = new Set(items.map(i => i.productId).filter(Boolean));
-    const inCartNames = new Set(items.map(i => i.name));
+    const inCartItems = opts.isDemo ? [] : items;
+    const inCartIds = new Set(inCartItems.map(i => i.productId).filter(Boolean));
+    const inCartNames = new Set(inCartItems.map(i => i.name));
     for (const rec of list) {
       if (!conditionMatches(rec.condition, { count, subtotal })) continue;
       let product = rec.productId ? window.WebBuilderProducts?.getById?.(rec.productId) : null;
