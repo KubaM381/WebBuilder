@@ -6,6 +6,12 @@
 // components, and drives the right-hand #cart-inspector-form panel. Cart
 // data/CRUD lives in cart-data.js, shared HTML building + the real drawer
 // live in cart-render.js — this file only adds the editing affordances.
+//
+// NOTE: the previous "Vorschau: Kopf-/Fußzeile" feature
+// (js/shop/cart-preview-bars.js) has been removed entirely — the cart
+// editor no longer shows or manages any preview header/footer bars. The
+// stage now only shows its own card (header preview / items / footer with
+// the checkout button), positioned purely via CSS (.cart-focus-stage).
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCartFocus: WebBuilderState is not available."); return; }
@@ -15,106 +21,6 @@
   const esc = window.WebBuilderUtils.escapeHtml;
 
   function refreshCartViews() { window.WebBuilderCartRuntime?.refresh?.(); }
-
-  // Der Warenkorb-Editor ist bewusst NICHT mehr mit der echten Kopf-/
-  // Fußzeile der Seite verbunden (window.WebBuilderHeaderFooter) — die
-  // echten Bars bleiben während des Editors ausgeblendet (siehe
-  // css/styles.css body.cart-focus-active). Stattdessen liefert
-  // js/shop/cart-preview-bars.js zwei rein visuelle, unabhängig
-  // konfigurierbare Vorschau-Balken (Ein/Aus, Höhe, Farbe, Beschriftung —
-  // Sidebar "Warenkorb" > "Vorschau: Kopf-/Fußzeile"), die hier nur der
-  // räumlichen Orientierung dienen. Da diese Balken feste Pixelhöhen aus
-  // dem State beziehen statt aus gemessenen DOM-Rects, genügt eine reine
-  // Konfigurationsabfrage statt getBoundingClientRect() — kein
-  // Resize-/Zoom-Listener mehr nötig.
-  const STAGE_BAR_GAP = 10;
-  function computeStageInsets() {
-    const cfg = window.WebBuilderCartPreviewBars?.getConfig?.() || { header: {}, footer: {} };
-    const top = cfg.header.enabled ? Math.max(0, Number(cfg.header.height) || 0) + STAGE_BAR_GAP : 0;
-    const bottom = cfg.footer.enabled ? Math.max(0, Number(cfg.footer.height) || 0) + STAGE_BAR_GAP : 0;
-    return { top, bottom };
-  }
-
-  // Baut/aktualisiert die beiden rein dekorativen Vorschau-Balken direkt
-  // im selben Host wie #cart-focus-stage (siehe renderFocusStage()) —
-  // keine Drag-Logik (siehe NON_POSITIONABLE/bindPreviewBarInteractions
-  // unten), aber seit T2 anklickbar/auswählbar. Ein/Aus + Höhe + Farbe +
-  // Beschriftung kommen weiterhin aus js/shop/cart-preview-bars.js.
-  function renderPreviewBars(host) {
-    const cfg = window.WebBuilderCartPreviewBars?.getConfig?.();
-    if (!host || !cfg) return;
-    let top = document.getElementById("cart-preview-bar-top");
-    if (cfg.header.enabled) {
-      if (!top) {
-        top = document.createElement("div");
-        top.id = "cart-preview-bar-top";
-        top.className = "cart-preview-bar cart-preview-bar-top";
-        // T2: Klick-Ziel-Erkennung für bindPreviewBarInteractions() —
-        // einmalig bei Erzeugung gesetzt, bleibt über spätere Updates
-        // erhalten (Element wird nur aktualisiert, nicht neu erzeugt).
-        top.dataset.cartPreviewbar = "header";
-        host.appendChild(top);
-      }
-      top.style.height = (Number(cfg.header.height) || 64) + "px";
-      top.style.backgroundColor = cfg.header.color || "#111827";
-      top.textContent = cfg.header.label || "";
-      top.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewHeader");
-    } else if (top) {
-      top.remove();
-    }
-    let bottom = document.getElementById("cart-preview-bar-bottom");
-    if (cfg.footer.enabled) {
-      if (!bottom) {
-        bottom = document.createElement("div");
-        bottom.id = "cart-preview-bar-bottom";
-        bottom.className = "cart-preview-bar cart-preview-bar-bottom";
-        bottom.dataset.cartPreviewbar = "footer";
-        host.appendChild(bottom);
-      }
-      bottom.style.height = (Number(cfg.footer.height) || 70) + "px";
-      bottom.style.backgroundColor = cfg.footer.color || "#111827";
-      bottom.textContent = cfg.footer.label || "";
-      bottom.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewFooter");
-    } else if (bottom) {
-      bottom.remove();
-    }
-  }
-
-  function removePreviewBars() {
-    document.getElementById("cart-preview-bar-top")?.remove();
-    document.getElementById("cart-preview-bar-bottom")?.remove();
-  }
-
-  // T2: macht die beiden Vorschau-Balken direkt im Editor anklickbar.
-  // Eigene, separate Bindung nötig (statt über bindFocusStageInteractions),
-  // da die Balken NICHT Kinder von #cart-focus-stage sind, sondern direkt
-  // in `host` (.canvas-container) hängen (siehe renderPreviewBars() oben).
-  // Rein auswählbar, nicht verschiebbar — siehe NON_POSITIONABLE.
-  function bindPreviewBarInteractions(host) {
-    if (!host || host.dataset.webBuilderPreviewBarsBound === "true") return;
-    host.dataset.webBuilderPreviewBarsBound = "true";
-    host.addEventListener("pointerdown", e => {
-      if (!state.cartFocusMode) return;
-      const bar = e.target.closest?.("[data-cart-previewbar]");
-      if (!bar) return;
-      e.preventDefault(); e.stopPropagation();
-      selectFocusPartLight(bar.dataset.cartPreviewbar === "footer" ? "previewFooter" : "previewHeader");
-    });
-  }
-
-  // Wird von js/shop/cart-preview-bars.js aufgerufen, wenn der Nutzer eines
-  // der Sidebar-Felder unter "Vorschau: Kopf-/Fußzeile" bedient (Toggle,
-  // Höhe, Farbe, Beschriftung). Öffnet den Warenkorb-Editor automatisch,
-  // falls er noch nicht offen ist, und markiert direkt danach die
-  // passende Vorschau-Leiste — dieselbe Auswahl/Hervorhebung, die auch ein
-  // direkter Klick auf die Leiste in der Bühne auslöst (siehe
-  // bindPreviewBarInteractions() oben), damit eine Änderung in der
-  // Sidebar sofort sichtbar zur Bearbeitung angezeigt wird, statt
-  // "unsichtbar" im Hintergrund zu passieren.
-  function selectPreviewBarFromSidebar(key) {
-    if (!state.cartFocusMode) enterFocusMode();
-    selectFocusPartLight(key);
-  }
 
   function getPartLayout(partKey) {
     const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
@@ -173,38 +79,24 @@
       resetPartLayout(sel);
     }
   }
-  // T1: "header" (the drawer-header preview at the top of the stage) is
-  // selectable/editable but never position-draggable — same reasoning as
-  // background/itemRepresentation. T2: "previewHeader"/"previewFooter"
-  // (die beiden Vorschau-Balken) sind aus demselben Grund ebenfalls nur
-  // auswählbar, nicht verschiebbar — anders als die echten Kopf-/
-  // Fußzeilen-Elemente haben sie keine sinnvolle freie Position, ihre
-  // Höhe wird stattdessen über ein eigenes Feld gesteuert. Siehe
-  // bindFocusStageInteractions()'s generic [data-cart-component] branch
-  // unten, das für jede NON_POSITIONABLE-Komponente kein Dragging
-  // aufsetzt; für previewHeader/previewFooter greift das ohnehin nicht,
-  // da sie über bindPreviewBarInteractions() separat behandelt werden.
-  const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation", "component:header", "previewHeader", "previewFooter"]);
+  // "header" (the drawer-header preview at the top of the stage) and
+  // "footer" (the bar the checkout button sits in) are selectable/
+  // editable but never position-draggable — same reasoning as
+  // background/itemRepresentation: none of them have a sensible free
+  // position, they're fixed bars at the top/bottom of the card.
+  const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation", "component:header", "component:footer"]);
 
   function applySelectionHighlight() {
     const stage = document.getElementById("cart-focus-stage");
     if (!stage) return;
     stage.querySelectorAll(".cart-item-part-selected, .cart-component-selected").forEach(el => el.classList.remove("cart-item-part-selected", "cart-component-selected"));
-    // T2: die Vorschau-Balken liegen NICHT innerhalb von
-    // #cart-focus-stage (siehe renderPreviewBars()) — eigene, separate
-    // Bereinigung nötig, bevor die neue Auswahl markiert wird.
-    document.getElementById("cart-preview-bar-top")?.classList.remove("cart-component-selected");
-    document.getElementById("cart-preview-bar-bottom")?.classList.remove("cart-component-selected");
     const sel = state.cartFocusSelectedPart;
     if (!sel) return;
-    if (sel === "previewHeader" || sel === "previewFooter") {
-      document.getElementById(sel === "previewFooter" ? "cart-preview-bar-bottom" : "cart-preview-bar-top")?.classList.add("cart-component-selected");
-      return;
-    }
     if (sel.startsWith("component:")) {
       const key = sel.slice("component:".length);
       if (key === "background") stage.querySelector(".cart-focus-card")?.classList.add("cart-component-selected");
       else if (key === "itemRepresentation") stage.querySelectorAll(".cart-item").forEach(el => el.classList.add("cart-component-selected"));
+      else if (key === "footer") stage.querySelector(".cart-focus-footer")?.classList.add("cart-component-selected");
       else stage.querySelector(`[data-cart-component="${key}"]`)?.classList.add("cart-component-selected");
     } else {
       stage.querySelector(`[data-cart-part="${sel}"]`)?.classList.add("cart-item-part-selected");
@@ -224,10 +116,10 @@
 
   // Field-block IDs for the right-hand panel (renderFocusPartPanel()).
   const PART_FIELD_BLOCK_IDS = [
-    "cart-comp-header-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
+    "cart-comp-header-fields", "cart-comp-footer-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
-    "cart-comp-totals-fields", "cart-comp-previewbar-fields"
+    "cart-comp-totals-fields"
   ];
 
   function renderFocusPartPanel() {
@@ -246,35 +138,26 @@
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
-      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel",
-      previewHeader: "Vorschau-Header", previewFooter: "Vorschau-Footer"
+      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel", "component:footer": "Fußbereich (Zur-Kasse)"
     };
     const labelEl = document.getElementById("cart-part-label");
     if (labelEl) labelEl.textContent = labels[sel] || sel;
 
     const config = cart.getConfig();
 
-    if (sel === "previewHeader" || sel === "previewFooter") {
-      // T2: Vorschau-Header/-Footer — Daten kommen NICHT aus
-      // cartConfig, sondern aus window.WebBuilderCartPreviewBars
-      // (state.cartPreviewHeader*/cartPreviewFooter*), siehe
-      // js/shop/cart-preview-bars.js.
-      document.getElementById("cart-comp-previewbar-fields")?.classList.remove("hidden");
-      const isFooter = sel === "previewFooter";
-      const barCfg = (window.WebBuilderCartPreviewBars?.getConfig?.() || { header: {}, footer: {} })[isFooter ? "footer" : "header"];
-      const heightInput = document.getElementById("cart-comp-previewbar-height");
-      if (heightInput && document.activeElement !== heightInput) heightInput.value = barCfg.height != null ? barCfg.height : (isFooter ? 70 : 64);
-      const colorInput = document.getElementById("cart-comp-previewbar-color");
-      if (colorInput) colorInput.value = barCfg.color || "#111827";
-      const labelInput = document.getElementById("cart-comp-previewbar-label");
-      if (labelInput && document.activeElement !== labelInput) labelInput.value = barCfg.label || (isFooter ? "Footer" : "Header");
-    } else if (sel === "component:header") {
+    if (sel === "component:header") {
       // T1: editable title shown in the drawer-header preview at the top
       // of the stage (see renderFocusStage()) and in the real drawer
       // (cart-render.js renderCart()).
       document.getElementById("cart-comp-header-fields")?.classList.remove("hidden");
       const titleInput = document.getElementById("cart-comp-header-title");
       if (titleInput && document.activeElement !== titleInput) titleInput.value = config.cartTitleLabel || "Dein Warenkorb";
+    } else if (sel === "component:footer") {
+      // Fußbereich (der Balken, in dem der Zur-Kasse-Button sitzt) — nur
+      // die Hintergrundfarbe ist konfigurierbar, keine Position.
+      document.getElementById("cart-comp-footer-fields")?.classList.remove("hidden");
+      const bgInput = document.getElementById("cart-comp-footer-bg-color");
+      if (bgInput) bgInput.value = config.footerBackgroundColor || "#f3f4f6";
     } else if (sel === "component:checkout") {
       document.getElementById("cart-comp-checkout-fields")?.classList.remove("hidden");
       const labelInput = document.getElementById("cart-comp-checkout-label");
@@ -413,21 +296,49 @@
         const key = compEl.dataset.cartComponent;
         e.preventDefault(); e.stopPropagation();
         selectFocusPartLight(`component:${key}`);
-        // T1: NON_POSITIONABLE components (currently only "header") are
-        // selectable but never draggable — bail out before any drag
-        // tracking is set up. Generalized here (instead of a one-off
-        // "header" check) so any future non-positionable
-        // [data-cart-component] element is covered automatically.
+        // NON_POSITIONABLE components (header/footer/background/
+        // itemRepresentation) are selectable but never draggable — bail
+        // out before any drag tracking is set up.
         if (NON_POSITIONABLE.has(`component:${key}`)) return;
+
         const origin = state.cartConfig.componentLayout[key] || { x: 0, y: 0 };
         const startX = e.clientX, startY = e.clientY;
         let moved = false;
+
+        // Bounds relative to the component's positioning parent — same
+        // reasoning as the [data-cart-part] bounds below: keeps
+        // progress/discount/recommend/checkout/totals inside the visible
+        // card area instead of letting them be dragged out arbitrarily
+        // far. Falls back through the most specific ancestor first
+        // (footer bar for the checkout button, otherwise the card body,
+        // otherwise the card itself).
+        const parentEl = compEl.closest(".cart-focus-footer") || compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
+        let bounds = null;
+        if (parentEl) {
+          const parentRect = parentEl.getBoundingClientRect();
+          const compRect = compEl.getBoundingClientRect();
+          const naturalLeft = compRect.left - (origin.x || 0);
+          const naturalTop = compRect.top - (origin.y || 0);
+          const rawMinX = parentRect.left - naturalLeft;
+          const rawMaxX = parentRect.right - compRect.width - naturalLeft;
+          const rawMinY = parentRect.top - naturalTop;
+          const rawMaxY = parentRect.bottom - compRect.height - naturalTop;
+          bounds = {
+            minX: Math.min(rawMinX, rawMaxX), maxX: Math.max(rawMinX, rawMaxX),
+            minY: Math.min(rawMinY, rawMaxY), maxY: Math.max(rawMinY, rawMaxY)
+          };
+        }
+
         try { compEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         function onMove(moveEvent) {
           const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
           if (!moved && Math.hypot(dx, dy) < 3) return;
           moved = true;
-          const nextX = origin.x + dx, nextY = origin.y + dy;
+          let nextX = origin.x + dx, nextY = origin.y + dy;
+          if (bounds) {
+            nextX = Math.min(bounds.maxX, Math.max(bounds.minX, nextX));
+            nextY = Math.min(bounds.maxY, Math.max(bounds.minY, nextY));
+          }
           compEl.style.transform = `translate(${nextX}px, ${nextY}px)`;
           state.cartConfig.componentLayout[key] = { x: Math.round(nextX), y: Math.round(nextY) };
         }
@@ -530,19 +441,6 @@
       stage.className = "cart-focus-stage";
       host.appendChild(stage);
     }
-    renderPreviewBars(host);
-    bindPreviewBarInteractions(host);
-    // Nur noch ein oberer Versatz (Platz für den Vorschau-Header) plus ein
-    // unterer Innenabstand (Platz für den Vorschau-Footer) — die Bühne hat
-    // bewusst KEIN festes "bottom"/keine feste Höhe mehr (siehe
-    // css/modals.css .cart-focus-stage), damit ihre tatsächliche Höhe
-    // sich nach dem Karteninhalt richtet. So wächst .canvas-container (der
-    // EINE bereits vorhandene Scroll-Container, siehe css/canvas.css) bei
-    // Bedarf mit, statt dass die Karte einen eigenen, zweiten Scrollbalken
-    // bekommt.
-    const insets = computeStageInsets();
-    stage.style.top = insets.top + "px";
-    stage.style.paddingBottom = insets.bottom + "px";
     const realItems = cart.getItems();
     const usingDemo = realItems.length === 0;
     let items = realItems;
@@ -563,6 +461,13 @@
     // both stay visually identical. Selectable via data-cart-component
     // like the other top-level blocks, but NON_POSITIONABLE (see above).
     const headerSelectedClass = state.cartFocusSelectedPart === "component:header" ? " cart-component-selected" : "";
+    // Fußbereich (component:footer): eigener Hintergrund, unabhängig von
+    // der Kartenfarbe. Auswählbar über den generischen
+    // [data-cart-component]-Zweig in bindFocusStageInteractions() —
+    // Klicks auf den Button selbst treffen "checkout" (closest() nimmt
+    // das nächstliegende Element mit data-cart-component).
+    const footerSelectedClass = state.cartFocusSelectedPart === "component:footer" ? " cart-component-selected" : "";
+    const footerBgStyle = config.footerBackgroundColor ? ` style="background-color:${config.footerBackgroundColor};"` : "";
     const cardBgStyle = config.cardBackgroundColor ? ` style="background-color:${config.cardBackgroundColor};"` : "";
     const cartTitle = config.cartTitleLabel || "Dein Warenkorb";
     const previewCount = usingDemo ? (Number(items[0]?.qty) || 0) : cart.getCount();
@@ -575,11 +480,10 @@
     const parts = buildCartParts
       ? buildCartParts(items, { interactive: true, isDemo: usingDemo })
       : { progress: "", items: "", recommend: "", discount: "", totals: "" };
-    // The checkout button is wrapped in its own ".drawer-footer"-styled
-    // block (like the real drawer's <div class="drawer-footer">), so the
-    // editor stage shows the exact same fixed footer bar the person will
-    // see when opening the real cart preview — previously the button sat
-    // bare at the bottom of the card with no footer background/border.
+    // The checkout button sits inside its own ".drawer-footer"-styled
+    // block (like the real drawer's <div class="drawer-footer">), now
+    // additionally selectable/colorable as "component:footer" — a click
+    // on the button itself still selects "component:checkout".
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
         <div class="drawer-header cart-focus-header${headerSelectedClass}" data-cart-component="header"><h3>${esc(cartTitle)} (${previewCount})</h3><button type="button" class="close-btn" disabled>&times;</button></div>
@@ -588,7 +492,7 @@
           <div class="cart-focus-scroll">${parts.items}</div>
           <div class="cart-focus-fixed-bottom">${parts.recommend}${parts.discount}${parts.totals}</div>
         </div>
-        <div class="drawer-footer cart-focus-footer">
+        <div class="drawer-footer cart-focus-footer${footerSelectedClass}" data-cart-component="footer"${footerBgStyle}>
           <button type="button" class="btn btn-primary cart-focus-checkout${checkoutSelectedClass}" data-cart-component="checkout" style="width:100%; background-color:${checkoutColor}; border-radius:${checkoutRadius}; transform:translate(${checkoutLayout.x || 0}px, ${checkoutLayout.y || 0}px);">${esc(state.cartButtonLabel || "Zur Kasse gehen")}</button>
         </div>
       </div>
@@ -611,7 +515,6 @@
     state.cartFocusSelectedPart = null;
     document.body.classList.remove("cart-focus-active");
     document.getElementById("cart-focus-stage")?.remove();
-    removePreviewBars();
     document.getElementById("cart-inspector-form")?.classList.add("hidden");
   }
   function bindFocusEditor() {
@@ -628,30 +531,9 @@
       refreshCartViews();
     }, true);
 
-    // T2: Vorschau-Header/-Footer — Schreibpfad geht bewusst NICHT über
-    // cart.setConfig() (die Balken sind kein Teil von cartConfig),
-    // sondern über window.WebBuilderCartPreviewBars.updateHeader()/
-    // updateFooter() — dieselben Funktionen, die auch die Sidebar-
-    // Steuerung in #panel-cart verwendet, damit beide Wege synchron
-    // bleiben. render() dort synchronisiert zusätzlich die Sidebar-Felder.
-    document.getElementById("cart-comp-previewbar-height")?.addEventListener("change", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ height: e.target.value });
-      window.WebBuilderCartPreviewBars?.render?.();
-      renderFocusPartPanel();
-    }, true);
-    document.getElementById("cart-comp-previewbar-color")?.addEventListener("input", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ color: e.target.value });
-      window.WebBuilderCartPreviewBars?.render?.();
-    }, true);
-    document.getElementById("cart-comp-previewbar-label")?.addEventListener("change", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ label: e.target.value });
-      window.WebBuilderCartPreviewBars?.render?.();
+    document.getElementById("cart-comp-footer-bg-color")?.addEventListener("input", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ footerBackgroundColor: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
     }, true);
 
     document.getElementById("cart-part-x")?.addEventListener("change", e => {
@@ -796,16 +678,9 @@
     enter: enterFocusMode,
     exit: exitFocusMode,
     isActive: () => !!state.cartFocusMode,
-    // Exposed for cart-render.js's refreshCartViews()/renderConfig() and
-    // cart-preview-bars.js, so the editor stage stays in sync whenever
-    // the drawer/config/preview bars re-render.
+    // Exposed for cart-render.js's refreshCartViews()/renderConfig(), so
+    // the editor stage stays in sync whenever the drawer/config re-renders.
     renderStage: renderFocusStage,
-    renderPartPanel: renderFocusPartPanel,
-    // Exposed for js/shop/cart-preview-bars.js: lets the sidebar's
-    // "Vorschau: Kopf-/Fußzeile" controls open the editor (if not already
-    // open) and select/highlight the corresponding preview bar, so a
-    // change made from the sidebar is immediately shown for editing —
-    // same visual result as clicking the bar directly in the stage.
-    selectPreviewBar: selectPreviewBarFromSidebar
+    renderPartPanel: renderFocusPartPanel
   };
 })();
