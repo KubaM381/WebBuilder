@@ -78,6 +78,8 @@
   // editable but never position-draggable — same reasoning as
   // background/itemRepresentation: none of them have a sensible free
   // position, they're fixed bars at the top/bottom of the card.
+  // "shipping" (T7) is deliberately NOT in this set — it IS positionable,
+  // like progress/discount/recommend/checkout/totals.
   const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation", "component:header", "component:footer"]);
 
   function applySelectionHighlight() {
@@ -111,7 +113,7 @@
   // Field-block IDs for the right-hand panel (renderFocusPartPanel()).
   const PART_FIELD_BLOCK_IDS = [
     "cart-comp-header-fields", "cart-comp-footer-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
-    "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
+    "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields", "cart-comp-shipping-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
     "cart-comp-totals-fields"
   ];
@@ -132,7 +134,8 @@
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
-      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel", "component:footer": "Fußbereich (Zur-Kasse)"
+      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel", "component:footer": "Fußbereich (Zur-Kasse)",
+      "component:shipping": "Versand"
     };
     const labelEl = document.getElementById("cart-part-label");
     if (labelEl) labelEl.textContent = labels[sel] || sel;
@@ -194,12 +197,27 @@
       dividerGroup?.classList.toggle("hidden", config.itemShape !== "transparent");
       const dividerCb = document.getElementById("cid-show-item-dividers");
       if (dividerCb) dividerCb.checked = !!config.itemDisplay.showItemDividers;
+    } else if (sel === "component:shipping") {
+      // T7: Versand als eigene, positionierbare Komponente — Label,
+      // Betrag, Text bei kostenlosem Versand sowie ein optionales
+      // Freibetrag-Ziel, das bidirektional mit einem "Kostenloser
+      // Versand"-Meilenstein synchronisiert wird (siehe
+      // cart.syncFreeShippingMilestone() in cart-data.js und der
+      // ".ms-amount"/".ms-action"-Sync in cart-render.js
+      // renderMilestoneList()).
+      document.getElementById("cart-comp-shipping-fields")?.classList.remove("hidden");
+      const shippingLabelInput = document.getElementById("cart-comp-shipping-label");
+      if (shippingLabelInput && document.activeElement !== shippingLabelInput) shippingLabelInput.value = config.shippingLabel || "Versand";
+      const shippingCostInput = document.getElementById("cart-comp-shipping-cost");
+      if (shippingCostInput && document.activeElement !== shippingCostInput) shippingCostInput.value = config.shippingCost != null ? config.shippingCost : 4.95;
+      const shippingFreeInput = document.getElementById("cart-comp-shipping-free-text");
+      if (shippingFreeInput && document.activeElement !== shippingFreeInput) shippingFreeInput.value = config.shippingFreeText || "Kostenlos";
+      const shippingThresholdInput = document.getElementById("cart-comp-shipping-free-threshold");
+      if (shippingThresholdInput && document.activeElement !== shippingThresholdInput) shippingThresholdInput.value = config.shippingFreeThreshold != null ? config.shippingFreeThreshold : "";
     } else if (sel === "component:totals") {
-      // "Kosten-Übersicht": Texte/Labels für Zwischensumme, Rabatt,
-      // Versand, Gesamt, plus Versandkosten-Betrag und der Text bei
-      // kostenlosem Versand. Siehe cart-data.js normalizeState() für die
-      // Default-Werte (entsprechen dem bisherigen fest verdrahteten
-      // Verhalten in cart-render.js).
+      // "Kosten-Übersicht": Texte/Labels für Zwischensumme, Rabatt, Gesamt,
+      // plus die Währung. Versand ist seit T7 ein eigenes Panel
+      // (component:shipping, siehe oben).
       document.getElementById("cart-comp-totals-fields")?.classList.remove("hidden");
       // T6: currency preset select, synced to whichever preset the
       // current cartConfig.currency matches (falls back to "eur" if the
@@ -218,12 +236,6 @@
       if (subtotalInput && document.activeElement !== subtotalInput) subtotalInput.value = config.subtotalLabel || "Zwischensumme";
       const discountInput = document.getElementById("cart-comp-discount-label");
       if (discountInput && document.activeElement !== discountInput) discountInput.value = config.discountLabel || "Rabatt";
-      const shippingLabelInput = document.getElementById("cart-comp-shipping-label");
-      if (shippingLabelInput && document.activeElement !== shippingLabelInput) shippingLabelInput.value = config.shippingLabel || "Versand";
-      const shippingCostInput = document.getElementById("cart-comp-shipping-cost");
-      if (shippingCostInput && document.activeElement !== shippingCostInput) shippingCostInput.value = config.shippingCost != null ? config.shippingCost : 4.95;
-      const shippingFreeInput = document.getElementById("cart-comp-shipping-free-text");
-      if (shippingFreeInput && document.activeElement !== shippingFreeInput) shippingFreeInput.value = config.shippingFreeText || "Kostenlos";
       const totalLabelInput = document.getElementById("cart-comp-total-label");
       if (totalLabelInput && document.activeElement !== totalLabelInput) totalLabelInput.value = config.totalLabel || "Gesamt";
     } else if (sel === "qty") {
@@ -314,11 +326,11 @@
 
         // Bounds relative to the component's positioning parent — same
         // reasoning as the [data-cart-part] bounds below: keeps
-        // progress/discount/recommend/checkout/totals inside the visible
-        // card area instead of letting them be dragged out arbitrarily
-        // far. Falls back through the most specific ancestor first
-        // (footer bar for the checkout button, otherwise the card body,
-        // otherwise the card itself).
+        // progress/discount/recommend/checkout/shipping/totals inside the
+        // visible card area instead of letting them be dragged out
+        // arbitrarily far. Falls back through the most specific ancestor
+        // first (footer bar for the checkout button, otherwise the card
+        // body, otherwise the card itself).
         const parentEl = compEl.closest(".cart-focus-footer") || compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
         let bounds = null;
         if (parentEl) {
@@ -485,7 +497,9 @@
     // The checkout button sits inside its own ".drawer-footer"-styled
     // block (like the real drawer's <div class="drawer-footer">), now
     // additionally selectable/colorable as "component:footer" — a click
-    // on the button itself still selects "component:checkout".
+    // on the button itself still selects "component:checkout". The
+    // shipping row (T7) is rendered inside parts.totals (see
+    // cart-render.js buildCartParts()), so no separate slot is needed here.
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
         <div class="drawer-header cart-focus-header${headerSelectedClass}" data-cart-component="header"><h3>${esc(cartTitle)} (${previewCount})</h3><button type="button" class="close-btn" disabled>&times;</button></div>
@@ -596,10 +610,8 @@
       refreshCartViews();
     }, true);
 
-    // "Kosten-Übersicht" (component:totals): Texte/Labels + Versandkosten.
-    // Alle setConfig()-Aufrufe fallen auf den jeweiligen Default zurück,
-    // falls das Feld geleert wird, statt eine leere Zeile im Warenkorb
-    // anzuzeigen.
+    // "Kosten-Übersicht" (component:totals): Texte/Labels. Versand (T7)
+    // hat sein eigenes Panel weiter unten.
     document.getElementById("cart-comp-subtotal-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ subtotalLabel: e.target.value.trim() || "Zwischensumme" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -608,6 +620,15 @@
       window.WebBuilderHistory?.arm(); cart.setConfig({ discountLabel: e.target.value.trim() || "Rabatt" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
+    document.getElementById("cart-comp-total-label")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ totalLabel: e.target.value.trim() || "Gesamt" }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
+    // T7 — component:shipping: Label/Betrag/Freitext fallen jeweils auf
+    // ihren Default zurück, wenn geleert. Das Freibetrag-Ziel synct (falls
+    // vorhanden) den "Kostenloser Versand"-Meilenstein und informiert per
+    // Toast darüber.
     document.getElementById("cart-comp-shipping-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ shippingLabel: e.target.value.trim() || "Versand" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -621,8 +642,17 @@
       window.WebBuilderHistory?.arm(); cart.setConfig({ shippingFreeText: e.target.value.trim() || "Kostenlos" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
-    document.getElementById("cart-comp-total-label")?.addEventListener("change", e => {
-      window.WebBuilderHistory?.arm(); cart.setConfig({ totalLabel: e.target.value.trim() || "Gesamt" }, false); window.WebBuilderHistory?.commit();
+    document.getElementById("cart-comp-shipping-free-threshold")?.addEventListener("change", e => {
+      const raw = e.target.value;
+      const v = raw === "" ? null : Math.max(0, Number(raw) || 0);
+      window.WebBuilderHistory?.arm();
+      cart.setConfig({ shippingFreeThreshold: v }, false);
+      const synced = v != null ? cart.syncFreeShippingMilestone(v, false) : false;
+      window.WebBuilderHistory?.commit();
+      if (synced) {
+        window.WebBuilderToast?.show?.(`Ziel für kostenlosen Versand auf ${cart.formatCurrency(v)} geändert.`, "info");
+        window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
+      }
       refreshCartViews();
     }, true);
 
