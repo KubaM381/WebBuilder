@@ -349,7 +349,14 @@
     let totalsHtml = `<div class="cart-totals">${totalsDividerPart}<div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
     if (discountAmount > 0) totalsHtml += `<div class="cart-total-row"><span>${discountLabel}</span><span>−${eur(discountAmount)}</span></div>`;
     totalsHtml += shippingPart;
-    if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>🎁 Gratis-Produkt</span><span>freigeschaltet</span></div>`;
+    // T10: "Gratis-Produkt"-Zeile — Label und Wert-Text kommen jetzt aus
+    // cartConfig.freeProductLabel/-ValueText statt aus einem hartkodierten
+    // String. Sichtbarkeit unverändert: nur wenn ein Meilenstein mit
+    // action "free-product" erreicht ist (siehe `reached` oben). Die
+    // Editierbarkeit selbst wird im Warenkorb-Editor (component:totals,
+    // js/shop/cart-editor.js) nur angeboten, wenn ein solcher Meilenstein
+    // im Projekt überhaupt existiert.
+    if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>${esc(config.freeProductLabel || "🎁 Gratis-Produkt")}</span><span>${esc(config.freeProductValueText || "freigeschaltet")}</span></div>`;
     totalsHtml += `<div class="cart-total-row cart-total-final"><span>${totalLabel}</span><span>${eur(total)}</span></div></div>`;
     const totalsPart = wrapComponent(totalsHtml, "totals", interactive);
 
@@ -529,6 +536,12 @@
         if (m.action === "free-shipping") state.cartConfig.shippingFreeThreshold = m.amount;
         else if (m.action === "discount") state.cartConfig.milestoneDiscountThreshold = m.amount;
         window.WebBuilderHistory?.commit();
+        // T10: ein neu zugewiesenes "free-product"-Milestone kann dazu
+        // führen, dass das Gratis-Produkt-Eingabefeld im Kosten-
+        // Übersicht-Panel jetzt sichtbar werden muss (bzw. ein entferntes
+        // Milestone es wieder verstecken muss) — siehe
+        // js/shop/cart-editor.js renderFocusPartPanel().
+        window.WebBuilderCartFocus?.renderPartPanel?.();
         refreshCartViews();
       }
     }, true));
@@ -536,6 +549,10 @@
       e.preventDefault(); e.stopImmediatePropagation();
       cart.removeMilestone(e.currentTarget.dataset.id);
       renderMilestoneList();
+      // T10: siehe Kommentar bei ".ms-action" oben — auch das Entfernen
+      // eines "free-product"-Milestones kann die Sichtbarkeit des
+      // Gratis-Produkt-Feldes ändern.
+      window.WebBuilderCartFocus?.renderPartPanel?.();
       refreshCartViews();
     }, true));
   }
