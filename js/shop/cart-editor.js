@@ -26,8 +26,7 @@
   // räumlichen Orientierung dienen. Da diese Balken feste Pixelhöhen aus
   // dem State beziehen statt aus gemessenen DOM-Rects, genügt eine reine
   // Konfigurationsabfrage statt getBoundingClientRect() — kein
-  // Resize-/Zoom-Listener mehr nötig für die Balken selbst (siehe aber
-  // den neuen Resize-Listener unten für die Kartenhöhe, T3).
+  // Resize-/Zoom-Listener mehr nötig.
   const STAGE_BAR_GAP = 10;
   function computeStageInsets() {
     const cfg = window.WebBuilderCartPreviewBars?.getConfig?.() || { header: {}, footer: {} };
@@ -36,54 +35,11 @@
     return { top, bottom };
   }
 
-  // Wendet Hintergrund (einfarbig/Bild), Textfarbe, Schriftart und
-  // Fett-Schalter eines Vorschau-Balkens auf sein DOM-Element an. Alle
-  // Werte kommen aus window.WebBuilderCartPreviewBars.getConfig() (siehe
-  // js/shop/cart-preview-bars.js) — die Datenfelder existierten dort
-  // bereits, hier wird nur die visuelle Anwendung ergänzt. Inline-Styles
-  // gewinnen bewusst gegenüber den CSS-Defaults in
-  // css/modals.css .cart-preview-bar (color:#fff; font-weight:600;), die
-  // dadurch reine Fallbacks für den unkonfigurierten Fall bleiben.
-  function applyBarStyle(el, barCfg) {
-    if (!el || !barCfg) return;
-    if (barCfg.bgType === "image" && barCfg.bgImage) {
-      el.style.backgroundImage = `url("${barCfg.bgImage}")`;
-      el.style.backgroundSize = "cover";
-      el.style.backgroundPosition = "center";
-      el.style.backgroundRepeat = "no-repeat";
-      // Farbe bleibt als Fallback gesetzt, solange das Bild lädt.
-      el.style.backgroundColor = barCfg.color || "#111827";
-    } else {
-      el.style.backgroundImage = "none";
-      el.style.backgroundColor = barCfg.color || "#111827";
-    }
-    el.style.color = barCfg.textColor || "#ffffff";
-    el.style.fontFamily = barCfg.fontFamily || "inherit";
-    el.style.fontWeight = barCfg.bold ? "bold" : "600";
-  }
-
-  // Baut das Innere eines Vorschau-Balkens: optionales Icon (eigenes
-  // hochgeladenes Bild ODER ein Emoji/Text-Icon, gegenseitig
-  // ausschließend — siehe js/shop/cart-preview-bars.js) gefolgt von der
-  // Beschriftung. iconImage hat Vorrang, falls beide Felder aus
-  // irgendeinem Grund gleichzeitig gesetzt wären.
-  function buildPreviewBarContentHtml(barCfg) {
-    let iconHtml = "";
-    if (barCfg.iconImage) {
-      iconHtml = `<img class="cart-preview-bar-icon-img" src="${esc(barCfg.iconImage)}" alt="">`;
-    } else if (barCfg.icon) {
-      iconHtml = `<span class="cart-preview-bar-icon">${esc(barCfg.icon)}</span>`;
-    }
-    return `${iconHtml}<span class="cart-preview-bar-text">${esc(barCfg.label || "")}</span>`;
-  }
-
   // Baut/aktualisiert die beiden rein dekorativen Vorschau-Balken direkt
   // im selben Host wie #cart-focus-stage (siehe renderFocusStage()) —
   // keine Drag-Logik (siehe NON_POSITIONABLE/bindPreviewBarInteractions
-  // unten), aber seit T2 anklickbar/auswählbar. Ein/Aus + Höhe +
-  // Beschriftung kommen weiterhin aus js/shop/cart-preview-bars.js;
-  // Hintergrund/Textfarbe/Schriftart/Fett/Icon werden hier per
-  // applyBarStyle()/buildPreviewBarContentHtml() angewendet.
+  // unten), aber seit T2 anklickbar/auswählbar. Ein/Aus + Höhe + Farbe +
+  // Beschriftung kommen weiterhin aus js/shop/cart-preview-bars.js.
   function renderPreviewBars(host) {
     const cfg = window.WebBuilderCartPreviewBars?.getConfig?.();
     if (!host || !cfg) return;
@@ -100,8 +56,8 @@
         host.appendChild(top);
       }
       top.style.height = (Number(cfg.header.height) || 64) + "px";
-      applyBarStyle(top, cfg.header);
-      top.innerHTML = buildPreviewBarContentHtml(cfg.header);
+      top.style.backgroundColor = cfg.header.color || "#111827";
+      top.textContent = cfg.header.label || "";
       top.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewHeader");
     } else if (top) {
       top.remove();
@@ -116,8 +72,8 @@
         host.appendChild(bottom);
       }
       bottom.style.height = (Number(cfg.footer.height) || 70) + "px";
-      applyBarStyle(bottom, cfg.footer);
-      bottom.innerHTML = buildPreviewBarContentHtml(cfg.footer);
+      bottom.style.backgroundColor = cfg.footer.color || "#111827";
+      bottom.textContent = cfg.footer.label || "";
       bottom.classList.toggle("cart-component-selected", state.cartFocusSelectedPart === "previewFooter");
     } else if (bottom) {
       bottom.remove();
@@ -146,29 +102,27 @@
     });
   }
 
-  // T4: cart-item sub-parts (icon/qty/price/remove/description) live in
-  // cartConfig.itemDisplay.layout; recommend-card sub-parts (icon/name/
-  // price/add) live in a separate cartConfig.recommendDisplay.layout,
-  // since the recommend card isn't a cart item. Recommend part keys are
-  // prefixed "recommend:" (see cart-render.js buildRecommendCardContentHtml())
-  // so the correct layout map can be resolved from the key alone, without
-  // inspecting DOM ancestry.
-  function resolveLayoutMap(partKey) {
-    if (typeof partKey === "string" && partKey.startsWith("recommend:")) {
-      if (!state.cartConfig.recommendDisplay || typeof state.cartConfig.recommendDisplay !== "object") state.cartConfig.recommendDisplay = {};
-      if (!state.cartConfig.recommendDisplay.layout || typeof state.cartConfig.recommendDisplay.layout !== "object") state.cartConfig.recommendDisplay.layout = {};
-      return { map: state.cartConfig.recommendDisplay.layout, key: partKey.slice("recommend:".length) };
-    }
-    const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
-    return { map: layout, key: partKey };
+  // Wird von js/shop/cart-preview-bars.js aufgerufen, wenn der Nutzer eines
+  // der Sidebar-Felder unter "Vorschau: Kopf-/Fußzeile" bedient (Toggle,
+  // Höhe, Farbe, Beschriftung). Öffnet den Warenkorb-Editor automatisch,
+  // falls er noch nicht offen ist, und markiert direkt danach die
+  // passende Vorschau-Leiste — dieselbe Auswahl/Hervorhebung, die auch ein
+  // direkter Klick auf die Leiste in der Bühne auslöst (siehe
+  // bindPreviewBarInteractions() oben), damit eine Änderung in der
+  // Sidebar sofort sichtbar zur Bearbeitung angezeigt wird, statt
+  // "unsichtbar" im Hintergrund zu passieren.
+  function selectPreviewBarFromSidebar(key) {
+    if (!state.cartFocusMode) enterFocusMode();
+    selectFocusPartLight(key);
   }
+
   function getPartLayout(partKey) {
-    const { map, key } = resolveLayoutMap(partKey);
-    return map[key] || { x: 0, y: 0 };
+    const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
+    return layout[partKey] || { x: 0, y: 0 };
   }
   function setPartLayoutSilent(partKey, x, y) {
-    const { map, key } = resolveLayoutMap(partKey);
-    map[key] = { x: Math.round(x) || 0, y: Math.round(y) || 0 };
+    const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
+    layout[partKey] = { x: Math.round(x) || 0, y: Math.round(y) || 0 };
   }
   function setPartLayout(partKey, x, y, recordHistory = true) {
     if (recordHistory) window.WebBuilderHistory?.arm();
@@ -178,10 +132,10 @@
   }
   function resetPartLayout(partKey) {
     window.WebBuilderHistory?.arm();
-    const { map, key } = resolveLayoutMap(partKey);
-    delete map[key];
+    const layout = state.cartConfig.itemDisplay.layout || (state.cartConfig.itemDisplay.layout = {});
+    delete layout[partKey];
     window.WebBuilderHistory?.commit();
-    notify("cart", "part-layout", state.cartConfig.itemDisplay.layout);
+    notify("cart", "part-layout", layout);
   }
 
   function getSelectedLayout() {
@@ -288,13 +242,8 @@
     const positionFields = document.getElementById("cart-comp-position-fields");
     positionFields?.classList.toggle("hidden", NON_POSITIONABLE.has(sel));
 
-    // T4: recommend-card sub-parts (icon/name/price/add) show the same
-    // "Element" position panel as cart-item sub-parts — no dedicated
-    // field block exists for them (like "icon"/"description" for cart
-    // items), only the shared position X/Y fields further below.
     const labels = {
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
-      "recommend:icon": "Empfehlung: Icon", "recommend:name": "Empfehlung: Produktname", "recommend:price": "Empfehlung: Preis", "recommend:add": "Empfehlung: Plus-Button",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
       "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel",
@@ -315,52 +264,10 @@
       const barCfg = (window.WebBuilderCartPreviewBars?.getConfig?.() || { header: {}, footer: {} })[isFooter ? "footer" : "header"];
       const heightInput = document.getElementById("cart-comp-previewbar-height");
       if (heightInput && document.activeElement !== heightInput) heightInput.value = barCfg.height != null ? barCfg.height : (isFooter ? 70 : 64);
-      const labelInput = document.getElementById("cart-comp-previewbar-label");
-      if (labelInput && document.activeElement !== labelInput) labelInput.value = barCfg.label || (isFooter ? "Footer" : "Header");
-
-      // Hintergrund-Typ: einfarbig/Bild — gleiches "solid"/"image"-Muster
-      // wie bei der echten Kopf-/Fußzeile (siehe web.html #header-bg-type
-      // / layout/header-footer.js syncBgControls()).
-      const bgTypeSel = document.getElementById("cart-comp-previewbar-bg-type");
-      if (bgTypeSel) bgTypeSel.value = barCfg.bgType === "image" ? "image" : "solid";
-      document.getElementById("cart-comp-previewbar-bg-solid-group")?.classList.toggle("hidden", barCfg.bgType === "image");
-      document.getElementById("cart-comp-previewbar-bg-image-group")?.classList.toggle("hidden", barCfg.bgType !== "image");
       const colorInput = document.getElementById("cart-comp-previewbar-color");
       if (colorInput) colorInput.value = barCfg.color || "#111827";
-      const bgImageUrlInput = document.getElementById("cart-comp-previewbar-bg-image-url");
-      if (bgImageUrlInput && document.activeElement !== bgImageUrlInput) bgImageUrlInput.value = barCfg.bgImage || "";
-
-      // Textfarbe.
-      const textColorInput = document.getElementById("cart-comp-previewbar-text-color");
-      if (textColorInput) textColorInput.value = barCfg.textColor || "#ffffff";
-
-      // Schriftart — Optionen einmalig aus ui/shared-markup.js befüllen
-      // (dieselbe feste Auswahl wie #prop-font-family/#bar-prop-font-family),
-      // Fallback falls das Modul aus irgendeinem Grund fehlt.
-      const fontSelect = document.getElementById("cart-comp-previewbar-font-family");
-      if (fontSelect) {
-        if (!fontSelect.dataset.webBuilderMarkupBound) {
-          fontSelect.innerHTML = window.WebBuilderSharedMarkup?.buildFontFamilyOptionsHtml?.() || '<option value="inherit">Standard</option>';
-          fontSelect.dataset.webBuilderMarkupBound = "true";
-        }
-        fontSelect.value = barCfg.fontFamily || "inherit";
-      }
-
-      // Fett.
-      const boldInput = document.getElementById("cart-comp-previewbar-bold");
-      if (boldInput) boldInput.checked = !!barCfg.bold;
-
-      // Icon: Typ wird aus dem tatsächlich gesetzten Feld abgeleitet, da
-      // icon/iconImage gegenseitig ausschließend sind (siehe
-      // js/shop/cart-preview-bars.js). "image" hat Vorrang vor "emoji",
-      // falls aus irgendeinem Grund beide Felder gesetzt wären.
-      const iconType = barCfg.iconImage ? "image" : (barCfg.icon ? "emoji" : "none");
-      const iconTypeSel = document.getElementById("cart-comp-previewbar-icon-type");
-      if (iconTypeSel) iconTypeSel.value = iconType;
-      document.getElementById("cart-comp-previewbar-icon-emoji-group")?.classList.toggle("hidden", iconType !== "emoji");
-      document.getElementById("cart-comp-previewbar-icon-image-group")?.classList.toggle("hidden", iconType !== "image");
-      const iconInput = document.getElementById("cart-comp-previewbar-icon");
-      if (iconInput && document.activeElement !== iconInput) iconInput.value = barCfg.icon || "";
+      const labelInput = document.getElementById("cart-comp-previewbar-label");
+      if (labelInput && document.activeElement !== labelInput) labelInput.value = barCfg.label || (isFooter ? "Footer" : "Header");
     } else if (sel === "component:header") {
       // T1: editable title shown in the drawer-header preview at the top
       // of the stage (see renderFocusStage()) and in the real drawer
@@ -388,13 +295,7 @@
       if (progressColorInput) progressColorInput.value = config.progressBarColor || "#10b981";
       window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
     } else if (sel === "component:recommend") {
-      // T4: Form der Empfehlungskarte + Farbe des "+"-Buttons, zusätzlich
-      // zur bestehenden Empfehlungs-Liste.
       document.getElementById("cart-comp-recommend-fields")?.classList.remove("hidden");
-      const shapeSel = document.getElementById("cart-comp-recommend-shape");
-      if (shapeSel) shapeSel.value = config.recommendShape || "rounded";
-      const addColorInput = document.getElementById("cart-comp-recommend-add-color");
-      if (addColorInput) addColorInput.value = config.recommendAddButtonColor || "#4f46e5";
       window.WebBuilderCartConfigRuntime?.renderRecommendList?.();
     } else if (sel === "component:background") {
       document.getElementById("cart-comp-background-fields")?.classList.remove("hidden");
@@ -553,18 +454,17 @@
         const startX = e.clientX, startY = e.clientY;
         let moved = false;
 
-        // Bounds relativ zur Eltern-Box, damit sich die Teile nicht aus
-        // ihrem Container herausziehen lassen — für Artikel-Teile ist das
-        // die Artikel-Box (.cart-item), für Empfehlungs-Teile (T4) die
-        // Empfehlungskarte (.cart-recommend-card). Einmalig beim
+        // Bounds relativ zur Eltern-Artikel-Box (.cart-item), damit sich
+        // Icon/Name, Menge, Preis, Entfernen-Button und Beschreibung nicht
+        // aus dem Produktfeld herausziehen lassen. Einmalig beim
         // Drag-Start berechnet: "natural*" = aktuelle Position minus dem
         // schon aktiven Transform-Offset (origin), daraus ergibt sich der
         // erlaubte x/y-Bereich, in dem die linke/obere bzw.
-        // rechte/untere Kante des Teils innerhalb der Eltern-Box bleibt.
-        const parentBoxEl = partEl.closest(".cart-item") || partEl.closest(".cart-recommend-card");
+        // rechte/untere Kante des Teils innerhalb der Artikel-Box bleibt.
+        const itemEl = partEl.closest(".cart-item");
         let bounds = null;
-        if (parentBoxEl) {
-          const itemRect = parentBoxEl.getBoundingClientRect();
+        if (itemEl) {
+          const itemRect = itemEl.getBoundingClientRect();
           const partRect = partEl.getBoundingClientRect();
           const naturalLeft = partRect.left - (origin.x || 0);
           const naturalTop = partRect.top - (origin.y || 0);
@@ -634,22 +534,15 @@
     bindPreviewBarInteractions(host);
     // Nur noch ein oberer Versatz (Platz für den Vorschau-Header) plus ein
     // unterer Innenabstand (Platz für den Vorschau-Footer) — die Bühne hat
-    // bewusst KEIN festes "bottom" — die tatsächliche Höhe der Bühne
-    // richtet sich weiterhin nach dem Karteninhalt. Was NEU ist (T3): die
-    // Karte selbst (.cart-focus-card) bekommt unten eine per JS berechnete
-    // "max-height", damit nicht mehr die ganze Karte über den äußeren
-    // .canvas-container-Scrollbalken wächst, sondern nur noch die
-    // Artikelliste (.cart-focus-scroll) innerhalb der Karte scrollt.
+    // bewusst KEIN festes "bottom"/keine feste Höhe mehr (siehe
+    // css/modals.css .cart-focus-stage), damit ihre tatsächliche Höhe
+    // sich nach dem Karteninhalt richtet. So wächst .canvas-container (der
+    // EINE bereits vorhandene Scroll-Container, siehe css/canvas.css) bei
+    // Bedarf mit, statt dass die Karte einen eigenen, zweiten Scrollbalken
+    // bekommt.
     const insets = computeStageInsets();
     stage.style.top = insets.top + "px";
     stage.style.paddingBottom = insets.bottom + "px";
-    // STAGE_PADDING = oberer + unterer Innenabstand von .cart-focus-stage
-    // selbst (padding: 30px, siehe css/modals.css) — bleibt bei der
-    // Höhenberechnung der Karte unberücksichtigt, sonst würde die Karte
-    // ungewollt an den Bühnenrand stoßen.
-    const STAGE_PADDING = 60;
-    const viewportH = host.clientHeight || window.innerHeight;
-    const maxCardHeight = Math.max(280, viewportH - insets.top - insets.bottom - STAGE_PADDING);
     const realItems = cart.getItems();
     const usingDemo = realItems.length === 0;
     let items = realItems;
@@ -670,25 +563,23 @@
     // both stay visually identical. Selectable via data-cart-component
     // like the other top-level blocks, but NON_POSITIONABLE (see above).
     const headerSelectedClass = state.cartFocusSelectedPart === "component:header" ? " cart-component-selected" : "";
-    // T3: max-height ist immer gesetzt (begrenzt die Karte auf die
-    // sichtbare Editor-Fläche), die optionale Hintergrundfarbe kommt
-    // zusätzlich dazu.
-    const cardStyleParts = [`max-height:${maxCardHeight}px`];
-    if (config.cardBackgroundColor) cardStyleParts.push(`background-color:${config.cardBackgroundColor}`);
-    const cardBgStyle = ` style="${cardStyleParts.join(";")};"`;
+    const cardBgStyle = config.cardBackgroundColor ? ` style="background-color:${config.cardBackgroundColor};"` : "";
     const cartTitle = config.cartTitleLabel || "Dein Warenkorb";
     const previewCount = usingDemo ? (Number(items[0]?.qty) || 0) : cart.getCount();
     // T3: build the cart body as separate parts instead of one combined
-    // string — progress bar goes into a fixed top strip, the item list
-    // into its own scrollable middle section, and recommendation/
-    // discount/totals into a fixed bottom strip (see
-    // css/modals.css .cart-focus-fixed-top/.cart-focus-scroll/
-    // .cart-focus-fixed-bottom). The real drawer keeps rendering via
-    // buildCartHtml() unchanged (cart-render.js renderCart()).
+    // string — see css/modals.css for how the resulting markup is laid
+    // out (single flowing block, no internal scroll region). The real
+    // drawer keeps rendering via buildCartHtml() unchanged (cart-render.js
+    // renderCart()).
     const buildCartParts = window.WebBuilderCartRuntime?.buildCartParts;
     const parts = buildCartParts
       ? buildCartParts(items, { interactive: true, isDemo: usingDemo })
       : { progress: "", items: "", recommend: "", discount: "", totals: "" };
+    // The checkout button is wrapped in its own ".drawer-footer"-styled
+    // block (like the real drawer's <div class="drawer-footer">), so the
+    // editor stage shows the exact same fixed footer bar the person will
+    // see when opening the real cart preview — previously the button sat
+    // bare at the bottom of the card with no footer background/border.
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
         <div class="drawer-header cart-focus-header${headerSelectedClass}" data-cart-component="header"><h3>${esc(cartTitle)} (${previewCount})</h3><button type="button" class="close-btn" disabled>&times;</button></div>
@@ -697,7 +588,9 @@
           <div class="cart-focus-scroll">${parts.items}</div>
           <div class="cart-focus-fixed-bottom">${parts.recommend}${parts.discount}${parts.totals}</div>
         </div>
-        <button type="button" class="btn btn-primary cart-focus-checkout${checkoutSelectedClass}" data-cart-component="checkout" style="width:100%; background-color:${checkoutColor}; border-radius:${checkoutRadius}; transform:translate(${checkoutLayout.x || 0}px, ${checkoutLayout.y || 0}px);">${esc(state.cartButtonLabel || "Zur Kasse gehen")}</button>
+        <div class="drawer-footer cart-focus-footer">
+          <button type="button" class="btn btn-primary cart-focus-checkout${checkoutSelectedClass}" data-cart-component="checkout" style="width:100%; background-color:${checkoutColor}; border-radius:${checkoutRadius}; transform:translate(${checkoutLayout.x || 0}px, ${checkoutLayout.y || 0}px);">${esc(state.cartButtonLabel || "Zur Kasse gehen")}</button>
+        </div>
       </div>
     `;
     bindFocusStageInteractions(stage);
@@ -741,30 +634,10 @@
     // updateFooter() — dieselben Funktionen, die auch die Sidebar-
     // Steuerung in #panel-cart verwendet, damit beide Wege synchron
     // bleiben. render() dort synchronisiert zusätzlich die Sidebar-Felder.
-    // updateHeader()/updateFooter() rufen intern bereits
-    // window.WebBuilderCartFocus.renderStage() auf (siehe
-    // js/shop/cart-preview-bars.js), ein zusätzlicher renderFocusStage()-
-    // Aufruf hier ist daher nicht nötig.
     document.getElementById("cart-comp-previewbar-height")?.addEventListener("change", e => {
       const isFooter = state.cartFocusSelectedPart === "previewFooter";
       const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
       fn?.({ height: e.target.value });
-      window.WebBuilderCartPreviewBars?.render?.();
-      renderFocusPartPanel();
-    }, true);
-    document.getElementById("cart-comp-previewbar-label")?.addEventListener("change", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ label: e.target.value });
-      window.WebBuilderCartPreviewBars?.render?.();
-    }, true);
-
-    // Hintergrund-Typ (einfarbig/Bild) — Wechsel muss die beiden Gruppen
-    // im Panel neu ein-/ausblenden, daher renderFocusPartPanel() danach.
-    document.getElementById("cart-comp-previewbar-bg-type")?.addEventListener("change", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ bgType: e.target.value });
       window.WebBuilderCartPreviewBars?.render?.();
       renderFocusPartPanel();
     }, true);
@@ -774,85 +647,11 @@
       fn?.({ color: e.target.value });
       window.WebBuilderCartPreviewBars?.render?.();
     }, true);
-    document.getElementById("cart-comp-previewbar-bg-image-url")?.addEventListener("change", e => {
+    document.getElementById("cart-comp-previewbar-label")?.addEventListener("change", e => {
       const isFooter = state.cartFocusSelectedPart === "previewFooter";
       const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ bgImage: e.target.value, bgType: "image" });
+      fn?.({ label: e.target.value });
       window.WebBuilderCartPreviewBars?.render?.();
-      renderFocusPartPanel();
-    }, true);
-    document.getElementById("cart-comp-previewbar-bg-image-file")?.addEventListener("change", e => {
-      const file = e.target.files?.[0];
-      if (!file || !file.type.startsWith("image/")) return;
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result !== "string") return;
-        fn?.({ bgImage: reader.result, bgType: "image" });
-        window.WebBuilderCartPreviewBars?.render?.();
-        renderFocusPartPanel();
-      };
-      reader.readAsDataURL(file);
-    }, true);
-
-    // Textfarbe.
-    document.getElementById("cart-comp-previewbar-text-color")?.addEventListener("input", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ textColor: e.target.value });
-      window.WebBuilderCartPreviewBars?.render?.();
-    }, true);
-
-    // Schriftart.
-    document.getElementById("cart-comp-previewbar-font-family")?.addEventListener("change", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ fontFamily: e.target.value });
-      window.WebBuilderCartPreviewBars?.render?.();
-    }, true);
-
-    // Fett.
-    document.getElementById("cart-comp-previewbar-bold")?.addEventListener("change", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ bold: e.target.checked });
-      window.WebBuilderCartPreviewBars?.render?.();
-    }, true);
-
-    // Icon-Typ: none/emoji/image — schaltet nur die Sichtbarkeit der
-    // Unterfelder um und leert dabei das jeweils nicht mehr passende Feld
-    // (icon/iconImage sind gegenseitig ausschließend, siehe
-    // js/shop/cart-preview-bars.js).
-    document.getElementById("cart-comp-previewbar-icon-type")?.addEventListener("change", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      const type = e.target.value;
-      if (type === "none") fn?.({ icon: null, iconImage: "" });
-      else if (type === "emoji") fn?.({ iconImage: "" });
-      else if (type === "image") fn?.({ icon: null });
-      window.WebBuilderCartPreviewBars?.render?.();
-      renderFocusPartPanel();
-    }, true);
-    document.getElementById("cart-comp-previewbar-icon")?.addEventListener("change", e => {
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      fn?.({ icon: e.target.value, iconImage: "" });
-      window.WebBuilderCartPreviewBars?.render?.();
-    }, true);
-    document.getElementById("cart-comp-previewbar-icon-image-file")?.addEventListener("change", e => {
-      const file = e.target.files?.[0];
-      if (!file || !file.type.startsWith("image/")) return;
-      const isFooter = state.cartFocusSelectedPart === "previewFooter";
-      const fn = isFooter ? window.WebBuilderCartPreviewBars?.updateFooter : window.WebBuilderCartPreviewBars?.updateHeader;
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result !== "string") return;
-        fn?.({ iconImage: reader.result, icon: null });
-        window.WebBuilderCartPreviewBars?.render?.();
-        renderFocusPartPanel();
-      };
-      reader.readAsDataURL(file);
     }, true);
 
     document.getElementById("cart-part-x")?.addEventListener("change", e => {
@@ -891,16 +690,6 @@
     }, true);
     document.getElementById("cart-comp-discount-shape")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ discountButtonShape: e.target.value }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
-
-    // T4: Empfehlungskarte — Form + Farbe des "+"-Buttons.
-    document.getElementById("cart-comp-recommend-shape")?.addEventListener("change", e => {
-      window.WebBuilderHistory?.arm(); cart.setConfig({ recommendShape: e.target.value }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
-    document.getElementById("cart-comp-recommend-add-color")?.addEventListener("input", e => {
-      window.WebBuilderHistory?.arm(); cart.setConfig({ recommendAddButtonColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
@@ -1001,14 +790,6 @@
     }, true);
 
     document.addEventListener("keydown", e => { if (e.key === "Escape" && state.cartFocusMode) exitFocusMode(); });
-
-    // T3: die Kartenhöhe (max-height) wird aus der sichtbaren Höhe von
-    // .canvas-container berechnet (siehe renderFocusStage()) — bei einer
-    // Fenstergrößenänderung muss sie neu berechnet werden, sonst bleibt
-    // sie auf dem Stand des letzten Renders "eingefroren".
-    window.addEventListener("resize", () => {
-      if (state.cartFocusMode) renderFocusStage();
-    });
   }
   document.addEventListener("DOMContentLoaded", () => setTimeout(bindFocusEditor, 0));
   window.WebBuilderCartFocus = {
@@ -1019,6 +800,12 @@
     // cart-preview-bars.js, so the editor stage stays in sync whenever
     // the drawer/config/preview bars re-render.
     renderStage: renderFocusStage,
-    renderPartPanel: renderFocusPartPanel
+    renderPartPanel: renderFocusPartPanel,
+    // Exposed for js/shop/cart-preview-bars.js: lets the sidebar's
+    // "Vorschau: Kopf-/Fußzeile" controls open the editor (if not already
+    // open) and select/highlight the corresponding preview bar, so a
+    // change made from the sidebar is immediately shown for editing —
+    // same visual result as clicking the bar directly in the stage.
+    selectPreviewBar: selectPreviewBarFromSidebar
   };
 })();
