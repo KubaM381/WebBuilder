@@ -217,8 +217,8 @@
            ausschließlich im Warenkorb-Editor selbst bearbeitet (rechtes
            Panel #cart-inspector-form, siehe unten) — dort klickt man das
            jeweilige Element (Artikel, Fortschrittsbalken, Rabattfeld,
-           Empfehlung, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht,
-           Hintergrund) direkt an. -->
+           Empfehlung, Versand, Zur-Kasse-Button/Fußbereich, Kosten-
+           Übersicht, Hintergrund) direkt an. -->
       <div class="sidebar-panel hidden" id="panel-cart">
         <button type="button" id="btn-cart-focus-editor" class="btn btn-primary" style="width:100%; margin-bottom:14px;">🎯 Warenkorb-Editor öffnen</button>
 
@@ -243,7 +243,7 @@
 
         <hr class="divider">
         <label class="checkbox-row"><input type="checkbox" id="cart-progress-toggle"> Fortschrittsbalken</label>
-        <p class="help-text" style="margin:-6px 0 0;">Farbe &amp; Meilensteine verwalten &amp; Position anpassen im Warenkorb-Editor — dort auf den Fortschrittsbalken klicken.</p>
+        <p class="help-text" style="margin:-6px 0 0;">Farbe &amp; Meilensteine verwalten &amp; Position anpassen im Warenkorb-Editor — dort auf den Fortschrittsbalken klicken. Versandkosten &amp; Freibetrag-Ziel dort auf die Versand-Zeile klicken.</p>
       </div>
 
       <!-- ==================== TAB: PRODUKTE ==================== -->
@@ -370,13 +370,13 @@
       </div>
 
       <!-- Warenkorb-Editor: Bearbeitung einzelner Bereiche (Artikel-Teile,
-           Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button/
-           Fußbereich, Kosten-Übersicht, Hintergrund, Artikel-Darstellung,
-           Warenkorb-Titel), siehe js/shop/cart-editor.js
+           Fortschrittsbalken, Rabattfeld, Empfehlung, Versand, Zur-Kasse-
+           Button/Fußbereich, Kosten-Übersicht, Hintergrund, Artikel-
+           Darstellung, Warenkorb-Titel), siehe js/shop/cart-editor.js
            enterFocusMode()/renderFocusPartPanel(). -->
       <div id="cart-inspector-form" class="inspector-form hidden">
         <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht oder Hintergrund), um ihn hier anzupassen.</p>
+        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Versand, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht oder Hintergrund), um ihn hier anzupassen.</p>
 
         <div id="cart-part-editor" class="hidden">
           <div class="form-group"><label id="cart-part-label">Element</label></div>
@@ -420,29 +420,49 @@
             </div>
           </div>
 
+          <!-- Versand (T7) — eigene, positionierbare Komponente
+               (component:shipping). Das Freibetrag-Feld synchronisiert
+               sich bidirektional mit einem "Kostenloser Versand"-
+               Meilenstein im Fortschrittsbalken-Panel, falls einer
+               existiert (js/shop/cart-data.js syncFreeShippingMilestone(),
+               js/shop/cart-render.js renderMilestoneList()). Ist kein
+               Meilenstein vorhanden, gilt das Freibetrag-Ziel trotzdem
+               eigenständig. -->
+          <div id="cart-comp-shipping-fields" class="hidden">
+            <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
+            <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (€)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
+            <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
+            <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (€)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
+            <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist. Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
+          </div>
+
           <!-- Hintergrund -->
           <div id="cart-comp-background-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-bg-color">Hintergrundfarbe</label><input type="color" id="cart-comp-bg-color"></div>
           </div>
 
-          <!-- Kosten-Übersicht (Zwischensumme/Rabatt/Versand/Gesamt) —
-               Labels sowie Versandkosten-Betrag und Text bei kostenlosem
-               Versand editierbar. Siehe js/shop/cart-data.js
-               normalizeState() für die Default-Werte. -->
+          <!-- Kosten-Übersicht (Zwischensumme/Rabatt/Gesamt) — Labels
+               sowie die Währung editierbar. Versand ist seit T7 ein
+               eigenes Panel (component:shipping, siehe oben). Siehe
+               js/shop/cart-data.js normalizeState() für die
+               Default-Werte. -->
           <div id="cart-comp-totals-fields" class="hidden">
+            <div class="form-group"><label for="cart-comp-currency">Währung</label>
+              <select id="cart-comp-currency">
+                <option value="eur">€ Euro</option>
+                <option value="usd">$ US-Dollar</option>
+                <option value="gbp">£ Britisches Pfund</option>
+              </select>
+            </div>
             <div class="form-group"><label for="cart-comp-subtotal-label">Label „Zwischensumme“</label><input type="text" id="cart-comp-subtotal-label" placeholder="Zwischensumme"></div>
             <div class="form-group"><label for="cart-comp-discount-label">Label „Rabatt“</label><input type="text" id="cart-comp-discount-label" placeholder="Rabatt"></div>
-            <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
-            <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (€)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
-            <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
             <div class="form-group"><label for="cart-comp-total-label">Label „Gesamt“</label><input type="text" id="cart-comp-total-label" placeholder="Gesamt"></div>
-            <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist und kein Meilenstein „Kostenloser Versand“ erreicht wurde.</p>
           </div>
 
           <!-- Fortschrittsbalken: Farbe + Position (unten) + Meilenstein-Liste hier -->
           <div id="cart-comp-progress-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-progress-color">Balkenfarbe</label><input type="color" id="cart-comp-progress-color"></div>
-            <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist):</p>
+            <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel im Versand-Panel synchron:</p>
             <div class="mini-btn-row"><button type="button" id="btn-add-milestone" class="btn btn-secondary btn-sm" style="width:100%;">+ Meilenstein</button></div>
             <div id="cart-milestone-list" class="items-list"></div>
           </div>
@@ -550,10 +570,10 @@
           </div>
 
           <!-- Position (X/Y) — gilt für Artikel-Teile, Fortschrittsbalken,
-               Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht.
-               Nicht für Hintergrund, Artikel-Darstellung, den
-               Warenkorb-Titel und den Fußbereich (dafür ist eine feste
-               Position nicht sinnvoll). -->
+               Rabattfeld, Empfehlung, Versand, Zur-Kasse-Button,
+               Kosten-Übersicht. Nicht für Hintergrund, Artikel-
+               Darstellung, den Warenkorb-Titel und den Fußbereich (dafür
+               ist eine feste Position nicht sinnvoll). -->
           <div id="cart-comp-position-fields">
             <div class="form-group">
               <label for="cart-part-x">Position X (px)</label>
