@@ -169,6 +169,16 @@
       if (colorInput) colorInput.value = config.discountButtonColor || "#4f46e5";
       const shapeSel = document.getElementById("cart-comp-discount-shape");
       if (shapeSel) shapeSel.value = config.discountButtonShape || "rounded";
+      // T8 (Spiegelbild von T7/component:shipping): Prozentsatz des
+      // meilenstein-getriebenen Extra-Rabatts plus ein optionales
+      // Rabatt-Ziel, das bidirektional mit einem Meilenstein mit action
+      // "discount" synchronisiert wird (siehe cart.syncDiscountMilestone()
+      // in cart-data.js und der ".ms-amount"/".ms-action"-Sync in
+      // cart-render.js renderMilestoneList()).
+      const percentInput = document.getElementById("cart-comp-discount-percent");
+      if (percentInput && document.activeElement !== percentInput) percentInput.value = config.milestoneDiscountPercent != null ? config.milestoneDiscountPercent : 10;
+      const discountThresholdInput = document.getElementById("cart-comp-discount-threshold");
+      if (discountThresholdInput && document.activeElement !== discountThresholdInput) discountThresholdInput.value = config.milestoneDiscountThreshold != null ? config.milestoneDiscountThreshold : "";
     } else if (sel === "component:progress") {
       document.getElementById("cart-comp-progress-fields")?.classList.remove("hidden");
       const progressColorInput = document.getElementById("cart-comp-progress-color");
@@ -217,7 +227,9 @@
     } else if (sel === "component:totals") {
       // "Kosten-Übersicht": Texte/Labels für Zwischensumme, Rabatt, Gesamt,
       // plus die Währung. Versand ist seit T7 ein eigenes Panel
-      // (component:shipping, siehe oben).
+      // (component:shipping, siehe oben), der meilenstein-getriebene
+      // Extra-Rabatt seit T8 Teil des Rabattfeld-Panels
+      // (component:discount).
       document.getElementById("cart-comp-totals-fields")?.classList.remove("hidden");
       // T6: currency preset select, synced to whichever preset the
       // current cartConfig.currency matches (falls back to "eur" if the
@@ -591,6 +603,35 @@
       refreshCartViews();
     }, true);
 
+    // T8 — component:discount: Prozentsatz des meilenstein-getriebenen
+    // Extra-Rabatts (leer/ungültig fällt auf den Default 10 zurück) und
+    // das optionale Rabatt-Ziel. Das Ziel synct (falls vorhanden) den
+    // Meilenstein mit action "discount" und informiert per Toast darüber —
+    // exakt dasselbe Muster wie das Freibetrag-Ziel in T7.
+    document.getElementById("cart-comp-discount-percent")?.addEventListener("change", e => {
+      const raw = e.target.value;
+      const v = raw === "" ? 10 : Math.max(0, Math.min(100, Number(raw) || 0));
+      window.WebBuilderHistory?.arm(); cart.setConfig({ milestoneDiscountPercent: v }, false); window.WebBuilderHistory?.commit();
+      // Die Meilenstein-Option zeigt den Prozentsatz mit an
+      // (cart-render.js renderMilestoneList()), deshalb hier mit
+      // aktualisieren.
+      window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-discount-threshold")?.addEventListener("change", e => {
+      const raw = e.target.value;
+      const v = raw === "" ? null : Math.max(0, Number(raw) || 0);
+      window.WebBuilderHistory?.arm();
+      cart.setConfig({ milestoneDiscountThreshold: v }, false);
+      const synced = v != null ? cart.syncDiscountMilestone(v, false) : false;
+      window.WebBuilderHistory?.commit();
+      if (synced) {
+        window.WebBuilderToast?.show?.(`Rabatt-Ziel auf ${cart.formatCurrency(v)} geändert.`, "info");
+        window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
+      }
+      refreshCartViews();
+    }, true);
+
     // Fortschrittsbalken-Farbe (component:progress).
     document.getElementById("cart-comp-progress-color")?.addEventListener("input", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ progressBarColor: e.target.value }, false); window.WebBuilderHistory?.commit();
@@ -611,7 +652,7 @@
     }, true);
 
     // "Kosten-Übersicht" (component:totals): Texte/Labels. Versand (T7)
-    // hat sein eigenes Panel weiter unten.
+    // und der Meilenstein-Rabatt (T8) haben ihre eigenen Panels.
     document.getElementById("cart-comp-subtotal-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ subtotalLabel: e.target.value.trim() || "Zwischensumme" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
