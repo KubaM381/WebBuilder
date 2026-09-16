@@ -14,9 +14,9 @@ WebBuilder/
 │                          by the project owner, not a "maybe delete" item)
 ├── README.md              this document
 ├── docs/
-│   └── CART_EDITOR_TASKS.md  active task specification for the cart focus
-│                          editor rework — read this before touching
-│                          js/shop/cart-*.js
+│   └── CART_EDITOR_TASKS.md  active task specification for the current
+│                          cart focus editor round — read this before
+│                          touching js/shop/cart-*.js
 ├── css/
 │   ├── README.md          CSS architecture, see there for details
 │   └── *.css
@@ -32,7 +32,6 @@ WebBuilder/
     ├── editor/              right-hand inspector panel for canvas elements
     ├── layout/              header/footer domain
     ├── shop/                products + cart (data / rendering / focus editor)
-    │                        — see also ../docs/CART_EDITOR_TASKS.md
     ├── ui/                  cross-domain UI helpers: toast, modals, shared
     │                        inspector markup, sidebar-tab switching
     ├── pages/               reserved for future multi-page client logic
@@ -58,11 +57,15 @@ WebBuilder/
   **here**, or it's lost on save/load.
 - **Shared drag/click + alignment guides**: `js/canvas/alignment.js`
   (`window.WebBuilderAlignment`) owns the pointer-event drag controller and
-  Canva-style center/edge alignment-guide snapping. Used today by
-  `canvas/canvas.js` (canvas elements) and `layout/header-footer.js` (bar
-  items). The cart focus editor (`shop/cart-editor.js`) does **not** use
-  it yet and currently implements its own bespoke dragging with no
-  snapping — see `docs/CART_EDITOR_TASKS.md` task T11 for the planned fix.
+  Canva-style center/edge alignment-guide snapping (`attachInteraction()`),
+  used by `canvas/canvas.js` (canvas elements) and `layout/header-footer.js`
+  (bar items). The cart focus editor (`shop/cart-editor.js`) has its own
+  pointer handling instead — its stage positions parts/components via a CSS
+  transform offset on an unscaled surface, not `attachInteraction()`'s
+  absolute left/top model — but it reuses `alignment.js`'s exported
+  snapping primitives (`collectSnapTargets`/`snapPosition`/guide-layer
+  helpers) so dragging a cart part or component shows the same alignment
+  guides as canvas elements and header/footer bar items.
 - **One module per domain**, self-initializing on load
   (`DOMContentLoaded`), exposing its API under `window.WebBuilderXxx`.
   Details: see `js/README.md`.
@@ -98,12 +101,9 @@ format.
    `js/README.md` for "who does what").
 2. If you're picking up cart-focus-editor work, read
    `docs/CART_EDITOR_TASKS.md` first — it is the current, authoritative
-   task list for that area (including flagged open questions that need
-   product-owner sign-off before implementing).
+   task list for that area.
 3. No drive-by refactors — if a structural improvement seems useful,
-   propose it instead of doing it unasked (or note it under
-   `docs/CART_EDITOR_TASKS.md`'s "Open questions / parking lot" if you're
-   already there for other reasons).
+   propose it instead of doing it unasked.
 4. Always add new persistable state fields to `core/storage.js` too
    (`createSnapshot`/`applySnapshot`) — note that nested fields under
    `state.cartConfig`/`state.background`/etc. are already covered since
@@ -133,8 +133,8 @@ format.
 - `js/editor/background.js` doesn't exist yet — the background editor
   still lives inside `canvas/canvas.js` (`bindBackgroundEditor()`). Split
   it out once that area needs real growth (see `js/README.md`).
-- The cart focus editor (`shop/cart-editor.js`) has a substantial,
-  actively-tracked list of gaps and bugs — see `docs/CART_EDITOR_TASKS.md`
+- The cart focus editor (`shop/cart-editor.js`) has a small, actively-
+  tracked list of open fixes/refinements — see `docs/CART_EDITOR_TASKS.md`
   instead of duplicating that list here.
 
 > Note for future AI sessions: this list reflects only what is genuinely
