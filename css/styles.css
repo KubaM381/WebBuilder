@@ -19,7 +19,13 @@
 /* Preview mode */
 body.preview-mode .sidebar,
 body.preview-mode .inspector { display: none !important; }
-body.preview-mode .canvas-container { padding: 0; }
+/* overflow-x: hidden — the real, published-style preview should never
+   need horizontal scrolling of the whole page (a placed element sitting
+   beyond the canvas width should get clipped, not force the entire page
+   to scroll sideways). Kept scoped to preview mode only, so normal
+   editing (e.g. zoomed-in work) keeps its existing horizontal scroll
+   behavior in .canvas-container. */
+body.preview-mode .canvas-container { padding: 0; overflow-x: hidden; }
 /* overflow: visible (added) — .canvas-area has overflow:hidden in canvas.css
    for the editor view. Per the CSS spec, any overflow value other than
    "visible" makes an element a sticky-positioning scroll-context boundary
@@ -59,3 +65,10 @@ body.cart-focus-active .canvas-extend-wrap,
 body.cart-focus-active .builder-bar { display: none !important; }
 body.cart-focus-active #inspector-form,
 body.cart-focus-active #no-selection { display: none !important; }
+/* T3: the cart-editor card is fixed at drawer width (380px, centered —
+   see css/modals.css .cart-focus-card) and grows only in height, so this
+   should never actually trigger in practice. Kept as a safety net so the
+   outer .canvas-container stays a single, vertical-only scrollbar (see
+   css/modals.css's .cart-focus-card comment) even with an unusual custom
+   "Artikel-Darstellung" width configured. */
+body.cart-focus-active .canvas-container { overflow-x: hidden; }
