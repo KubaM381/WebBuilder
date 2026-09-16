@@ -7,21 +7,30 @@
 // data/CRUD lives in cart-data.js, shared HTML building + the real drawer
 // live in cart-render.js — this file only adds the editing affordances.
 //
-// T11 (see docs/CART_EDITOR_TASKS.md): cart-item/recommend-card SUB-PART
-// dragging (the [data-cart-part] branch below) now shows the same
-// Canva-style alignment guides as canvas/canvas.js and
-// layout/header-footer.js, by reusing canvas/alignment.js's exported
-// snapping primitives (collectSnapTargets/snapPosition/guide-layer
-// helpers) — NOT attachInteraction() itself, since parts here are
-// positioned via a CSS transform offset from their natural flow position
-// on an unscaled stage, not via attachInteraction()'s absolute left/top +
+// T11 (see docs/CART_EDITOR_TASKS.md): both the cart-item/recommend-card
+// SUB-PART dragging ([data-cart-part] branch) and the top-level COMPONENT
+// dragging ([data-cart-component] branch) now show the same Canva-style
+// alignment guides as canvas/canvas.js and layout/header-footer.js, by
+// reusing canvas/alignment.js's exported snapping primitives
+// (collectSnapTargets/snapPosition/guide-layer helpers) — NOT
+// attachInteraction() itself, since positioning here works via a CSS
+// transform offset from each element's natural flow position on an
+// unscaled stage, not via attachInteraction()'s absolute left/top +
 // zoom-scaled model. See the comment block at the top of
 // canvas/alignment.js for the full reasoning.
-// Top-level COMPONENT dragging (the [data-cart-component] branch) is NOT
-// yet migrated — see docs/CART_EDITOR_TASKS.md T11 for the remaining
-// scope and why it needs a bit more design work (components' siblings are
-// split across three separate parent containers instead of one shared
-// parent).
+//
+// For component snapping, the sibling scope for a given component is
+// simply its own DOM parent (compEl.parentElement) — every component is
+// wrapped by cart-render.js's wrapComponent() in its own
+// <div data-cart-component="..."> that is always a direct child of
+// whichever container it visually belongs to (.cart-focus-fixed-top for
+// "progress", .cart-focus-fixed-bottom for "recommend"/"discount"/
+// "totals" as siblings, .cart-focus-footer for the checkout button, and
+// .cart-totals for "shipping"/"totalsDivider" nested inside the totals
+// block) — so no per-component special-casing is needed to find the
+// right siblings. The resize handle on the article representation
+// (component:itemRepresentation) is a resize, not a move, and stays out
+// of scope per the task description.
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCartFocus: WebBuilderState is not available."); return; }
@@ -360,44 +369,85 @@
         // out before any drag tracking is set up.
         if (NON_POSITIONABLE.has(`component:${key}`)) return;
 
-        // T11 (not yet migrated — see docs/CART_EDITOR_TASKS.md T11):
-        // component dragging still has no alignment guides. Its siblings
-        // are split across three separate parent containers
-        // (.cart-focus-fixed-top / .cart-focus-scroll / .cart-focus-fixed-bottom
-        // — see renderFocusStage() below), so a straight reuse of the
-        // part-drag approach below (single shared parent) doesn't apply
-        // as-is. Left as bespoke, unsnapped dragging for now.
         const origin = state.cartConfig.componentLayout[key] || { x: 0, y: 0 };
         const startX = e.clientX, startY = e.clientY;
         let moved = false;
+        let guides = null;
 
+        // Bounds relative to the component's positioning parent — same
+        // reasoning as the [data-cart-part] bounds below: keeps
+        // progress/discount/recommend/checkout/shipping/totals inside the
+        // visible card area instead of letting them be dragged out
+        // arbitrarily far. Falls back through the most specific ancestor
+        // first (footer bar for the checkout button, otherwise the card
+        // body, otherwise the card itself).
         const parentEl = compEl.closest(".cart-focus-footer") || compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
         let bounds = null;
         if (parentEl) {
           const parentRect = parentEl.getBoundingClientRect();
           const compRect = compEl.getBoundingClientRect();
-          const naturalLeft = compRect.left - (origin.x || 0);
-          const naturalTop = compRect.top - (origin.y || 0);
-          const rawMinX = parentRect.left - naturalLeft;
-          const rawMaxX = parentRect.right - compRect.width - naturalLeft;
-          const rawMinY = parentRect.top - naturalTop;
-          const rawMaxY = parentRect.bottom - compRect.height - naturalTop;
+          const naturalLeft0 = compRect.left - (origin.x || 0);
+          const naturalTop0 = compRect.top - (origin.y || 0);
+          const rawMinX = parentRect.left - naturalLeft0;
+          const rawMaxX = parentRect.right - compRect.width - naturalLeft0;
+          const rawMinY = parentRect.top - naturalTop0;
+          const rawMaxY = parentRect.bottom - compRect.height - naturalTop0;
           bounds = {
             minX: Math.min(rawMinX, rawMaxX), maxX: Math.max(rawMinX, rawMaxX),
             minY: Math.min(rawMinY, rawMaxY), maxY: Math.max(rawMinY, rawMaxY)
           };
         }
 
+        // T11: sibling scope for snapping is simply the component's own
+        // DOM parent (see the file-level comment above for why this is
+        // always correct without per-component special-casing). Kept
+        // deliberately separate from `bounds`/`parentEl` above — the
+        // *bounds* box (how far a component may be dragged) and the
+        // *snap* box (which siblings to align against) are different
+        // concerns and don't need to be the same container.
+        const snapContainer = compEl.parentElement;
+        let naturalLeft = null, naturalTop = null;
+        if (snapContainer) {
+          const compRect0 = compEl.getBoundingClientRect();
+          naturalLeft = compRect0.left - (origin.x || 0);
+          naturalTop = compRect0.top - (origin.y || 0);
+        }
+
         try { compEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
         function onMove(moveEvent) {
           const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
           if (!moved && Math.hypot(dx, dy) < 3) return;
-          moved = true;
+          if (!moved) {
+            moved = true;
+            // Guide layer is created lazily on the first real move, same
+            // convention as canvas/alignment.js attachInteraction().
+            if (snapContainer && window.WebBuilderAlignment?.createGuideLayer) {
+              guides = window.WebBuilderAlignment.createGuideLayer(snapContainer);
+            }
+          }
           let nextX = origin.x + dx, nextY = origin.y + dy;
           if (bounds) {
             nextX = Math.min(bounds.maxX, Math.max(bounds.minX, nextX));
             nextY = Math.min(bounds.maxY, Math.max(bounds.minY, nextY));
           }
+
+          // T11: snap nextX/nextY against sibling components' edges/
+          // centers (plus the snap container's own center). The stage is
+          // unscaled — zoom is passed explicitly as 1, never taken from
+          // state.zoomLevel (see canvas/alignment.js's comment on
+          // collectSnapTargets()'s zoomOverride parameter).
+          if (guides && snapContainer && naturalLeft != null && window.WebBuilderAlignment?.collectSnapTargets) {
+            const containerRect = snapContainer.getBoundingClientRect();
+            const compRect = compEl.getBoundingClientRect();
+            const localX = (naturalLeft - containerRect.left) + nextX;
+            const localY = (naturalTop - containerRect.top) + nextY;
+            const targets = window.WebBuilderAlignment.collectSnapTargets(snapContainer, compEl, "[data-cart-component]", 1);
+            const snapped = window.WebBuilderAlignment.snapPosition(localX, localY, compRect.width, compRect.height, targets, 1);
+            nextX += (snapped.x - localX);
+            nextY += (snapped.y - localY);
+            window.WebBuilderAlignment.updateGuideVisibility(guides, snapped.guideX, snapped.guideY);
+          }
+
           compEl.style.transform = `translate(${nextX}px, ${nextY}px)`;
           state.cartConfig.componentLayout[key] = { x: Math.round(nextX), y: Math.round(nextY) };
         }
@@ -406,6 +456,7 @@
           compEl.removeEventListener("pointerup", onUp);
           compEl.removeEventListener("pointercancel", onUp);
           try { compEl.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+          if (guides) { window.WebBuilderAlignment?.removeGuideLayer?.(guides); guides = null; }
           if (moved) { window.WebBuilderHistory?.commit(); notify("cart", "component-layout", state.cartConfig.componentLayout); }
         }
         window.WebBuilderHistory?.arm();
@@ -430,10 +481,9 @@
         // sind hier bewusst gleich behandelt, siehe resolveLayoutMap()
         // oben). Einmalig beim Drag-Start berechnet: "natural*" = aktuelle
         // Position minus dem schon aktiven Transform-Offset (origin),
-        // daraus ergibt sich sowohl der erlaubte x/y-Bereich als auch (für
-        // T11) die Umrechnung zwischen Transform-Offset und absoluter
-        // Position innerhalb der Eltern-Box, die die Snap-Berechnung
-        // braucht.
+        // daraus ergibt sich sowohl der erlaubte x/y-Bereich als auch die
+        // Umrechnung zwischen Transform-Offset und absoluter Position
+        // innerhalb der Eltern-Box, die die Snap-Berechnung braucht.
         const parentEl = partEl.closest(".cart-item") || partEl.closest(".cart-recommend-card");
         let bounds = null;
         let naturalLeft = null, naturalTop = null;
@@ -458,8 +508,8 @@
           if (!moved && Math.hypot(dx, dy) < 3) return;
           if (!moved) {
             moved = true;
-            // T11: guide layer is created lazily on the first real move,
-            // same convention as canvas/alignment.js attachInteraction().
+            // Guide layer is created lazily on the first real move, same
+            // convention as canvas/alignment.js attachInteraction().
             if (parentEl && window.WebBuilderAlignment?.createGuideLayer) {
               guides = window.WebBuilderAlignment.createGuideLayer(parentEl);
             }
@@ -470,8 +520,8 @@
             nextY = Math.min(bounds.maxY, Math.max(bounds.minY, nextY));
           }
 
-          // T11: snap nextX/nextY against sibling parts' edges/centers.
-          // The cart editor stage is unscaled (it sits outside the
+          // Snap nextX/nextY against sibling parts' edges/centers. The
+          // cart editor stage is unscaled (it sits outside the
           // zoom-scaled #canvas-column) — zoom is passed explicitly as 1,
           // never taken from state.zoomLevel (see canvas/alignment.js
           // comment on collectSnapTargets()'s zoomOverride parameter).
