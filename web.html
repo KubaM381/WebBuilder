@@ -217,28 +217,14 @@
            ausschließlich im Warenkorb-Editor selbst bearbeitet (rechtes
            Panel #cart-inspector-form, siehe unten) — dort klickt man das
            jeweilige Element (Artikel, Fortschrittsbalken, Rabattfeld,
-           Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Hintergrund)
-           direkt an. -->
+           Empfehlung, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht,
+           Hintergrund) direkt an. -->
       <div class="sidebar-panel hidden" id="panel-cart">
         <button type="button" id="btn-cart-focus-editor" class="btn btn-primary" style="width:100%; margin-bottom:14px;">🎯 Warenkorb-Editor öffnen</button>
 
         <div class="section-title">Warenkorb-Grundeinstellungen</div>
         <div class="sidebar-subsection">
           <button type="button" id="btn-open-cart" class="btn btn-secondary" style="width:100%;">🛒 Vorschau öffnen</button>
-        </div>
-
-        <div class="section-title">Vorschau: Kopf-/Fußzeile</div>
-        <div class="sidebar-subsection">
-          <p class="help-text" style="margin-bottom:8px;">Rein visuelle Vorschau-Balken nur für den Warenkorb-Editor — unabhängig von der echten Kopf-/Fußzeile der Seite (die bleibt beim Bearbeiten des Warenkorbs ausgeblendet und wird hier nicht verändert). Diese Balken lassen sich seit Kurzem auch direkt im Warenkorb-Editor anklicken und dort bearbeiten.</p>
-          <label class="checkbox-row"><input type="checkbox" id="cart-preview-header-toggle"> Header-Vorschau anzeigen</label>
-          <div class="form-group"><label for="cart-preview-header-height">Höhe (px)</label><input type="number" id="cart-preview-header-height" min="20" max="400" value="64"></div>
-          <div class="form-group"><label for="cart-preview-header-color">Farbe</label><input type="color" id="cart-preview-header-color" value="#111827"></div>
-          <div class="form-group"><label for="cart-preview-header-label">Beschriftung</label><input type="text" id="cart-preview-header-label" placeholder="Header"></div>
-          <hr class="divider modal-divider-tight">
-          <label class="checkbox-row"><input type="checkbox" id="cart-preview-footer-toggle"> Footer-Vorschau anzeigen</label>
-          <div class="form-group"><label for="cart-preview-footer-height">Höhe (px)</label><input type="number" id="cart-preview-footer-height" min="20" max="400" value="70"></div>
-          <div class="form-group"><label for="cart-preview-footer-color">Farbe</label><input type="color" id="cart-preview-footer-color" value="#111827"></div>
-          <div class="form-group"><label for="cart-preview-footer-label">Beschriftung</label><input type="text" id="cart-preview-footer-label" placeholder="Footer"></div>
         </div>
 
         <div class="section-title">Artikel-Darstellung</div>
@@ -284,10 +270,9 @@
           <button id="btn-extend-canvas" class="btn btn-secondary btn-pill" title="Zeichenfläche nach unten erweitern">⬇️ Seite verlängern</button>
         </div>
       </div>
-      <!-- Cart editor stage (js/shop/cart-editor.js renderFocusStage()) und
-           die Vorschau-Balken (js/shop/cart-preview-bars.js) werden hier
-           zur Laufzeit eingehängt — außerhalb von #canvas-column, damit
-           Zoom keinen Einfluss darauf hat. -->
+      <!-- Cart editor stage (js/shop/cart-editor.js renderFocusStage())
+           wird hier zur Laufzeit eingehängt — außerhalb von
+           #canvas-column, damit Zoom keinen Einfluss darauf hat. -->
     </main>
 
     <!-- RECHTE SPALTE: Bearbeitungsmöglichkeiten für das ausgewählte Element -->
@@ -385,13 +370,13 @@
       </div>
 
       <!-- Warenkorb-Editor: Bearbeitung einzelner Bereiche (Artikel-Teile,
-           Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button,
-           Kosten-Übersicht, Hintergrund, Artikel-Darstellung, Warenkorb-
-           Titel, Vorschau-Header/-Footer), siehe js/shop/cart-editor.js
+           Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button/
+           Fußbereich, Kosten-Übersicht, Hintergrund, Artikel-Darstellung,
+           Warenkorb-Titel), siehe js/shop/cart-editor.js
            enterFocusMode()/renderFocusPartPanel(). -->
       <div id="cart-inspector-form" class="inspector-form hidden">
         <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Hintergrund oder die Vorschau-Balken), um ihn hier anzupassen.</p>
+        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht oder Hintergrund), um ihn hier anzupassen.</p>
 
         <div id="cart-part-editor" class="hidden">
           <div class="form-group"><label id="cart-part-label">Element</label></div>
@@ -401,71 +386,13 @@
             <div class="form-group"><label for="cart-comp-header-title">Titel</label><input type="text" id="cart-comp-header-title" placeholder="Dein Warenkorb"></div>
           </div>
 
-          <!-- Vorschau-Header/-Footer (T2): rein dekorative
-               Orientierungsbalken aus js/shop/cart-preview-bars.js, hier
-               direkt im Editor anklickbar/bearbeitbar (zusätzlich zur
-               bestehenden Sidebar-Steuerung in #panel-cart > "Vorschau:
-               Kopf-/Fußzeile"). Nicht verschiebbar, siehe
-               NON_POSITIONABLE in js/shop/cart-editor.js. Hintergrund
-               (einfarbig/Bild), Textfarbe, Schriftart, Fett-Schalter
-               sowie ein optionales Icon (Emoji/Text ODER eigenes Bild,
-               gegenseitig ausschließend) ergänzen die schon vorhandenen
-               Höhe/Farbe/Beschriftung-Felder — Datenfelder existierten in
-               js/shop/cart-preview-bars.js bereits vorher, nur die UI
-               dafür fehlte. -->
-          <div id="cart-comp-previewbar-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-previewbar-height">Höhe (px)</label><input type="number" id="cart-comp-previewbar-height" min="20" max="400"></div>
-            <div class="form-group"><label for="cart-comp-previewbar-label">Beschriftung</label><input type="text" id="cart-comp-previewbar-label"></div>
-
-            <div class="form-group">
-              <label for="cart-comp-previewbar-bg-type">Hintergrund-Typ</label>
-              <select id="cart-comp-previewbar-bg-type">
-                <option value="solid">Einfarbig</option>
-                <option value="image">Bild</option>
-              </select>
-            </div>
-            <div id="cart-comp-previewbar-bg-solid-group" class="form-group">
-              <label for="cart-comp-previewbar-color">Hintergrundfarbe</label>
-              <input type="color" id="cart-comp-previewbar-color">
-            </div>
-            <div id="cart-comp-previewbar-bg-image-group" class="hidden form-group">
-              <label for="cart-comp-previewbar-bg-image-url">Bild</label>
-              <input type="text" id="cart-comp-previewbar-bg-image-url" placeholder="Bild URL eingeben...">
-              <div class="file-input-wrapper" style="margin-top:6px;">
-                <button type="button" class="file-input-btn">📁 Datei wählen</button>
-                <input type="file" id="cart-comp-previewbar-bg-image-file" accept="image/*">
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="cart-comp-previewbar-text-color">Textfarbe</label>
-              <input type="color" id="cart-comp-previewbar-text-color">
-            </div>
-            <div class="form-group">
-              <label for="cart-comp-previewbar-font-family">Schriftart</label>
-              <select id="cart-comp-previewbar-font-family"></select>
-            </div>
-            <label class="checkbox-row"><input type="checkbox" id="cart-comp-previewbar-bold"> Fett</label>
-
-            <div class="form-group">
-              <label for="cart-comp-previewbar-icon-type">Icon</label>
-              <select id="cart-comp-previewbar-icon-type">
-                <option value="none">Kein Icon</option>
-                <option value="emoji">Emoji / Text</option>
-                <option value="image">Eigenes Bild</option>
-              </select>
-            </div>
-            <div class="form-group hidden" id="cart-comp-previewbar-icon-emoji-group">
-              <label for="cart-comp-previewbar-icon">Icon (Emoji/Text)</label>
-              <input type="text" id="cart-comp-previewbar-icon" placeholder="z. B. 🚚">
-            </div>
-            <div class="form-group hidden" id="cart-comp-previewbar-icon-image-group">
-              <label>Bild hochladen</label>
-              <div class="file-input-wrapper">
-                <button type="button" class="file-input-btn">📁 Datei wählen</button>
-                <input type="file" id="cart-comp-previewbar-icon-image-file" accept="image/*">
-              </div>
-            </div>
+          <!-- Fußbereich (component:footer) — der ganze Balken, in dem der
+               Zur-Kasse-Button sitzt. Nur die Hintergrundfarbe ist
+               konfigurierbar, keine Position (siehe NON_POSITIONABLE in
+               js/shop/cart-editor.js). Klick auf den Button selbst
+               selektiert weiterhin "component:checkout". -->
+          <div id="cart-comp-footer-fields" class="hidden">
+            <div class="form-group"><label for="cart-comp-footer-bg-color">Hintergrundfarbe (Fußbereich)</label><input type="color" id="cart-comp-footer-bg-color"></div>
           </div>
 
           <!-- Zur-Kasse-Button -->
@@ -625,8 +552,8 @@
           <!-- Position (X/Y) — gilt für Artikel-Teile, Fortschrittsbalken,
                Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht.
                Nicht für Hintergrund, Artikel-Darstellung, den
-               Warenkorb-Titel und die Vorschau-Balken (dafür ist eine
-               feste Position nicht sinnvoll). -->
+               Warenkorb-Titel und den Fußbereich (dafür ist eine feste
+               Position nicht sinnvoll). -->
           <div id="cart-comp-position-fields">
             <div class="form-group">
               <label for="cart-part-x">Position X (px)</label>
