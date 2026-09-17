@@ -382,17 +382,16 @@
 
         // Bounds relative to the component's positioning parent — same
         // reasoning as the [data-cart-part] bounds below: keeps
-        // progress/discount/recommend/checkout/totals/dividers inside the
-        // visible card area instead of letting them be dragged out
-        // arbitrarily far.
-        //
-        // T4: .cart-focus-footer is deliberately NOT part of this chain.
-        // It used to match first for the checkout button, which clamped
-        // that button to the (small) footer bar so it could never be
-        // dragged out of it. Falling through to the card body / the card
-        // itself lets it be positioned anywhere on the card, like every
-        // other component.
-        const parentEl = compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
+        // progress/discount/recommend/totals/dividers inside the visible
+        // card area instead of letting them be dragged out arbitrarily
+        // far. The checkout button is bounded to its own footer bar
+        // (.cart-focus-footer matches first below) — it should only be
+        // repositionable within that dedicated area, not anywhere on the
+        // whole card, matching where a checkout button belongs in a real
+        // cart drawer. Every other component isn't inside the footer bar
+        // at all, so this falls through to .cart-focus-body for them,
+        // unaffected.
+        const parentEl = compEl.closest(".cart-focus-footer") || compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
         let bounds = null;
         if (parentEl) {
           const parentRect = parentEl.getBoundingClientRect();
