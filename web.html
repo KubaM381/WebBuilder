@@ -217,8 +217,8 @@
            ausschließlich im Warenkorb-Editor selbst bearbeitet (rechtes
            Panel #cart-inspector-form, siehe unten) — dort klickt man das
            jeweilige Element (Artikel, Fortschrittsbalken, Rabattfeld,
-           Empfehlung, Versand, Zur-Kasse-Button/Fußbereich, Kosten-
-           Übersicht, Hintergrund) direkt an. -->
+           Empfehlung, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht,
+           Trennlinie, Hintergrund) direkt an. -->
       <div class="sidebar-panel hidden" id="panel-cart">
         <button type="button" id="btn-cart-focus-editor" class="btn btn-primary" style="width:100%; margin-bottom:14px;">🎯 Warenkorb-Editor öffnen</button>
 
@@ -243,7 +243,7 @@
 
         <hr class="divider">
         <label class="checkbox-row"><input type="checkbox" id="cart-progress-toggle"> Fortschrittsbalken</label>
-        <p class="help-text" style="margin:-6px 0 0;">Farbe &amp; Meilensteine verwalten &amp; Position anpassen im Warenkorb-Editor — dort auf den Fortschrittsbalken klicken. Versandkosten &amp; Freibetrag-Ziel dort auf die Versand-Zeile klicken.</p>
+        <p class="help-text" style="margin:-6px 0 0;">Farbe &amp; Meilensteine verwalten &amp; Position anpassen im Warenkorb-Editor — dort auf den Fortschrittsbalken klicken. Versandkosten &amp; Freibetrag-Ziel stehen dort in der Kosten-Übersicht.</p>
       </div>
 
       <!-- ==================== TAB: PRODUKTE ==================== -->
@@ -370,13 +370,13 @@
       </div>
 
       <!-- Warenkorb-Editor: Bearbeitung einzelner Bereiche (Artikel-Teile,
-           Fortschrittsbalken, Rabattfeld, Empfehlung, Versand, Zur-Kasse-
-           Button/Fußbereich, Kosten-Übersicht, Hintergrund, Artikel-
-           Darstellung, Warenkorb-Titel), siehe js/shop/cart-editor.js
-           enterFocusMode()/renderFocusPartPanel(). -->
+           Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button/
+           Fußbereich, Kosten-Übersicht inkl. Versand, Trennlinien,
+           Hintergrund, Artikel-Darstellung, Warenkorb-Titel), siehe
+           js/shop/cart-editor.js enterFocusMode()/renderFocusPartPanel(). -->
       <div id="cart-inspector-form" class="inspector-form hidden">
         <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Versand, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht oder Hintergrund), um ihn hier anzupassen.</p>
+        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht, Trennlinie oder Hintergrund), um ihn hier anzupassen.</p>
 
         <div id="cart-part-editor" class="hidden">
           <div class="form-group"><label id="cart-part-label">Element</label></div>
@@ -395,7 +395,9 @@
             <div class="form-group"><label for="cart-comp-footer-bg-color">Hintergrundfarbe (Fußbereich)</label><input type="color" id="cart-comp-footer-bg-color"></div>
           </div>
 
-          <!-- Zur-Kasse-Button -->
+          <!-- Zur-Kasse-Button. T4: lässt sich im Editor frei auf der
+               ganzen Karte positionieren, nicht mehr nur innerhalb der
+               Fußleiste. -->
           <div id="cart-comp-checkout-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-checkout-label">Beschriftung</label><input type="text" id="cart-comp-checkout-label"></div>
             <div class="form-group"><label for="cart-comp-checkout-color">Farbe</label><input type="color" id="cart-comp-checkout-color"></div>
@@ -408,15 +410,16 @@
             </div>
           </div>
 
-          <!-- Rabattfeld. Enthält seit T8 zusätzlich den meilenstein-
-               getriebenen Extra-Rabatt: Prozentsatz
+          <!-- Rabattfeld. Enthält zusätzlich den meilenstein-getriebenen
+               Extra-Rabatt: Prozentsatz
                (cartConfig.milestoneDiscountPercent) und ein optionales
                Rabatt-Ziel (cartConfig.milestoneDiscountThreshold), das
                bidirektional mit einem Meilenstein „Extra-Rabatt“ im
                Fortschrittsbalken-Panel synchron gehalten wird — exakt
-               dasselbe Muster wie das Freibetrag-Ziel im Versand-Panel
-               (T7, siehe js/shop/cart-data.js syncDiscountMilestone()
-               und js/shop/cart-render.js renderMilestoneList()). -->
+               dasselbe Muster wie das Freibetrag-Ziel bei den
+               Versand-Feldern (siehe js/shop/cart-data.js
+               syncDiscountMilestone() und js/shop/cart-render.js
+               renderMilestoneList()). -->
           <div id="cart-comp-discount-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-discount-color">Farbe</label><input type="color" id="cart-comp-discount-color"></div>
             <div class="form-group"><label for="cart-comp-discount-shape">Form</label>
@@ -432,31 +435,16 @@
             <p class="help-text">Der Extra-Rabatt gilt, sobald entweder ein Meilenstein „Extra-Rabatt“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert. Er kommt zusätzlich zu einem eingelösten Rabattcode obendrauf.</p>
           </div>
 
-          <!-- Versand (T7) — eigene, positionierbare Komponente
-               (component:shipping). Das Freibetrag-Feld synchronisiert
-               sich bidirektional mit einem "Kostenloser Versand"-
-               Meilenstein im Fortschrittsbalken-Panel, falls einer
-               existiert (js/shop/cart-data.js syncFreeShippingMilestone(),
-               js/shop/cart-render.js renderMilestoneList()). Ist kein
-               Meilenstein vorhanden, gilt das Freibetrag-Ziel trotzdem
-               eigenständig. -->
-          <div id="cart-comp-shipping-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
-            <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (€)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
-            <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
-            <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (€)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
-            <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist. Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
-          </div>
-
           <!-- Hintergrund -->
           <div id="cart-comp-background-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-bg-color">Hintergrundfarbe</label><input type="color" id="cart-comp-bg-color"></div>
           </div>
 
-          <!-- Kosten-Übersicht (Zwischensumme/Rabatt/Gesamt) — Labels
-               sowie die Währung editierbar. Versand ist seit T7 ein
-               eigenes Panel (component:shipping, siehe oben), der
-               Meilenstein-Rabatt seit T8 Teil des Rabattfeld-Panels
+          <!-- Kosten-Übersicht (Zwischensumme/Rabatt/Versand/Gesamt) —
+               Labels und Währung editierbar. T5: der Versand ist wieder
+               Teil dieses Blocks (keine eigene, verschiebbare Komponente
+               mehr), seine Felder stehen deshalb hier unten. Der
+               Meilenstein-Rabatt bleibt Teil des Rabattfeld-Panels
                (component:discount). Siehe js/shop/cart-data.js
                normalizeState() für die Default-Werte. -->
           <div id="cart-comp-totals-fields" class="hidden">
@@ -470,23 +458,30 @@
             <div class="form-group"><label for="cart-comp-subtotal-label">Label „Zwischensumme“</label><input type="text" id="cart-comp-subtotal-label" placeholder="Zwischensumme"></div>
             <div class="form-group"><label for="cart-comp-discount-label">Label „Rabatt“</label><input type="text" id="cart-comp-discount-label" placeholder="Rabatt"></div>
             <div class="form-group"><label for="cart-comp-total-label">Label „Gesamt“</label><input type="text" id="cart-comp-total-label" placeholder="Gesamt"></div>
+
             <hr class="divider modal-divider-tight">
-            <!-- T9.3: fügt eine eigene, im Editor frei verschiebbare
-                 Trennlinie direkt über der Zwischensumme-Zeile hinzu
-                 (component:totalsDivider). Nur sichtbar, solange sie noch
-                 nicht existiert — danach übernimmt deren eigenes Panel
-                 (#cart-comp-totals-divider-fields) mit der
-                 "Entfernen"-Option. -->
-            <button type="button" id="btn-add-totals-divider" class="btn btn-secondary btn-sm" style="width:100%;">+ Trennlinie hinzufügen</button>
+            <!-- Versand (T5, vorher eigenes Panel component:shipping).
+                 Das Freibetrag-Feld synchronisiert sich bidirektional mit
+                 einem "Kostenloser Versand"-Meilenstein im
+                 Fortschrittsbalken-Panel, falls einer existiert
+                 (js/shop/cart-data.js syncFreeShippingMilestone(),
+                 js/shop/cart-render.js renderMilestoneList()). Ist kein
+                 Meilenstein vorhanden, gilt das Freibetrag-Ziel trotzdem
+                 eigenständig. -->
+            <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
+            <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (€)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
+            <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
+            <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (€)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
+            <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist. Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
           </div>
 
-          <!-- T9.3: eigenes Panel für die Trennlinie über der
-               Zwischensumme (component:totalsDivider) — keine Stil-
-               Optionen, nur Position (automatisch über
-               #cart-comp-position-fields) und Entfernen. -->
-          <div id="cart-comp-totals-divider-fields" class="hidden">
-            <p class="help-text">Diese Trennlinie sitzt über der Zwischensumme-Zeile und lässt sich frei verschieben, z. B. weiter nach rechts.</p>
-            <button type="button" id="btn-remove-totals-divider" class="btn btn-danger-outline" style="width:100%;">🗑️ Trennlinie entfernen</button>
+          <!-- T6: Panel einer einzelnen Trennlinie
+               (component:divider:<id>). Keine Stil-Optionen, nur Position
+               (automatisch über #cart-comp-position-fields) und
+               Entfernen. -->
+          <div id="cart-comp-divider-fields" class="hidden">
+            <p class="help-text">Diese Trennlinie lässt sich überall im Warenkorb frei platzieren — zieh sie einfach an die gewünschte Stelle oder gib unten eine Position ein.</p>
+            <button type="button" id="btn-remove-divider" class="btn btn-danger-outline" style="width:100%;">🗑️ Trennlinie entfernen</button>
           </div>
 
           <!-- Fortschrittsbalken: Farbe + Position (unten) + Meilenstein-Liste hier -->
@@ -494,13 +489,13 @@
             <div class="form-group"><label for="cart-comp-progress-color">Balkenfarbe</label><input type="color" id="cart-comp-progress-color"></div>
             <div class="form-group"><label for="cart-comp-progress-complete-text">Text bei „alle Ziele erreicht“</label><input type="text" id="cart-comp-progress-complete-text" placeholder="✓ Alle Ziele freigeschaltet"></div>
             <p class="help-text" style="margin-top:-6px;">Wird angezeigt, sobald der höchste Meilenstein erreicht ist und dieser selbst kein eigenes „Text bei Erreichen“ gesetzt hat (siehe unten in der Meilenstein-Liste).</p>
-            <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel im Versand-Panel synchron, ein Meilenstein „Extra-Rabatt“ entsprechend mit dem Rabatt-Ziel im Rabattfeld-Panel:</p>
+            <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel in der Kosten-Übersicht synchron, ein Meilenstein „Extra-Rabatt“ entsprechend mit dem Rabatt-Ziel im Rabattfeld-Panel:</p>
             <div class="mini-btn-row"><button type="button" id="btn-add-milestone" class="btn btn-secondary btn-sm" style="width:100%;">+ Meilenstein</button></div>
             <div id="cart-milestone-list" class="items-list"></div>
           </div>
 
-                    <!-- Empfehlung: Form/Farbe des "+"-Buttons (T4) + Position
-               (unten) + Empfehlungs-Liste hier. Icon/Name/Preis/Plus der
+          <!-- Empfehlung: Form/Farbe des "+"-Buttons + Position (unten) +
+               Empfehlungs-Liste hier. Icon/Name/Preis/Plus der
                Empfehlungskarte sind zusätzlich einzeln direkt im Editor
                anklickbar/verschiebbar (siehe js/shop/cart-editor.js). -->
           <div id="cart-comp-recommend-fields" class="hidden">
@@ -537,10 +532,9 @@
             <p class="help-text">Tipp: Im Editor kannst du die Artikel-Box auch direkt an der Ecke unten rechts ziehen, um die Größe anzupassen.</p>
             <hr class="divider modal-divider-tight">
             <label class="checkbox-row"><input type="checkbox" id="cid-show-description"> Produktbeschreibung anzeigen</label>
-            <!-- Aufgabe D: nur sinnvoll/sichtbar bei durchsichtiger Form,
-                 siehe renderFocusPartPanel() in js/shop/cart-editor.js
-                 (togglet die "hidden"-Klasse abhängig von
-                 cartConfig.itemShape). -->
+            <!-- Nur sinnvoll/sichtbar bei durchsichtiger Form, siehe
+                 renderFocusPartPanel() in js/shop/cart-editor.js (togglet
+                 die "hidden"-Klasse abhängig von cartConfig.itemShape). -->
             <label class="checkbox-row hidden" id="cart-item-divider-group"><input type="checkbox" id="cid-show-item-dividers"> Trennlinie zwischen Produkten anzeigen (nur bei „Durchsichtig“)</label>
           </div>
 
@@ -602,10 +596,10 @@
           </div>
 
           <!-- Position (X/Y) — gilt für Artikel-Teile, Fortschrittsbalken,
-               Rabattfeld, Empfehlung, Versand, Zur-Kasse-Button,
-               Kosten-Übersicht. Nicht für Hintergrund, Artikel-
-               Darstellung, den Warenkorb-Titel und den Fußbereich (dafür
-               ist eine feste Position nicht sinnvoll). -->
+               Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht
+               und Trennlinien. Nicht für Hintergrund, Artikel-Darstellung,
+               den Warenkorb-Titel und den Fußbereich (dafür ist eine feste
+               Position nicht sinnvoll). -->
           <div id="cart-comp-position-fields">
             <div class="form-group">
               <label for="cart-part-x">Position X (px)</label>
@@ -618,6 +612,16 @@
             <button type="button" id="cart-part-reset" class="btn btn-secondary" style="width:100%;">↺ Position zurücksetzen</button>
           </div>
         </div>
+
+        <!-- T6: Trennlinien sind frei platzierbare Komponenten und
+             gehören deshalb nicht mehr in ein einzelnes Bereichs-Panel —
+             der Knopf steht unabhängig von der aktuellen Auswahl zur
+             Verfügung. Die neue Linie erscheint oben im Warenkorb und
+             wird sofort ausgewählt, damit sie direkt an ihren Platz
+             gezogen werden kann. -->
+        <hr class="divider">
+        <button type="button" id="btn-add-divider" class="btn btn-secondary" style="width:100%;">+ Trennlinie hinzufügen</button>
+
         <hr class="divider">
         <button type="button" id="btn-cart-focus-exit" class="btn btn-danger-outline" style="width:100%;">✖ Warenkorb-Editor schließen</button>
       </div>
