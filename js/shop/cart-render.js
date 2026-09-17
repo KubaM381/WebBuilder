@@ -1,11 +1,12 @@
 // js/shop/cart-render.js
 // WebBuilder cart rendering domain
-// Builds the shared cart HTML (progress bar, items, recommendation,
-// discount, shipping, totals) and owns the real slide-in drawer plus the
-// sidebar config toggles. Used by both the drawer (interactive=false) and
-// the cart editor stage in cart-editor.js (interactive=true), so both stay
-// pixel-identical apart from editing affordances. Cart data/CRUD lives in
-// cart-data.js (window.WebBuilderCart) — this file only reads it.
+// Builds the shared cart HTML (dividers, progress bar, items,
+// recommendation, discount, totals incl. shipping) and owns the real
+// slide-in drawer plus the sidebar config toggles. Used by both the
+// drawer (interactive=false) and the cart editor stage in cart-editor.js
+// (interactive=true), so both stay pixel-identical apart from editing
+// affordances. Cart data/CRUD lives in cart-data.js
+// (window.WebBuilderCart) — this file only reads it.
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCartRender: WebBuilderState is not available."); return; }
@@ -18,7 +19,7 @@
   const esc = window.WebBuilderUtils.escapeHtml;
   const eur = v => cart.formatCurrency(v);
 
-  // T4: generic "positioned sub-part" wrapper, shared by cart-item parts
+  // Generic "positioned sub-part" wrapper, shared by cart-item parts
   // (icon/qty/price/remove/description, keyed in
   // cartConfig.itemDisplay.layout) and recommend-card parts (icon/name/
   // price/add, keyed in cartConfig.recommendDisplay.layout — see
@@ -40,13 +41,12 @@
     return `<span class="cart-item-part${frameClass}${selectedClass}"${partAttr} style="transform:translate(${off.x || 0}px, ${off.y || 0}px);">${innerHtml}</span>`;
   }
 
-  // Wraps a top-level cart block (progress bar / discount field /
-  // recommendation card / shipping row / totals) in a positionable,
-  // selectable wrapper — same "only wrap when needed" rule as wrapPart()
-  // inside buildCartItemHTML(): outside the editor (interactive=false), a
-  // block without a custom offset renders exactly as before (no extra
-  // DOM), so projects that never touch the cart editor see zero markup
-  // change.
+  // Wraps a top-level cart block (divider / progress bar / discount field /
+  // recommendation card / totals) in a positionable, selectable wrapper —
+  // same "only wrap when needed" rule as wrapPart() inside
+  // buildCartItemHTML(): outside the editor (interactive=false), a block
+  // without a custom offset renders exactly as before (no extra DOM), so
+  // projects that never touch the cart editor see zero markup change.
   function wrapComponent(innerHtml, componentKey, interactive) {
     const layout = (cart.getConfig().componentLayout || {})[componentKey] || { x: 0, y: 0 };
     const hasOffset = !!(layout.x || layout.y);
@@ -56,13 +56,12 @@
     return `<div class="cart-component-wrap${selectedClass}"${compAttr} style="transform:translate(${layout.x || 0}px, ${layout.y || 0}px);">${innerHtml}</div>`;
   }
 
-  // T4: builds the recommend card's inner content (icon/name/price/+
-  // button), each individually positionable via
-  // cartConfig.recommendDisplay.layout — same mechanism as
-  // buildCartItemHTML's per-part offsets, just against a separate layout
-  // map (the recommend card isn't a cart item, so it can't share
-  // itemDisplay.layout). The "+" button's color comes from
-  // cartConfig.recommendAddButtonColor (default matches the previous
+  // Builds the recommend card's inner content (icon/name/price/+ button),
+  // each individually positionable via cartConfig.recommendDisplay.layout
+  // — same mechanism as buildCartItemHTML's per-part offsets, just
+  // against a separate layout map (the recommend card isn't a cart item,
+  // so it can't share itemDisplay.layout). The "+" button's color comes
+  // from cartConfig.recommendAddButtonColor (default matches the previous
   // hardcoded CSS color, see css/modals.css .cart-recommend-add).
   function buildRecommendCardContentHtml(product, interactive) {
     const config = cart.getConfig() || {};
@@ -91,9 +90,9 @@
     const idAttr = isDemo ? "" : ` data-cart-id="${esc(item.id)}"`;
     const transparent = config.itemShape === "transparent";
 
-    // T4: delegates to the shared wrapLayoutPart() helper, keyed against
-    // this item's own layout map (cartConfig.itemDisplay.layout) — call
-    // sites below (wrapPart(x, "remove")/("qty")/("price")/("icon")/
+    // Delegates to the shared wrapLayoutPart() helper, keyed against this
+    // item's own layout map (cartConfig.itemDisplay.layout) — call sites
+    // below (wrapPart(x, "remove")/("qty")/("price")/("icon")/
     // ("description")) are unchanged.
     function wrapPart(innerHtml, partKey) {
       return wrapLayoutPart(innerHtml, partKey, layout, partKey, interactive, transparent);
@@ -173,21 +172,30 @@
     </div>`;
   }
 
-  // Builds the shared cart body split into its five logical blocks
-  // (progress / items / recommendation / discount / totals — shipping is
-  // nested inside totals, see below) instead of a single concatenated
-  // string. buildCartHtml() below just joins them in the original order
-  // for the real drawer — the split itself exists so the cart focus
-  // editor stage (js/shop/cart-editor.js renderFocusStage(), see
-  // docs/CART_EDITOR_TASKS.md T3) can place the item block in its own
-  // scrollable region while progress/recommend/discount/totals stay fixed
-  // on screen, without duplicating any of this HTML-building logic.
+  // Builds the shared cart body split into its logical blocks (dividers /
+  // progress / items / recommendation / discount / totals — shipping is a
+  // plain row inside totals) instead of a single concatenated string.
+  // buildCartHtml() below just joins them in the original order for the
+  // real drawer — the split itself exists so the cart focus editor stage
+  // (js/shop/cart-editor.js renderFocusStage()) can place the item block
+  // in its own region while the other blocks stay where they are, without
+  // duplicating any of this HTML-building logic.
   function buildCartParts(items, opts = {}) {
     const interactive = !!opts.interactive;
     const isDemo = !!opts.isDemo;
     const config = cart.getConfig() || {};
     const milestones = Array.isArray(config.milestones) ? [...config.milestones].sort((a, b) => Number(a.amount) - Number(b.amount)) : [];
     const subtotal = items.reduce((s, i) => s + cart.getEffectivePrice(i) * (Number(i.qty) || 0), 0);
+
+    // T6: freely placeable divider lines (cartConfig.dividers). Each one
+    // is its own component ("divider:<id>") with its own componentLayout
+    // offset, so it can be dragged anywhere inside the cart body instead
+    // of being locked to the totals block like the previous single
+    // "totalsDivider". Their natural flow position is the top of the
+    // body; the stored offset moves them from there.
+    const dividersPart = (Array.isArray(config.dividers) ? config.dividers : [])
+      .map(divider => wrapComponent(`<div class="cart-divider"><span class="cart-divider-line"></span></div>`, `divider:${divider.id}`, interactive))
+      .join("");
 
     let progressPart = "";
     if (config.progressEnabled && milestones.length) {
@@ -209,17 +217,13 @@
       } else if (highestReached && highestReached.reachedText) {
         progressMsg = esc(highestReached.reachedText);
       } else {
-        // T9.2: globaler, editierbarer Fallback-Text statt hartkodierter
-        // String — siehe cartConfig.progressCompleteText in
-        // cart-data.js normalizeState().
+        // Globaler, editierbarer Fallback-Text statt hartkodiertem String
+        // — siehe cartConfig.progressCompleteText in cart-data.js
+        // normalizeState().
         progressMsg = esc(config.progressCompleteText || "✓ Alle Ziele freigeschaltet");
       }
-      // T9.1: erreichte Meilenstein-Marker bekommen dieselbe Farbe wie der
-      // Balken (barColor) als Inline-Style statt der bisher in
-      // css/modals.css hartkodierten var(--success) — die CSS-Regel
-      // .cart-progress-mark.reached wurde entsprechend entfernt, da sie
-      // durch das Inline-Style ohnehin immer überschrieben wurde (toter
-      // Fallback).
+      // Erreichte Meilenstein-Marker bekommen dieselbe Farbe wie der
+      // Balken (barColor) als Inline-Style.
       const marksHtml = milestones.map(m => {
         const isReached = subtotal >= Number(m.amount);
         const colorStyle = isReached ? ` background-color:${barColor}; border-color:${barColor};` : "";
@@ -230,11 +234,9 @@
     }
 
     // Divider between items on a transparent item shape, only if enabled
-    // — between each item, not before the first / after the last.
-    // T9.4: die Trennlinie selbst ist jetzt schmaler/kleiner als zuvor
-    // (siehe .cart-item-divider in css/modals.css) statt über die volle
-    // Artikel-Breite zu gehen — das Markup/die Auslöse-Logik hier bleibt
-    // unverändert, nur die Optik der Linie wurde angepasst.
+    // — between each item, not before the first / after the last. This is
+    // the per-item separator (cartConfig.itemDisplay.showItemDividers),
+    // unrelated to the freely placeable cartConfig.dividers above.
     const showDividers = config.itemShape === "transparent" && !!(config.itemDisplay || {}).showItemDividers;
     const itemsPart = items.length
       ? items.map((i, idx) => (showDividers && idx > 0 ? '<div class="cart-item-divider"></div>' : "") + buildCartItemHTML(i, isDemo, interactive)).join("")
@@ -242,13 +244,12 @@
 
     let recommendPart = "";
     if (config.recommendEnabled) {
-      // T4: Form der Empfehlungskarte (unabhängig von der Artikel-Form).
+      // Form der Empfehlungskarte (unabhängig von der Artikel-Form).
       const recShapeClass = "cart-recommend-card-" + (config.recommendShape === "square" ? "square" : (config.recommendShape === "pill" ? "pill" : "rounded"));
-      // T5 fix: opts.isDemo durchreichen, damit der synthetische
-      // Demo-Artikel (leerer Warenkorb, siehe cart-editor.js
-      // renderFocusStage()) in pickRecommendation() nicht fälschlich als
-      // "schon im Warenkorb" gezählt wird — siehe cart-data.js
-      // pickRecommendation() Kommentar für die volle Erklärung.
+      // opts.isDemo durchreichen, damit der synthetische Demo-Artikel
+      // (leerer Warenkorb, siehe cart-editor.js renderFocusStage()) in
+      // pickRecommendation() nicht fälschlich als "schon im Warenkorb"
+      // gezählt wird — siehe cart-data.js pickRecommendation().
       const picked = cart.pickRecommendation(items, subtotal, { isDemo });
       if (picked) {
         const { rec, product } = picked;
@@ -260,10 +261,6 @@
         // editor to reach the recommendation panel (component:recommend).
         // This dummy card appears ONLY in the interactive editor mode —
         // in the real preview/drawer, unchanged behavior (show nothing).
-        // Same data-cart-component="recommend" as the real card, so the
-        // existing selection logic in cart-editor.js keeps working
-        // unchanged. No individually-positionable sub-parts here (no real
-        // product behind it), but it does reflect the configured shape.
         const dummyHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(cart.defaultRecommendationText())}</p><div class="cart-recommend-card ${recShapeClass}"><span class="cart-recommend-icon">➕</span><span class="cart-recommend-name">Noch keine passende Empfehlung konfiguriert</span></div></div>`;
         recommendPart = wrapComponent(dummyHtml, "recommend", interactive);
       }
@@ -273,30 +270,27 @@
     if (config.discountEnabled) {
       const discColor = config.discountButtonColor || "#4f46e5";
       const discRadius = config.discountButtonShape === "pill" ? "999px" : (config.discountButtonShape === "square" ? "0px" : "6px");
-      // BUGFIX: im Warenkorb-Editor (interactive) ist das Feld rein
-      // optisch/verschiebbar — readonly, damit man dort nicht versehentlich
-      // einen Code eintippt, der ohnehin nirgends ausgewertet wird (siehe
-      // cart-editor.js bindFocusStageInteractions(), das Klicks hier nur
-      // zum Verschieben des ganzen Rabatt-Blocks nutzt statt zu tippen).
+      // Im Warenkorb-Editor (interactive) ist das Feld rein optisch/
+      // verschiebbar — readonly, damit man dort nicht versehentlich einen
+      // Code eintippt, der ohnehin nirgends ausgewertet wird.
       const discountHtml = `<div class="cart-discount"><input type="text" class="cart-discount-input" placeholder="Rabattcode (Demo: DEMO10)"${interactive ? " readonly" : ""}><button type="button" class="cart-discount-apply-btn" style="background-color:${discColor}; border-radius:${discRadius};">Anwenden</button>${state.appliedDiscountLabel ? `<p class="cart-discount-msg ok">${esc(state.appliedDiscountLabel)}</p>` : ""}</div>`;
       discountPart = wrapComponent(discountHtml, "discount", interactive);
     }
 
     const reached = milestones.filter(m => subtotal >= Number(m.amount || 0));
-    // T7: shipping is free via a "free-shipping" milestone OR via the
-    // standalone shippingFreeThreshold configured in component:shipping —
-    // either applies independently. The two are kept in sync in both
-    // directions (cart.syncFreeShippingMilestone() in cart-data.js, plus
-    // the reverse sync in renderMilestoneList() below), but a threshold
-    // works on its own even with no milestone at all.
+    // Shipping is free via a "free-shipping" milestone OR via the
+    // standalone shippingFreeThreshold — either applies independently.
+    // The two are kept in sync in both directions
+    // (cart.syncFreeShippingMilestone() in cart-data.js, plus the reverse
+    // sync in renderMilestoneList() below), but a threshold works on its
+    // own even with no milestone at all.
     const shippingThreshold = config.shippingFreeThreshold;
     const free = reached.some(m => m.action === "free-shipping") || (shippingThreshold != null && subtotal >= Number(shippingThreshold));
-    // T8 (Spiegelbild von T7): der Extra-Rabatt gilt über einen erreichten
+    // Spiegelbild davon: der Extra-Rabatt gilt über einen erreichten
     // Meilenstein mit action "discount" ODER über das eigenständige
-    // milestoneDiscountThreshold — beides wirkt unabhängig voneinander
-    // (Standardentscheidung (a) der T8-Spec, identisch zu "free" oben).
+    // milestoneDiscountThreshold — beides wirkt unabhängig voneinander.
     // Der Prozentsatz kommt aus cartConfig.milestoneDiscountPercent
-    // (Default 10 = bisheriger hartkodierter Wert).
+    // (Default 10 = früherer hartkodierter Wert).
     const discountThreshold = config.milestoneDiscountThreshold;
     const milestoneDiscountActive = reached.some(m => m.action === "discount") || (discountThreshold != null && subtotal >= Number(discountThreshold));
     const configuredDiscountPercent = Number(config.milestoneDiscountPercent);
@@ -304,7 +298,7 @@
     const discountPercent = Number(state.appliedDiscountPercent || 0) + extra;
     const discountAmount = subtotal * discountPercent / 100;
     // Versandkosten-Betrag und "Kostenlos"-Text sind im Warenkorb-Editor
-    // konfigurierbar (component:shipping, siehe cart-editor.js) — Defaults
+    // konfigurierbar (Kosten-Übersicht, siehe cart-editor.js) — Defaults
     // (4,95 €, "Kostenlos") kommen aus cartConfig.shippingCost /
     // cartConfig.shippingFreeText (Default-Werte in cart-data.js
     // normalizeState()), damit unveränderte Projekte exakt wie zuvor
@@ -319,58 +313,35 @@
     const shippingFreeText = esc(config.shippingFreeText || "Kostenlos");
     const totalLabel = esc(config.totalLabel || "Gesamt");
 
-    // T7: shipping is now its own positionable component
-    // (component:shipping) instead of a fixed row baked directly into
-    // totalsHtml — same wrapComponent() mechanism as progress/discount/
-    // recommend/checkout/totals, just nested inside the totals block so it
-    // still visually sits where the "Versand"-row always sat. Still only
-    // rendered while progressEnabled, exactly as before.
+    // T5: shipping is a plain row inside the totals block again (it used
+    // to be its own draggable component:shipping). Its settings live in
+    // the Kosten-Übersicht panel. Still only rendered while
+    // progressEnabled, exactly as before.
     const shippingRowHtml = config.progressEnabled
       ? `<div class="cart-total-row"><span>${shippingLabel}</span><span>${shipping === 0 ? shippingFreeText : eur(shipping)}</span></div>`
       : "";
-    const shippingPart = wrapComponent(shippingRowHtml, "shipping", interactive);
 
-    // T9.3: eigene, optionale Trennlinie direkt über der
-    // Zwischensumme-Zeile — anders als die übrigen Blöcke (progress/
-    // discount/recommend/checkout/shipping/totals) standardmäßig
-    // AUSGESCHALTET (cartConfig.totalsDividerEnabled, Default false) und
-    // nur über den "+ Trennlinie hinzufügen"-Button im Kosten-Übersicht-
-    // Panel zuschaltbar (js/shop/cart-editor.js). Einmal zugeschaltet,
-    // ist sie über denselben wrapComponent()-Mechanismus wie jede andere
-    // Komponente frei verschiebbar (cartConfig.componentLayout.totalsDivider).
-    // Ersetzt die bisher fest in CSS verdrahtete border-top-Linie auf
-    // .cart-totals (css/modals.css) — die Zeile selbst rendert nur, wenn
-    // die Komponente aktiv ist, sonst bleibt lediglich der bisherige
-    // Abstand (margin-top/padding-top) erhalten.
-    const totalsDividerPart = config.totalsDividerEnabled
-      ? wrapComponent(`<div class="cart-totals-divider"></div>`, "totalsDivider", interactive)
-      : "";
-
-    let totalsHtml = `<div class="cart-totals">${totalsDividerPart}<div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
+    let totalsHtml = `<div class="cart-totals"><div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
     if (discountAmount > 0) totalsHtml += `<div class="cart-total-row"><span>${discountLabel}</span><span>−${eur(discountAmount)}</span></div>`;
-    totalsHtml += shippingPart;
-    // T10: "Gratis-Produkt"-Zeile — Label und Wert-Text kommen jetzt aus
-    // cartConfig.freeProductLabel/-ValueText statt aus einem hartkodierten
-    // String. Sichtbarkeit unverändert: nur wenn ein Meilenstein mit
-    // action "free-product" erreicht ist (siehe `reached` oben). Die
-    // Editierbarkeit selbst wird im Warenkorb-Editor (component:totals,
-    // js/shop/cart-editor.js) nur angeboten, wenn ein solcher Meilenstein
-    // im Projekt überhaupt existiert.
+    totalsHtml += shippingRowHtml;
+    // "Gratis-Produkt"-Zeile — Label und Wert-Text kommen aus
+    // cartConfig.freeProductLabel/-ValueText. Sichtbarkeit: nur wenn ein
+    // Meilenstein mit action "free-product" erreicht ist (siehe `reached`
+    // oben).
     if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>${esc(config.freeProductLabel || "🎁 Gratis-Produkt")}</span><span>${esc(config.freeProductValueText || "freigeschaltet")}</span></div>`;
     totalsHtml += `<div class="cart-total-row cart-total-final"><span>${totalLabel}</span><span>${eur(total)}</span></div></div>`;
     const totalsPart = wrapComponent(totalsHtml, "totals", interactive);
 
-    return { progress: progressPart, items: itemsPart, recommend: recommendPart, discount: discountPart, totals: totalsPart };
+    return { dividers: dividersPart, progress: progressPart, items: itemsPart, recommend: recommendPart, discount: discountPart, totals: totalsPart };
   }
 
-  // Builds the shared cart body (progress bar, items, recommendation,
-  // discount, totals) as one concatenated string, in the original order.
-  // Used by the real drawer (interactive: false) — output is byte-
-  // identical to before the T3 split. The cart focus editor stage uses
+  // Builds the shared cart body as one concatenated string, in the same
+  // order the editor stage shows it. Used by the real drawer
+  // (interactive: false). The cart focus editor stage uses
   // buildCartParts() directly instead (see above).
   function buildCartHtml(items, opts = {}) {
     const parts = buildCartParts(items, opts);
-    return parts.progress + parts.items + parts.recommend + parts.discount + parts.totals;
+    return parts.dividers + parts.progress + parts.items + parts.recommend + parts.discount + parts.totals;
   }
 
   // Delegierte Bindings für den Empfehlungs-Editor, EINMALIG auf den nie
@@ -475,9 +446,9 @@
     const listEl = document.getElementById("cart-milestone-list");
     if (!listEl) return;
     const milestones = Array.isArray(cart.getConfig()?.milestones) ? cart.getConfig().milestones : [];
-    // T8: der Extra-Rabatt ist jetzt konfigurierbar
+    // Der Extra-Rabatt ist konfigurierbar
     // (cartConfig.milestoneDiscountPercent), deshalb zeigt die Option den
-    // aktuellen Wert statt der früher fest verdrahteten "(10%)".
+    // aktuellen Wert statt einer fest verdrahteten "(10%)".
     const milestoneDiscountPercent = Number(cart.getConfig()?.milestoneDiscountPercent);
     const discountOptionLabel = `Extra-Rabatt (${Number.isFinite(milestoneDiscountPercent) ? milestoneDiscountPercent : 10}%)`;
     listEl.innerHTML = milestones.length ? "" : '<p class="help-text">Noch keine Meilensteine.</p>';
@@ -506,11 +477,11 @@
       if (m) {
         window.WebBuilderHistory?.arm();
         m.amount = parseFloat(e.target.value) || 0;
-        // T7: reverse direction of cart.syncFreeShippingMilestone() —
-        // editing a "free-shipping" milestone's own amount here keeps the
-        // shipping panel's threshold field (component:shipping) in sync
-        // too. T8 does the same for a "discount" milestone and the
-        // discount panel's threshold (cartConfig.milestoneDiscountThreshold).
+        // Gegenrichtung von cart.syncFreeShippingMilestone(): wird der
+        // Betrag eines "free-shipping"-Meilensteins hier bearbeitet, zieht
+        // das Freibetrag-Feld in der Kosten-Übersicht mit. Analog für
+        // einen "discount"-Meilenstein und
+        // cartConfig.milestoneDiscountThreshold.
         if (m.action === "free-shipping") state.cartConfig.shippingFreeThreshold = m.amount;
         else if (m.action === "discount") state.cartConfig.milestoneDiscountThreshold = m.amount;
         window.WebBuilderHistory?.commit();
@@ -530,17 +501,17 @@
       if (m) {
         window.WebBuilderHistory?.arm();
         m.action = e.target.value;
-        // T7/T8: if this milestone just became the free-shipping /
-        // discount milestone, sync the matching panel's threshold to its
-        // current amount right away (matches the amount-edit sync above).
+        // Wird dieser Meilenstein gerade zum free-shipping-/discount-
+        // Meilenstein, übernimmt das passende Ziel-Feld sofort seinen
+        // aktuellen Betrag (passend zum Betrags-Sync oben).
         if (m.action === "free-shipping") state.cartConfig.shippingFreeThreshold = m.amount;
         else if (m.action === "discount") state.cartConfig.milestoneDiscountThreshold = m.amount;
         window.WebBuilderHistory?.commit();
-        // T10: ein neu zugewiesenes "free-product"-Milestone kann dazu
-        // führen, dass das Gratis-Produkt-Eingabefeld im Kosten-
-        // Übersicht-Panel jetzt sichtbar werden muss (bzw. ein entferntes
-        // Milestone es wieder verstecken muss) — siehe
-        // js/shop/cart-editor.js renderFocusPartPanel().
+        // Ein neu zugewiesenes "free-product"-Milestone kann dazu führen,
+        // dass das Gratis-Produkt-Eingabefeld im Kosten-Übersicht-Panel
+        // jetzt sichtbar werden muss (bzw. ein entferntes Milestone es
+        // wieder verstecken muss) — siehe js/shop/cart-editor.js
+        // renderFocusPartPanel().
         window.WebBuilderCartFocus?.renderPartPanel?.();
         refreshCartViews();
       }
@@ -549,9 +520,9 @@
       e.preventDefault(); e.stopImmediatePropagation();
       cart.removeMilestone(e.currentTarget.dataset.id);
       renderMilestoneList();
-      // T10: siehe Kommentar bei ".ms-action" oben — auch das Entfernen
-      // eines "free-product"-Milestones kann die Sichtbarkeit des
-      // Gratis-Produkt-Feldes ändern.
+      // Siehe Kommentar bei ".ms-action" oben — auch das Entfernen eines
+      // "free-product"-Milestones kann die Sichtbarkeit des Gratis-
+      // Produkt-Feldes ändern.
       window.WebBuilderCartFocus?.renderPartPanel?.();
       refreshCartViews();
     }, true));
@@ -584,9 +555,8 @@
     list.innerHTML = buildCartHtml(cart.getItems(), { interactive: false, isDemo: false });
     document.getElementById("cart-count-badge")?.replaceChildren(document.createTextNode(String(cart.getCount())));
     const config = cart.getConfig() || {};
-    // T1: real drawer title now follows cartConfig.cartTitleLabel instead
-    // of the hardcoded "Dein Warenkorb" in web.html — kept in sync with
-    // the cart-editor stage's header preview (see cart-editor.js
+    // Real drawer title follows cartConfig.cartTitleLabel — kept in sync
+    // with the cart-editor stage's header preview (see cart-editor.js
     // renderFocusStage()).
     document.getElementById("cart-title-label")?.replaceChildren(document.createTextNode(config.cartTitleLabel || "Dein Warenkorb"));
     const checkout = document.getElementById("cart-checkout-btn");
