@@ -233,6 +233,22 @@
           <button type="button" id="btn-select-item-representation" class="btn btn-secondary" style="width:100%;">🖼️ Artikel-Darstellung bearbeiten</button>
         </div>
 
+        <div class="section-title">Artikelliste</div>
+        <div class="sidebar-subsection">
+          <p class="help-text" style="margin-bottom:8px;">Wird die Liste sehr lang, kann sie auf eine feste Höhe begrenzt werden — sie bekommt dann ihren eigenen Scrollbalken, während Rabattfeld, Empfehlung und Kosten-Übersicht immer sichtbar bleiben.</p>
+          <div class="form-group">
+            <label for="cart-items-max-height">Maximale Höhe (px, leer = kein Limit)</label>
+            <input type="number" id="cart-items-max-height" min="80" step="10" placeholder="kein Limit">
+          </div>
+        </div>
+
+        <div class="section-title">Produkt-Segmente</div>
+        <div class="sidebar-subsection">
+          <p class="help-text" style="margin-bottom:8px;">Gruppiere bestimmte Produkte im Warenkorb zu einem Segment (z. B. „Zubehör“) und trenne sie optional mit einer Linie von den übrigen Artikeln ab.</p>
+          <div id="cart-segment-list" class="items-list"></div>
+          <button type="button" id="btn-add-segment" class="btn btn-secondary" style="width:100%;">+ Segment erstellen</button>
+        </div>
+
         <hr class="divider">
         <label class="checkbox-row"><input type="checkbox" id="cart-discount-toggle"> Rabattcode-Feld aktivieren</label>
         <p class="help-text" style="margin:-6px 0 0;">Farbe, Form &amp; Position im Warenkorb-Editor anpassbar — dort auf das Rabattfeld klicken.</p>
