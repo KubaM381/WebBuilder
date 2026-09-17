@@ -9,7 +9,10 @@
 @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(0.95); } }
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(2px); z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
 .drawer-backdrop.active { opacity: 1; visibility: visible; }
-.drawer { position: fixed; top: 0; right: 0; width: 380px; max-width: 100%; height: 100%; background: var(--bg-panel); box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15); z-index: 1001; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
+/* width: var(--cart-width) — shared with .cart-focus-card below (see
+   css/base.css --cart-width) so the real drawer and the cart editor
+   stage always stay exactly the same width. */
+.drawer { position: fixed; top: 0; right: 0; width: var(--cart-width); max-width: 100%; height: 100%; background: var(--bg-panel); box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15); z-index: 1001; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
 .drawer.active { transform: translateX(0); }
 .close-btn { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 4px 8px; border-radius: 4px; }
 .close-btn:hover { color: var(--text-main); background: var(--bg-main); }
@@ -220,11 +223,12 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    bottom padding gives the card room to grow downwards before it starts
    fighting the outer .canvas-container's scroll. */
 .cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px 30px 90px; pointer-events: none; }
-/* T2: the card matches the REAL cart drawer exactly — same width (380px)
-   and the same 20px padding (see .drawer and .drawer-body above). That
-   keeps the "both stay pixel-identical apart from editing affordances"
-   invariant of js/shop/cart-render.js intact: a pixel offset dragged
-   into place here lands in exactly the same spot in the real drawer.
+/* T2: the card matches the REAL cart drawer exactly — same width
+   (var(--cart-width), see css/base.css) and the same 20px padding (see
+   .drawer and .drawer-body above). That keeps the "both stay
+   pixel-identical apart from editing affordances" invariant of
+   js/shop/cart-render.js intact: a pixel offset dragged into place here
+   lands in exactly the same spot in the real drawer.
    min-height gives the editor more usable vertical room ("weiter nach
    unten ausgebaut") — the card starts out as tall as a realistic
    multi-item cart, and .cart-focus-body (flex: 1) absorbs the extra
@@ -239,7 +243,7 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    canvas during normal editing. Nothing in here causes horizontal
    scrolling either (see also the body.preview-mode /
    body.cart-focus-active overflow-x guards in css/styles.css). */
-.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: 380px; max-width: 100%; min-height: 640px; display: flex; flex-direction: column; }
+.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: var(--cart-width); max-width: 100%; min-height: 640px; display: flex; flex-direction: column; }
 /* Plain block flow, WITHOUT its own overflow-y:auto — no internal scroll
    region inside the card at all. Content (title, progress bar, items,
    recommendation, discount, totals, checkout button) just flows in
