@@ -208,11 +208,14 @@
     if (!state.cartConfig.componentLayout || typeof state.cartConfig.componentLayout !== "object") state.cartConfig.componentLayout = {};
     if (state.cartConfig.itemBackgroundColor == null) state.cartConfig.itemBackgroundColor = "";
     if (state.cartConfig.cardBackgroundColor == null) state.cartConfig.cardBackgroundColor = "";
-    // Hintergrundfarbe des Fußbereichs (component:footer, enthält den
-    // Zur-Kasse-Button) — unabhängig von cardBackgroundColor (der Karte
-    // selbst). Leer = Default aus css/modals.css (.drawer-footer,
-    // var(--bg-main)), damit unveränderte Projekte unverändert aussehen.
-    if (state.cartConfig.footerBackgroundColor == null) state.cartConfig.footerBackgroundColor = "";
+    // Der Fußbereich ist keine eigene Komponente mehr (component:footer
+    // wurde entfernt — Titel und Zur-Kasse-Button fließen jetzt wie jede
+    // andere Komponente normal im Warenkorb-Körper mit, siehe
+    // js/shop/cart-render.js buildTitleHtml()/buildCheckoutHtml() und
+    // js/shop/cart-editor.js). Ein evtl. aus einem älteren Projekt
+    // geladener Wert wird entfernt, statt als Leiche im Snapshot
+    // weiterzuleben.
+    delete state.cartConfig.footerBackgroundColor;
     if (state.cartConfig.itemWidth === undefined) state.cartConfig.itemWidth = null;
     if (state.cartConfig.itemMinHeight === undefined) state.cartConfig.itemMinHeight = null;
     // Editable title of the cart drawer/editor header (e.g. "Dein
