@@ -196,10 +196,12 @@
     if (sel === "component:title") {
       // Der Warenkorb-Titel ist eine ganz normale, frei platzierbare
       // Komponente (kein eigener Kopfbalken mehr) — siehe
-      // js/shop/cart-render.js buildTitleHtml().
+      // js/shop/cart-render.js buildTitleHtml(). Freitext mit optionalem
+      // {anzahl}-Platzhalter für die Artikelanzahl (cart-data.js
+      // TITLE_COUNT_PLACEHOLDER).
       document.getElementById("cart-comp-title-fields")?.classList.remove("hidden");
       const titleInput = document.getElementById("cart-comp-title-label");
-      if (titleInput && document.activeElement !== titleInput) titleInput.value = config.cartTitleLabel || "Dein Warenkorb";
+      if (titleInput && document.activeElement !== titleInput) titleInput.value = config.cartTitleLabel || `Dein Warenkorb (${cart.TITLE_COUNT_PLACEHOLDER})`;
     } else if (sel === "component:checkout") {
       document.getElementById("cart-comp-checkout-fields")?.classList.remove("hidden");
       const labelInput = document.getElementById("cart-comp-checkout-label");
@@ -650,7 +652,7 @@
     }, true);
 
     document.getElementById("cart-comp-title-label")?.addEventListener("change", e => {
-      window.WebBuilderHistory?.arm(); cart.setConfig({ cartTitleLabel: e.target.value.trim() || "Dein Warenkorb" }, false); window.WebBuilderHistory?.commit();
+      window.WebBuilderHistory?.arm(); cart.setConfig({ cartTitleLabel: e.target.value.trim() || `Dein Warenkorb (${cart.TITLE_COUNT_PLACEHOLDER})` }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
