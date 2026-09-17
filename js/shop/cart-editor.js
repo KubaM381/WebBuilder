@@ -193,6 +193,22 @@
 
     const config = cart.getConfig();
 
+    // Task 5: Beschriftungen, die aktuell einen hartkodierten "€"-Wert
+    // zeigen würden, ziehen stattdessen das Symbol der aktuell
+    // gewählten Währung (cartConfig.currency, siehe cart-data.js
+    // CURRENCY_PRESETS) nach. Läuft unabhängig von der gerade
+    // ausgewählten Komponente, damit die Labels bereits korrekt
+    // beschriftet sind, sobald der jeweilige Bereich (Rabattfeld bzw.
+    // Kosten-Übersicht) das nächste Mal sichtbar wird — auch wenn die
+    // Währung gerade in einem anderen Panel-Durchlauf geändert wurde.
+    const currencySymbol = (config.currency && config.currency.symbol) || "€";
+    const discountThresholdCurrencyEl = document.getElementById("cart-discount-threshold-currency");
+    if (discountThresholdCurrencyEl) discountThresholdCurrencyEl.textContent = currencySymbol;
+    const shippingCostCurrencyEl = document.getElementById("cart-shipping-cost-currency");
+    if (shippingCostCurrencyEl) shippingCostCurrencyEl.textContent = currencySymbol;
+    const shippingFreeThresholdCurrencyEl = document.getElementById("cart-shipping-free-threshold-currency");
+    if (shippingFreeThresholdCurrencyEl) shippingFreeThresholdCurrencyEl.textContent = currencySymbol;
+
     if (sel === "component:title") {
       // Der Warenkorb-Titel ist eine ganz normale, frei platzierbare
       // Komponente (kein eigener Kopfbalken mehr) — siehe
