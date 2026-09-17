@@ -11,3 +11,17 @@
 .ttb-sep { width: 1px; height: 22px; background: var(--border-color); margin: 0 2px; }
 .text-toolbar input[type="color"] { width: 30px; height: 30px; border: none; padding: 0; cursor: pointer; border-radius: 6px; }
 .text-toolbar select { padding: 5px 6px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.75rem; max-width: 110px; }
+
+/* Generic "subcard" for grouping a related set of form-groups visually
+   within a right-hand inspector panel — same idea as sidebar.css's
+   .product-card (bordered box with its own small heading), but generic
+   enough to reuse anywhere in the inspector aside, not just for cart
+   shipping fields. First use: the "Versand" block inside
+   #cart-comp-totals-fields (js/shop/cart-editor.js
+   renderFocusPartPanel()), so it's visually separated from the other
+   Kosten-Übersicht fields (Währung/Zwischensumme/Rabatt/Gesamt) instead
+   of running together as one flat list. */
+.inspector-subcard { background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin: 12px 0 4px; }
+.inspector-subcard-title { font-size: 0.78rem; font-weight: 700; color: var(--text-main); margin-bottom: 10px; }
+.inspector-subcard .form-group:last-of-type { margin-bottom: 8px; }
+.inspector-subcard .help-text { margin: 0; }
