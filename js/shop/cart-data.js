@@ -98,6 +98,26 @@
     return { id: (entry && entry.id) || `div_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` };
   }
 
+  // ------------------------------------------------------------------
+  // Product segments — group specific products in the cart under a
+  // named header/divider (e.g. "Zubehör"), independent of the freely
+  // draggable dividers from cartConfig.dividers above. Each segment
+  // references products by id (not cart items directly, same reasoning
+  // as recommendations: persistent identity via window.WebBuilderProducts
+  // instead of the ephemeral per-session cart item ids).
+  // ------------------------------------------------------------------
+  function normalizeSegment(entry = {}) {
+    return {
+      id: entry.id || `seg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name: entry.name || "Neues Segment",
+      productIds: Array.isArray(entry.productIds) ? entry.productIds.filter(Boolean) : [],
+      showDivider: entry.showDivider !== false
+    };
+  }
+  function normalizeSegments(list) {
+    return window.WebBuilderUtils.normalizeInPlace(Array.isArray(list) ? list : [], normalizeSegment);
+  }
+
   const CONDITION_LABELS = {
     none: "Immer anzeigen",
     cartCountEquals: "Nur bei genau X Artikeln im Warenkorb",
@@ -264,6 +284,14 @@
     if (state.cartConfig.recommendAddButtonColor == null) state.cartConfig.recommendAddButtonColor = "#4f46e5";
     if (!state.cartConfig.recommendDisplay || typeof state.cartConfig.recommendDisplay !== "object") state.cartConfig.recommendDisplay = {};
     if (!state.cartConfig.recommendDisplay.layout || typeof state.cartConfig.recommendDisplay.layout !== "object") state.cartConfig.recommendDisplay.layout = {};
+    // Bounded, internally scrollable "products box": when set, the item
+    // list gets its own max-height + scrollbar so the discount field,
+    // recommendation and Kosten-Übersicht below stay visible without the
+    // visitor first having to scroll past a long product list. null = no
+    // cap, items just stack as before (unchanged behavior by default).
+    if (state.cartConfig.itemsListMaxHeight === undefined) state.cartConfig.itemsListMaxHeight = null;
+    // Product segments — see normalizeSegment()/normalizeSegments() above.
+    state.cartConfig.segments = normalizeSegments(state.cartConfig.segments);
     // Global currency. Default matches the previously hardcoded
     // "19,99 €"-style formatting exactly, so existing projects render
     // byte-identical until someone explicitly picks a different currency.
@@ -363,6 +391,36 @@
     notify("cart", "dividers", state.cartConfig.dividers);
   }
 
+  // Product segments. addSegment() takes the full patch at once (name/
+  // productIds/showDivider) so creating one from the sidebar modal is a
+  // single history step instead of an add-then-immediately-update pair.
+  function addSegment(patch = {}) {
+    window.WebBuilderHistory?.arm();
+    if (!Array.isArray(state.cartConfig.segments)) state.cartConfig.segments = [];
+    const segment = normalizeSegment(patch);
+    state.cartConfig.segments.push(segment);
+    window.WebBuilderHistory?.commit();
+    notify("cart", "segments", state.cartConfig.segments);
+    return segment;
+  }
+  function updateSegment(segmentId, patch = {}, recordHistory = true) {
+    const segment = (state.cartConfig.segments || []).find(s => s.id === segmentId);
+    if (!segment) return null;
+    if (recordHistory) window.WebBuilderHistory?.arm();
+    if (patch.name !== undefined) segment.name = patch.name || "Neues Segment";
+    if (patch.productIds !== undefined) segment.productIds = Array.isArray(patch.productIds) ? patch.productIds.filter(Boolean) : [];
+    if (patch.showDivider !== undefined) segment.showDivider = !!patch.showDivider;
+    if (recordHistory) window.WebBuilderHistory?.commit();
+    notify("cart", "segments", state.cartConfig.segments);
+    return segment;
+  }
+  function removeSegment(segmentId) {
+    window.WebBuilderHistory?.arm();
+    state.cartConfig.segments = (state.cartConfig.segments || []).filter(s => s.id !== segmentId);
+    window.WebBuilderHistory?.commit();
+    notify("cart", "segments", state.cartConfig.segments);
+  }
+
   // Progress-bar milestones. `icon` is an optional emoji/short text shown
   // once the milestone is reached, `reachedText` is an optional custom
   // message shown in the progress area once this milestone is the
@@ -428,6 +486,7 @@
     applyDiscountCode,
     addRecommendation, removeRecommendation, updateRecommendation,
     addDivider, removeDivider,
+    addSegment, updateSegment, removeSegment,
     addMilestone, removeMilestone, syncFreeShippingMilestone, syncDiscountMilestone,
     // Internal helpers also used by shop/cart-render.js and
     // shop/cart-editor.js (kept here since they operate on the cart data/
