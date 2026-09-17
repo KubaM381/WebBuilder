@@ -1,15 +1,15 @@
 // js/shop/cart-render.js
 // WebBuilder cart rendering domain
-// Builds the shared cart HTML (dividers, progress bar, items, product
-// segments, recommendation, discount, totals incl. shipping) and owns the
-// real slide-in drawer plus the sidebar config toggles (including the
-// items-list max height and product-segment management, both configured
-// from the LEFT sidebar rather than the right-hand cart editor panel,
-// since neither ties to selecting a specific on-canvas part). Used by
-// both the drawer (interactive=false) and the cart editor stage in
-// cart-editor.js (interactive=true), so both stay pixel-identical apart
-// from editing affordances. Cart data/CRUD lives in cart-data.js
-// (window.WebBuilderCart) — this file only reads it.
+// Builds the shared cart HTML (title, dividers, progress bar, items,
+// product segments, recommendation, discount, totals incl. shipping,
+// checkout button) and owns the real slide-in drawer plus the sidebar
+// config toggles (including the items-list max height and product-segment
+// management, both configured from the LEFT sidebar rather than the
+// right-hand cart editor panel, since neither ties to selecting a
+// specific on-canvas part). Used by both the drawer (interactive=false)
+// and the cart editor stage in cart-editor.js (interactive=true), so both
+// stay pixel-identical apart from editing affordances. Cart data/CRUD
+// lives in cart-data.js (window.WebBuilderCart) — this file only reads it.
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCartRender: WebBuilderState is not available."); return; }
@@ -44,12 +44,13 @@
     return `<span class="cart-item-part${frameClass}${selectedClass}"${partAttr} style="transform:translate(${off.x || 0}px, ${off.y || 0}px);">${innerHtml}</span>`;
   }
 
-  // Wraps a top-level cart block (divider / progress bar / discount field /
-  // recommendation card / totals) in a positionable, selectable wrapper —
-  // same "only wrap when needed" rule as wrapPart() inside
-  // buildCartItemHTML(): outside the editor (interactive=false), a block
-  // without a custom offset renders exactly as before (no extra DOM), so
-  // projects that never touch the cart editor see zero markup change.
+  // Wraps a top-level cart block (title / divider / progress bar /
+  // discount field / recommendation card / totals / checkout button) in a
+  // positionable, selectable wrapper — same "only wrap when needed" rule
+  // as wrapPart() inside buildCartItemHTML(): outside the editor
+  // (interactive=false), a block without a custom offset renders exactly
+  // as before (no extra DOM), so projects that never touch the cart
+  // editor see zero markup change.
   function wrapComponent(innerHtml, componentKey, interactive) {
     const layout = (cart.getConfig().componentLayout || {})[componentKey] || { x: 0, y: 0 };
     const hasOffset = !!(layout.x || layout.y);
@@ -57,6 +58,35 @@
     const selectedClass = interactive && state.cartFocusSelectedPart === `component:${componentKey}` ? " cart-component-selected" : "";
     const compAttr = interactive ? ` data-cart-component="${componentKey}"` : "";
     return `<div class="cart-component-wrap${selectedClass}"${compAttr} style="transform:translate(${layout.x || 0}px, ${layout.y || 0}px);">${innerHtml}</div>`;
+  }
+
+  // Warenkorb-Titel. Used to live in a fixed, non-positionable header bar
+  // (component:header) with its own close icon — now it's just another
+  // top-level component like progress/discount/etc., positioned via
+  // cartConfig.componentLayout.title through the shared wrapComponent()
+  // helper above. `count` is the summed quantity of the items actually
+  // being shown (the real cart's items, or the single synthetic demo
+  // item's own qty while the cart is empty — see cart-editor.js
+  // renderFocusStage()), so it renders identically for both the real
+  // drawer and the editor's demo preview.
+  function buildTitleHtml(count, interactive) {
+    const config = cart.getConfig() || {};
+    const cartTitle = config.cartTitleLabel || "Dein Warenkorb";
+    const titleHtml = `<h3 class="cart-title-text">${esc(cartTitle)} (${count})</h3>`;
+    return wrapComponent(titleHtml, "title", interactive);
+  }
+
+  // Zur-Kasse-Button. Used to live in a fixed, non-positionable footer bar
+  // (component:footer) with its own background-color setting — now it's
+  // just another top-level component like totals/discount/etc., flowing
+  // and positionable via cartConfig.componentLayout.checkout (T4), just
+  // without the surrounding bar.
+  function buildCheckoutHtml(interactive) {
+    const config = cart.getConfig() || {};
+    const checkoutColor = config.buttonColor || "#4f46e5";
+    const checkoutRadius = config.buttonShape === "pill" ? "999px" : (config.buttonShape === "square" ? "0px" : "6px");
+    const checkoutHtml = `<button type="button" class="btn btn-primary cart-checkout-button" style="width:100%; background-color:${checkoutColor}; border-radius:${checkoutRadius};">${esc(state.cartButtonLabel || "Zur Kasse gehen")}</button>`;
+    return wrapComponent(checkoutHtml, "checkout", interactive);
   }
 
   // Builds the recommend card's inner content (icon/name/price/+ button),
@@ -212,20 +242,30 @@
     return html;
   }
 
-  // Builds the shared cart body split into its logical blocks (dividers /
-  // progress / items / recommendation / discount / totals — shipping is a
-  // plain row inside totals) instead of a single concatenated string.
-  // buildCartHtml() below just joins them in the original order for the
-  // real drawer — the split itself exists so the cart focus editor stage
-  // (js/shop/cart-editor.js renderFocusStage()) can place the item block
-  // in its own region while the other blocks stay where they are, without
-  // duplicating any of this HTML-building logic.
+  // Builds the shared cart body split into its logical blocks (title /
+  // dividers / progress / items / recommendation / discount / totals —
+  // shipping is a plain row inside totals — / checkout button) instead of
+  // a single concatenated string. buildCartHtml() below just joins them
+  // in order for the real drawer — the split itself exists so the cart
+  // focus editor stage (js/shop/cart-editor.js renderFocusStage()) can
+  // place the item block in its own region while the other blocks stay
+  // where they are, without duplicating any of this HTML-building logic.
+  // Title and checkout used to live in their own fixed, non-positionable
+  // header/footer bars; they are now just two more freely positionable
+  // top-level components like the rest, wrapped via wrapComponent() the
+  // same way (see buildTitleHtml()/buildCheckoutHtml() above).
   function buildCartParts(items, opts = {}) {
     const interactive = !!opts.interactive;
     const isDemo = !!opts.isDemo;
     const config = cart.getConfig() || {};
     const milestones = Array.isArray(config.milestones) ? [...config.milestones].sort((a, b) => Number(a.amount) - Number(b.amount)) : [];
     const subtotal = items.reduce((s, i) => s + cart.getEffectivePrice(i) * (Number(i.qty) || 0), 0);
+    // Summed quantity of the items actually being shown — works
+    // identically for the real cart (matches cart.getCount()) and for the
+    // synthetic demo item used in the editor while the real cart is empty.
+    const count = items.reduce((s, i) => s + (Number(i.qty) || 0), 0);
+
+    const titlePart = buildTitleHtml(count, interactive);
 
     // T6: freely placeable divider lines (cartConfig.dividers). Each one
     // is its own component ("divider:<id>") with its own componentLayout
@@ -376,7 +416,9 @@
     totalsHtml += `<div class="cart-total-row cart-total-final"><span>${totalLabel}</span><span>${eur(total)}</span></div></div>`;
     const totalsPart = wrapComponent(totalsHtml, "totals", interactive);
 
-    return { dividers: dividersPart, progress: progressPart, items: itemsPart, recommend: recommendPart, discount: discountPart, totals: totalsPart };
+    const checkoutPart = buildCheckoutHtml(interactive);
+
+    return { title: titlePart, dividers: dividersPart, progress: progressPart, items: itemsPart, recommend: recommendPart, discount: discountPart, totals: totalsPart, checkout: checkoutPart };
   }
 
   // Builds the shared cart body as one concatenated string, in the same
@@ -385,7 +427,7 @@
   // buildCartParts() directly instead (see above).
   function buildCartHtml(items, opts = {}) {
     const parts = buildCartParts(items, opts);
-    return parts.dividers + parts.progress + parts.items + parts.recommend + parts.discount + parts.totals;
+    return parts.title + parts.dividers + parts.progress + parts.items + parts.recommend + parts.discount + parts.totals + parts.checkout;
   }
 
   // Delegierte Bindings für den Empfehlungs-Editor, EINMALIG auf den nie
@@ -584,44 +626,19 @@
     }, true);
   }
 
-  function applyCheckoutButtonStyle() {
-    const btn = document.getElementById("cart-checkout-btn");
-    if (!btn) return;
-    const config = cart.getConfig() || {};
-    btn.style.backgroundColor = config.buttonColor || "#4f46e5";
-    btn.style.borderRadius = config.buttonShape === "pill" ? "999px" : (config.buttonShape === "square" ? "0px" : "6px");
-  }
-
   // Renders the real slide-in drawer (#cart-items-list, always non-interactive).
+  // Title and checkout button are now built into buildCartHtml() itself
+  // (see buildTitleHtml()/buildCheckoutHtml() above) — no separate
+  // header/footer bar elements to update by id anymore.
   function renderCart() {
     const list = document.getElementById("cart-items-list");
     if (!list) return;
     list.innerHTML = buildCartHtml(cart.getItems(), { interactive: false, isDemo: false });
-    document.getElementById("cart-count-badge")?.replaceChildren(document.createTextNode(String(cart.getCount())));
     const config = cart.getConfig() || {};
-    // Real drawer title follows cartConfig.cartTitleLabel — kept in sync
-    // with the cart-editor stage's header preview (see cart-editor.js
-    // renderFocusStage()).
-    document.getElementById("cart-title-label")?.replaceChildren(document.createTextNode(config.cartTitleLabel || "Dein Warenkorb"));
-    const checkout = document.getElementById("cart-checkout-btn");
-    if (checkout) {
-      checkout.textContent = state.cartButtonLabel || "Zur Kasse gehen";
-      // Position offset set for the checkout button in the cart editor
-      // (component:checkout) applies everywhere, same as the other
-      // per-component/per-part offsets — see wrapComponent()/wrapPart().
-      const layout = (config.componentLayout || {}).checkout || { x: 0, y: 0 };
-      checkout.style.transform = (layout.x || layout.y) ? `translate(${layout.x}px, ${layout.y}px)` : "";
-    }
     // "Hintergrund" (component:background) applies to the real drawer too,
     // not just the editor preview.
     const drawer = document.getElementById("cart-drawer");
     if (drawer) drawer.style.backgroundColor = config.cardBackgroundColor || "";
-    // "Fußbereich" (component:footer) — Hintergrundfarbe des
-    // Footer-Balkens (in dem der Zur-Kasse-Button sitzt), gilt genauso im
-    // echten Drawer wie in der Editor-Vorschau (siehe cart-editor.js
-    // renderFocusStage()).
-    const footerEl = document.querySelector("#cart-drawer .drawer-footer");
-    if (footerEl) footerEl.style.backgroundColor = config.footerBackgroundColor || "";
   }
 
   // Re-renders every place the cart's content is currently visible: the
@@ -786,7 +803,6 @@
     const heightInput = document.getElementById("cart-items-max-height");
     if (heightInput && document.activeElement !== heightInput) heightInput.value = c.itemsListMaxHeight != null ? c.itemsListMaxHeight : "";
     renderSegmentList();
-    applyCheckoutButtonStyle();
     if (state.cartFocusMode) {
       window.WebBuilderCartFocus?.renderStage?.();
       window.WebBuilderCartFocus?.renderPartPanel?.();
