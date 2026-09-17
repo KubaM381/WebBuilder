@@ -15,8 +15,18 @@
 .drawer-header h3 { font-size: 1.2rem; }
 .close-btn { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 4px 8px; border-radius: 4px; }
 .close-btn:hover { color: var(--text-main); background: var(--bg-main); }
-.drawer-body { padding: 20px; flex: 1; overflow-y: auto; }
-.cart-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-main); flex-wrap: wrap; }
+/* overflow-x: hidden — ein Warenkorb darf sich niemals seitlich scrollen
+   lassen. Ohne die explizite Angabe rechnet der Browser overflow-x bei
+   gesetztem overflow-y automatisch auf "auto" hoch, sodass jeder im
+   Warenkorb-Editor nach rechts gezogene Teil (transform-Offset, siehe
+   js/shop/cart-render.js wrapLayoutPart()) eine horizontale Scrollleiste
+   erzeugt hat. Inhalt, der über den Rand hinausragt, wird jetzt
+   beschnitten statt scrollbar. */
+.drawer-body { padding: 20px; flex: 1; overflow-y: auto; overflow-x: hidden; }
+/* max-width: 100% — eine per "Artikel-Darstellung" gesetzte feste Breite
+   (cartConfig.itemWidth) darf die Zeile nie breiter als den Warenkorb
+   machen (gilt in Drawer UND Editor-Bühne gleichermaßen). */
+.cart-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-main); flex-wrap: wrap; max-width: 100%; }
 .cart-item.cart-item-square { border-radius: 0; }
 .cart-item.cart-item-rounded { border-radius: 14px; }
 .cart-item.cart-item-pill { border-radius: 999px; padding-left: 18px; padding-right: 18px; }
@@ -25,7 +35,9 @@
    near the bottom of this file), so editing stays possible without
    showing lines to real visitors. */
 .cart-item.cart-item-transparent { background: transparent; border: none; }
-.cart-item-title { font-weight: 600; font-size: 0.9rem; }
+/* min-width: 0 + overflow-wrap — ein langer Produktname bricht um,
+   statt die Flex-Zeile über die Warenkorb-Breite hinauszudrücken. */
+.cart-item-title { font-weight: 600; font-size: 0.9rem; min-width: 0; overflow-wrap: anywhere; }
 .cart-item-desc { flex-basis: 100%; font-size: 0.75rem; color: var(--text-muted); margin-top: -4px; }
 .drawer-footer { padding: 20px; border-top: 1px solid var(--border-color); background: var(--bg-main); }
 .cart-empty-msg { color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 24px 0; }
@@ -88,7 +100,14 @@
    js/shop/cart-editor.js, snapContainer = compEl.parentElement), analog
    zur Begründung bei .cart-recommend-card oben. */
 .cart-totals { margin-top: 12px; padding-top: 12px; position: relative; }
-.cart-totals-divider { border-top: 1px solid var(--border-color); margin-bottom: 8px; }
+/* T6: frei platzierbare Trennlinie (cartConfig.dividers). Der Wrapper
+   ist absichtlich deutlich höher als die 1px-Linie und über die volle
+   Breite klickbar — dieselbe Idee wie .bar-resize-handle in
+   css/canvas.css: sichtbar dünn, aber bequem zu treffen. Die Linie
+   selbst steht linksbündig und ist kürzer als die volle Breite (kein
+   margin: auto), damit sie als Gliederung wirkt statt als Rahmen. */
+.cart-divider { display: flex; align-items: center; padding: 8px 0; }
+.cart-divider-line { display: block; width: 55%; border-top: 1px solid var(--border-color); }
 .cart-total-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
 .cart-total-final { font-weight: 700; font-size: 1rem; margin-top: 8px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
@@ -221,7 +240,11 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    js/shop/cart-editor.js renderFocusStage() (.cart-focus-fixed-top/
    -scroll/-fixed-bottom) are kept only as markup hooks for part/
    component selection, not as separate scroll/flex regions. */
-.cart-focus-body { display: block; flex: 1; padding: 20px; }
+/* T6: position: relative — .cart-focus-body ist der Snap-/Guide-Container
+   für die frei platzierbaren Trennlinien, die als direkte Kinder dieses
+   Bereichs gerendert werden (siehe js/shop/cart-editor.js
+   renderFocusStage(), snapContainer = compEl.parentElement). */
+.cart-focus-body { display: block; flex: 1; padding: 20px; position: relative; }
 /* position: relative auf -fixed-top/-fixed-bottom, damit die
    Ausrichtungslinien-Schicht (siehe canvas/alignment.js createGuideLayer(),
    genutzt von js/shop/cart-editor.js beim Verschieben der Top-Level-
@@ -253,10 +276,6 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    dashed outline, so item bounds stay visible while editing (see
    .cart-item-transparent above for the "no lines" real-preview state). */
 .cart-focus-stage .cart-item.cart-item-transparent { border: 1px dashed var(--border-muted); }
-/* Keeps a custom "Artikel-Darstellung" width (cartConfig.itemWidth) from
-   ever pushing the editor card into horizontal scrolling — the real
-   drawer is unaffected (this is scoped to the editor stage only). */
-.cart-focus-stage .cart-item { max-width: 100%; }
 
 /* Aufgabe D: konfigurierbare Trennlinie zwischen Warenkorb-Artikeln bei
    durchsichtiger Artikel-Form (cartConfig.itemShape === "transparent" &&
