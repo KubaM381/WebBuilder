@@ -1,11 +1,14 @@
 // js/shop/cart-render.js
 // WebBuilder cart rendering domain
-// Builds the shared cart HTML (dividers, progress bar, items,
-// recommendation, discount, totals incl. shipping) and owns the real
-// slide-in drawer plus the sidebar config toggles. Used by both the
-// drawer (interactive=false) and the cart editor stage in cart-editor.js
-// (interactive=true), so both stay pixel-identical apart from editing
-// affordances. Cart data/CRUD lives in cart-data.js
+// Builds the shared cart HTML (dividers, progress bar, items, product
+// segments, recommendation, discount, totals incl. shipping) and owns the
+// real slide-in drawer plus the sidebar config toggles (including the
+// items-list max height and product-segment management, both configured
+// from the LEFT sidebar rather than the right-hand cart editor panel,
+// since neither ties to selecting a specific on-canvas part). Used by
+// both the drawer (interactive=false) and the cart editor stage in
+// cart-editor.js (interactive=true), so both stay pixel-identical apart
+// from editing affordances. Cart data/CRUD lives in cart-data.js
 // (window.WebBuilderCart) — this file only reads it.
 (() => {
   const state = window.WebBuilderState;
@@ -172,6 +175,43 @@
     </div>`;
   }
 
+  // Groups the cart's item rows by configured segment
+  // (cartConfig.segments, see cart-data.js), in segment-config order,
+  // then any items that don't belong to a segment follow at the end
+  // in their original order. Each non-empty segment is wrapped in a
+  // plain <div data-segment-id="..."> (no styling of its own — the
+  // grouping itself is invisible) and optionally followed by a static
+  // divider line (segment.showDivider), reusing the same look as the
+  // existing per-item divider on a transparent item shape. This is
+  // deliberately separate from cartConfig.dividers (the freely
+  // draggable, user-placed lines from wrapComponent()) — a segment
+  // divider is static and always sits right after its segment's items.
+  function buildItemsHtml(items, isDemo, interactive, config) {
+    if (!items.length) return '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
+    const showItemDividers = config.itemShape === "transparent" && !!(config.itemDisplay || {}).showItemDividers;
+    function renderRun(runItems) {
+      return runItems.map((item, idx) => (showItemDividers && idx > 0 ? '<div class="cart-item-divider"></div>' : "") + buildCartItemHTML(item, isDemo, interactive)).join("");
+    }
+    const segments = Array.isArray(config.segments) ? config.segments.filter(s => (s.productIds || []).length) : [];
+    if (!segments.length) return renderRun(items);
+
+    const remaining = items.slice();
+    let html = "";
+    segments.forEach(segment => {
+      const ids = new Set(segment.productIds);
+      const groupItems = remaining.filter(item => item.productId && ids.has(item.productId));
+      if (!groupItems.length) return;
+      groupItems.forEach(item => {
+        const idx = remaining.indexOf(item);
+        if (idx > -1) remaining.splice(idx, 1);
+      });
+      html += `<div class="cart-segment" data-segment-id="${esc(segment.id)}">${renderRun(groupItems)}</div>`;
+      if (segment.showDivider) html += '<div class="cart-item-divider"></div>';
+    });
+    html += renderRun(remaining);
+    return html;
+  }
+
   // Builds the shared cart body split into its logical blocks (dividers /
   // progress / items / recommendation / discount / totals — shipping is a
   // plain row inside totals) instead of a single concatenated string.
@@ -233,14 +273,18 @@
       progressPart = wrapComponent(progressHtml, "progress", interactive);
     }
 
-    // Divider between items on a transparent item shape, only if enabled
-    // — between each item, not before the first / after the last. This is
-    // the per-item separator (cartConfig.itemDisplay.showItemDividers),
-    // unrelated to the freely placeable cartConfig.dividers above.
-    const showDividers = config.itemShape === "transparent" && !!(config.itemDisplay || {}).showItemDividers;
-    const itemsPart = items.length
-      ? items.map((i, idx) => (showDividers && idx > 0 ? '<div class="cart-item-divider"></div>' : "") + buildCartItemHTML(i, isDemo, interactive)).join("")
-      : '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
+    // Bounded "products box" (cartConfig.itemsListMaxHeight): when set,
+    // the item list gets its own max-height + internal scrollbar, so a
+    // long product list never pushes the discount field/recommendation/
+    // Kosten-Übersicht/checkout button out of view — the visitor scrolls
+    // only within the product list itself, not the whole cart body. The
+    // box itself carries no visible chrome ("unsichtbar"); the divider
+    // right after it is the one visible separation from the rest of the
+    // cart, always shown regardless of whether a max-height is set.
+    const itemsInner = buildItemsHtml(items, isDemo, interactive, config);
+    const maxHeight = Number(config.itemsListMaxHeight);
+    const boxStyle = Number.isFinite(maxHeight) && maxHeight > 0 ? ` style="max-height:${maxHeight}px; overflow-y:auto; overflow-x:hidden;"` : "";
+    const itemsPart = `<div class="cart-items-box"${boxStyle}>${itemsInner}</div><div class="cart-items-box-divider"></div>`;
 
     let recommendPart = "";
     if (config.recommendEnabled) {
@@ -646,10 +690,102 @@
   function closeCart() { document.getElementById("cart-drawer")?.classList.remove("active"); document.getElementById("cart-drawer-backdrop")?.classList.remove("active"); return true; }
   document.addEventListener("DOMContentLoaded", () => setTimeout(bind, 0));
 
+  // ------------------------------------------------------------------
+  // Product segments — sidebar UI (left column, #panel-cart). Lives here
+  // rather than in cart-editor.js's right-hand panel since creating/
+  // editing a segment isn't tied to selecting a specific on-canvas part;
+  // it's a general cart setting, same category as the discount/recommend/
+  // progress toggles this file already manages.
+  // ------------------------------------------------------------------
+  function renderSegmentList() {
+    const listEl = document.getElementById("cart-segment-list");
+    if (!listEl) return;
+    const segments = Array.isArray(cart.getConfig()?.segments) ? cart.getConfig().segments : [];
+    listEl.innerHTML = segments.length ? "" : '<p class="help-text">Noch keine Segmente.</p>';
+    segments.forEach(segment => {
+      const row = document.createElement("div");
+      row.className = "item-row";
+      row.innerHTML = `<span class="item-row-text">${esc(segment.name)} (${(segment.productIds || []).length})</span><button type="button" class="btn btn-secondary btn-sm segment-edit-btn" data-seg-id="${esc(segment.id)}">✏️ Bearbeiten</button><button type="button" class="item-delete segment-delete-btn" data-seg-id="${esc(segment.id)}">✕</button>`;
+      listEl.appendChild(row);
+    });
+  }
+
+  // The "Markierungswerkzeug": a checklist of every product, pre-checked
+  // for whichever ones already belong to this segment, plus name and
+  // divider toggle. Reuses window.WebBuilderModals (same generic modal
+  // every other picker in this file uses) instead of a bespoke dialog.
+  function openSegmentModal(segmentId = null) {
+    const config = cart.getConfig() || {};
+    const existing = segmentId ? (config.segments || []).find(s => s.id === segmentId) : null;
+    const products = window.WebBuilderProducts?.getAll?.() || [];
+    const checkedIds = new Set(existing?.productIds || []);
+    const rowsHtml = products.length
+      ? products.map(p => `<label class="checkbox-row"><input type="checkbox" class="segment-product-check" value="${esc(p.id)}" ${checkedIds.has(p.id) ? "checked" : ""}> ${esc(p.icon || "📦")} ${esc(p.name)}</label>`).join("")
+      : '<p class="help-text">Noch keine Produkte vorhanden — lege zuerst im Tab „📦 Produkte“ ein Produkt an.</p>';
+    const bodyHtml = `
+      <div class="modal-stack">
+        <div class="form-group"><label for="segment-name-input">Name</label><input type="text" id="segment-name-input" value="${esc(existing?.name || "")}" placeholder="z. B. Zubehör"></div>
+        <label class="checkbox-row"><input type="checkbox" id="segment-divider-toggle" ${!existing || existing.showDivider ? "checked" : ""}> Trennlinie unterhalb anzeigen</label>
+        <hr class="divider modal-divider-tight">
+        <p class="help-text" style="margin:0 0 4px;">Produkte für dieses Segment auswählen:</p>
+        ${rowsHtml}
+      </div>
+    `;
+    const footerHtml = `<button type="button" class="btn btn-primary" id="segment-save-btn">Speichern</button>`;
+    window.WebBuilderModals?.open?.(existing ? "Segment bearbeiten" : "Segment erstellen", bodyHtml, footerHtml);
+    document.getElementById("segment-save-btn")?.addEventListener("click", () => {
+      const name = document.getElementById("segment-name-input")?.value.trim() || "Neues Segment";
+      const showDivider = !!document.getElementById("segment-divider-toggle")?.checked;
+      const productIds = Array.from(document.querySelectorAll(".segment-product-check:checked")).map(cb => cb.value);
+      if (existing) cart.updateSegment(existing.id, { name, productIds, showDivider });
+      else cart.addSegment({ name, productIds, showDivider });
+      renderSegmentList();
+      refreshCartViews();
+      window.WebBuilderModals?.close?.();
+    }, { once: true });
+  }
+
+  function bindSegmentControls() {
+    const addBtn = document.getElementById("btn-add-segment");
+    if (addBtn && addBtn.dataset.webBuilderSegBound !== "true") {
+      addBtn.dataset.webBuilderSegBound = "true";
+      addBtn.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); openSegmentModal(null); }, true);
+    }
+    const listEl = document.getElementById("cart-segment-list");
+    if (listEl && listEl.dataset.webBuilderSegBound !== "true") {
+      listEl.dataset.webBuilderSegBound = "true";
+      listEl.addEventListener("click", e => {
+        const editBtn = e.target.closest?.(".segment-edit-btn");
+        if (editBtn) { e.preventDefault(); e.stopImmediatePropagation(); openSegmentModal(editBtn.dataset.segId); return; }
+        const delBtn = e.target.closest?.(".segment-delete-btn");
+        if (delBtn) {
+          e.preventDefault(); e.stopImmediatePropagation();
+          cart.removeSegment(delBtn.dataset.segId);
+          renderSegmentList();
+          refreshCartViews();
+        }
+      }, true);
+    }
+    const heightInput = document.getElementById("cart-items-max-height");
+    if (heightInput && heightInput.dataset.webBuilderSegBound !== "true") {
+      heightInput.dataset.webBuilderSegBound = "true";
+      heightInput.addEventListener("change", e => {
+        const raw = e.target.value;
+        const v = raw === "" ? null : Math.max(80, Number(raw) || 0);
+        window.WebBuilderHistory?.arm(); cart.setConfig({ itemsListMaxHeight: v }, false); window.WebBuilderHistory?.commit();
+        refreshCartViews();
+      }, true);
+    }
+    renderSegmentList();
+  }
+
   function renderConfig() {
     const c = cart.getConfig() || {};
     const ids = [["cart-discount-toggle", c.discountEnabled], ["cart-recommend-toggle", c.recommendEnabled], ["cart-progress-toggle", c.progressEnabled]];
     ids.forEach(([id, v]) => { const e = document.getElementById(id); if (e) e.checked = !!v; });
+    const heightInput = document.getElementById("cart-items-max-height");
+    if (heightInput && document.activeElement !== heightInput) heightInput.value = c.itemsListMaxHeight != null ? c.itemsListMaxHeight : "";
+    renderSegmentList();
     applyCheckoutButtonStyle();
     if (state.cartFocusMode) {
       window.WebBuilderCartFocus?.renderStage?.();
@@ -661,10 +797,11 @@
     Object.entries(map).forEach(([id, p]) => document.getElementById(id)?.addEventListener("change", e => { window.WebBuilderHistory?.arm(); cart.setConfig({ [p]: e.target.checked }, false); window.WebBuilderHistory?.commit(); renderConfig(); refreshCartViews(); }, true));
     bindAddRecommendation();
     bindAddMilestone();
+    bindSegmentControls();
     renderConfig();
   }
   document.addEventListener("DOMContentLoaded", () => setTimeout(bindConfig, 0));
 
   window.WebBuilderCartRuntime = { render: renderCart, refresh: refreshCartViews, open: openCart, close: closeCart, buildCartHtml, buildCartParts };
-  window.WebBuilderCartConfigRuntime = { render: renderConfig, renderRecommendList, renderMilestoneList };
+  window.WebBuilderCartConfigRuntime = { render: renderConfig, renderRecommendList, renderMilestoneList, renderSegmentList };
 })();
