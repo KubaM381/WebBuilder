@@ -456,12 +456,13 @@
           </div>
 
           <!-- Kosten-Übersicht (Zwischensumme/Rabatt/Versand/Gesamt) —
-               Labels und Währung editierbar. T5: der Versand ist wieder
-               Teil dieses Blocks (keine eigene, verschiebbare Komponente
-               mehr), seine Felder stehen deshalb hier unten. Der
-               Meilenstein-Rabatt bleibt Teil des Rabattfeld-Panels
-               (component:discount). Siehe js/shop/cart-data.js
-               normalizeState() für die Default-Werte. -->
+               Labels und Währung editierbar. Der Meilenstein-Rabatt
+               bleibt Teil des Rabattfeld-Panels (component:discount).
+               Siehe js/shop/cart-data.js normalizeState() für die
+               Default-Werte. Die Versandkosten-Felder sind zur besseren
+               Übersicht als eigene, optisch abgesetzte "Subcard"
+               dargestellt (.inspector-subcard, siehe css/inspector.css),
+               statt lose zwischen den übrigen Feldern zu stehen. -->
           <div id="cart-comp-totals-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-currency">Währung</label>
               <select id="cart-comp-currency">
@@ -474,20 +475,22 @@
             <div class="form-group"><label for="cart-comp-discount-label">Label „Rabatt“</label><input type="text" id="cart-comp-discount-label" placeholder="Rabatt"></div>
             <div class="form-group"><label for="cart-comp-total-label">Label „Gesamt“</label><input type="text" id="cart-comp-total-label" placeholder="Gesamt"></div>
 
-            <hr class="divider modal-divider-tight">
-            <!-- Versand (T5, vorher eigenes Panel component:shipping).
-                 Das Freibetrag-Feld synchronisiert sich bidirektional mit
-                 einem "Kostenloser Versand"-Meilenstein im
-                 Fortschrittsbalken-Panel, falls einer existiert
-                 (js/shop/cart-data.js syncFreeShippingMilestone(),
-                 js/shop/cart-render.js renderMilestoneList()). Ist kein
-                 Meilenstein vorhanden, gilt das Freibetrag-Ziel trotzdem
-                 eigenständig. -->
-            <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
-            <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (€)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
-            <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
-            <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (€)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
-            <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist. Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
+            <!-- Versand als eigenständiger, klar abgegrenzter Block
+                 (T4-Aufgabe "optisch abgesetzt"). Das Freibetrag-Feld
+                 synchronisiert sich bidirektional mit einem "Kostenloser
+                 Versand"-Meilenstein im Fortschrittsbalken-Panel, falls
+                 einer existiert (js/shop/cart-data.js
+                 syncFreeShippingMilestone(), js/shop/cart-render.js
+                 renderMilestoneList()). Ist kein Meilenstein vorhanden,
+                 gilt das Freibetrag-Ziel trotzdem eigenständig. -->
+            <div class="inspector-subcard">
+              <div class="inspector-subcard-title">🚚 Versand</div>
+              <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
+              <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (€)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
+              <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
+              <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (€)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
+              <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist. Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
+            </div>
           </div>
 
           <!-- T6: Panel einer einzelnen Trennlinie
