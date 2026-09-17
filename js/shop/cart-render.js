@@ -69,10 +69,16 @@
   // item's own qty while the cart is empty — see cart-editor.js
   // renderFocusStage()), so it renders identically for both the real
   // drawer and the editor's demo preview.
+  //
+  // cartTitleLabel is fully free-form text with an optional {anzahl}
+  // placeholder (cart-data.js TITLE_COUNT_PLACEHOLDER) for the live
+  // count, replacing the old fixed "Titel (Anzahl)" format that always
+  // appended the count in parentheses regardless of the label text.
   function buildTitleHtml(count, interactive) {
     const config = cart.getConfig() || {};
-    const cartTitle = config.cartTitleLabel || "Dein Warenkorb";
-    const titleHtml = `<h3 class="cart-title-text">${esc(cartTitle)} (${count})</h3>`;
+    const template = config.cartTitleLabel || `Dein Warenkorb (${cart.TITLE_COUNT_PLACEHOLDER})`;
+    const cartTitle = template.split(cart.TITLE_COUNT_PLACEHOLDER).join(count);
+    const titleHtml = `<h3 class="cart-title-text">${esc(cartTitle)}</h3>`;
     return wrapComponent(titleHtml, "title", interactive);
   }
 
