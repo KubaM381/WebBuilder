@@ -38,6 +38,13 @@
     return currency.position === "before" ? `${symbol}${amount}` : `${amount} ${symbol}`;
   }
 
+  // Placeholder token users can embed anywhere in the free-form cart
+  // title (cartConfig.cartTitleLabel) to show the live item count —
+  // replaces the old fixed "Titel (Anzahl)" format from before the title
+  // became fully free-form (see cart-render.js buildTitleHtml() and the
+  // migration in normalizeState() below).
+  const TITLE_COUNT_PLACEHOLDER = "{anzahl}";
+
   function normalizeCartItem(item = {}) {
     const price = Number(item.price) || 0;
     const discountPrice = item.discountPrice != null && item.discountPrice !== "" ? Number(item.discountPrice) || 0 : null;
@@ -218,10 +225,20 @@
     delete state.cartConfig.footerBackgroundColor;
     if (state.cartConfig.itemWidth === undefined) state.cartConfig.itemWidth = null;
     if (state.cartConfig.itemMinHeight === undefined) state.cartConfig.itemMinHeight = null;
-    // Editable title of the cart drawer/editor header (e.g. "Dein
-    // Warenkorb"). Default matches the previously hardcoded string
-    // exactly, so existing projects render byte-identical until changed.
-    if (state.cartConfig.cartTitleLabel == null) state.cartConfig.cartTitleLabel = "Dein Warenkorb";
+    // Editable, free-form title of the cart drawer/editor header (e.g.
+    // "Dein Warenkorb ({anzahl})"). The {anzahl} token (TITLE_COUNT_
+    // PLACEHOLDER) is replaced with the live item count wherever it
+    // appears in the text (see cart-render.js buildTitleHtml()) — it can
+    // sit anywhere in the string, not just at the end. Projects saved
+    // before this placeholder existed always showed "Titel (Anzahl)"
+    // unconditionally; a title without the token is migrated once by
+    // appending " ({anzahl})" so those projects keep rendering exactly
+    // as before.
+    if (state.cartConfig.cartTitleLabel == null) {
+      state.cartConfig.cartTitleLabel = `Dein Warenkorb (${TITLE_COUNT_PLACEHOLDER})`;
+    } else if (!state.cartConfig.cartTitleLabel.includes(TITLE_COUNT_PLACEHOLDER)) {
+      state.cartConfig.cartTitleLabel = `${state.cartConfig.cartTitleLabel} (${TITLE_COUNT_PLACEHOLDER})`;
+    }
     // "Kosten-Übersicht" (component:totals, cart-editor.js): editable
     // labels for the subtotal/discount/shipping/total rows. Versand ist
     // seit T5 wieder Teil dieses Blocks (keine eigene Komponente mehr),
@@ -494,6 +511,6 @@
     // Internal helpers also used by shop/cart-render.js and
     // shop/cart-editor.js (kept here since they operate on the cart data/
     // config shape owned by this file).
-    quantityColorHex, formatCurrency, CURRENCY_PRESETS, pickRecommendation, defaultRecommendationText, CONDITION_LABELS
+    quantityColorHex, formatCurrency, CURRENCY_PRESETS, TITLE_COUNT_PLACEHOLDER, pickRecommendation, defaultRecommendationText, CONDITION_LABELS
   };
 })();
