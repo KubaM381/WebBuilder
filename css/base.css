@@ -19,6 +19,13 @@
      but kept as a variable per css/README.md rule 7 in case guides get a
      second use (e.g. a "snap active" indicator) later. */
   --guide-color: #ec4899;
+  /* Shared fixed width of the cart, used by BOTH the real drawer
+     (.drawer) and the cart focus editor stage (.cart-focus-card) — see
+     css/modals.css. Kept as one variable so the two stay pixel-identical
+     by construction instead of two hardcoded numbers that could drift
+     apart (css/README.md rule 7). Was 380px, widened to 480px per task
+     "Warenkorb insgesamt breiter darstellen". */
+  --cart-width: 480px;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
