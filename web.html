@@ -217,8 +217,8 @@
            ausschließlich im Warenkorb-Editor selbst bearbeitet (rechtes
            Panel #cart-inspector-form, siehe unten) — dort klickt man das
            jeweilige Element (Artikel, Fortschrittsbalken, Rabattfeld,
-           Empfehlung, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht,
-           Trennlinie, Hintergrund) direkt an. -->
+           Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Trennlinie oder
+           Hintergrund) direkt an. -->
       <div class="sidebar-panel hidden" id="panel-cart">
         <button type="button" id="btn-cart-focus-editor" class="btn btn-primary" style="width:100%; margin-bottom:14px;">🎯 Warenkorb-Editor öffnen</button>
 
@@ -386,34 +386,33 @@
       </div>
 
       <!-- Warenkorb-Editor: Bearbeitung einzelner Bereiche (Artikel-Teile,
-           Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button/
-           Fußbereich, Kosten-Übersicht inkl. Versand, Trennlinien,
-           Hintergrund, Artikel-Darstellung, Warenkorb-Titel), siehe
+           Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button,
+           Kosten-Übersicht inkl. Versand, Trennlinien, Hintergrund,
+           Artikel-Darstellung, Warenkorb-Titel), siehe
            js/shop/cart-editor.js enterFocusMode()/renderFocusPartPanel(). -->
       <div id="cart-inspector-form" class="inspector-form hidden">
         <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button/Fußbereich, Kosten-Übersicht, Trennlinie oder Hintergrund), um ihn hier anzupassen.</p>
+        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Trennlinie oder Hintergrund), um ihn hier anzupassen.</p>
 
         <div id="cart-part-editor" class="hidden">
           <div class="form-group"><label id="cart-part-label">Element</label></div>
 
-          <!-- Warenkorb-Titel (Kopfzeile der Vorschau/des echten Drawers) -->
-          <div id="cart-comp-header-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-header-title">Titel</label><input type="text" id="cart-comp-header-title" placeholder="Dein Warenkorb"></div>
-          </div>
-
-          <!-- Fußbereich (component:footer) — der ganze Balken, in dem der
-               Zur-Kasse-Button sitzt. Nur die Hintergrundfarbe ist
-               konfigurierbar, keine Position (siehe NON_POSITIONABLE in
-               js/shop/cart-editor.js). Klick auf den Button selbst
-               selektiert weiterhin "component:checkout". -->
-          <div id="cart-comp-footer-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-footer-bg-color">Hintergrundfarbe (Fußbereich)</label><input type="color" id="cart-comp-footer-bg-color"></div>
+          <!-- Warenkorb-Titel — frei platzierbare Komponente wie jede
+               andere (kein eigener Kopfbalken mehr), siehe
+               js/shop/cart-render.js buildTitleHtml(). Freitext mit
+               optionalem {anzahl}-Platzhalter für die live aktualisierte
+               Artikelanzahl. -->
+          <div id="cart-comp-title-fields" class="hidden">
+            <div class="form-group">
+              <label for="cart-comp-title-label">Titel</label>
+              <input type="text" id="cart-comp-title-label" placeholder="Dein Warenkorb ({anzahl})">
+            </div>
+            <p class="help-text">Verwende <code>{anzahl}</code> als Platzhalter für die aktuelle Artikelanzahl — er kann an beliebiger Stelle im Text stehen, z. B. „{anzahl} Produkte“.</p>
           </div>
 
           <!-- Zur-Kasse-Button. T4: lässt sich im Editor frei auf der
-               ganzen Karte positionieren, nicht mehr nur innerhalb der
-               Fußleiste. -->
+               ganzen Karte positionieren, nicht mehr nur innerhalb einer
+               Fußleiste (die es nicht mehr gibt). -->
           <div id="cart-comp-checkout-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-checkout-label">Beschriftung</label><input type="text" id="cart-comp-checkout-label"></div>
             <div class="form-group"><label for="cart-comp-checkout-color">Farbe</label><input type="color" id="cart-comp-checkout-color"></div>
@@ -612,10 +611,10 @@
           </div>
 
           <!-- Position (X/Y) — gilt für Artikel-Teile, Fortschrittsbalken,
-               Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht
-               und Trennlinien. Nicht für Hintergrund, Artikel-Darstellung,
-               den Warenkorb-Titel und den Fußbereich (dafür ist eine feste
-               Position nicht sinnvoll). -->
+               Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht,
+               Warenkorb-Titel und Trennlinien. Nicht für Hintergrund und
+               Artikel-Darstellung (dafür ist eine feste Position nicht
+               sinnvoll). -->
           <div id="cart-comp-position-fields">
             <div class="form-group">
               <label for="cart-part-x">Position X (px)</label>
