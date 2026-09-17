@@ -25,9 +25,9 @@
 // whichever container it visually belongs to (.cart-focus-fixed-top for
 // "progress", .cart-focus-fixed-bottom for "recommend"/"discount"/
 // "totals" as siblings, .cart-focus-footer for the checkout button, and
-// .cart-totals for "shipping"/"totalsDivider" nested inside the totals
-// block) — so no per-component special-casing is needed to find the
-// right siblings. The resize handle on the article representation
+// .cart-focus-body itself for the freely placeable dividers) — so no
+// per-component special-casing is needed to find the right siblings.
+// The resize handle on the article representation
 // (component:itemRepresentation) is a resize, not a move, and stays out
 // of scope per the task description.
 (() => {
@@ -119,8 +119,10 @@
   // editable but never position-draggable — same reasoning as
   // background/itemRepresentation: none of them have a sensible free
   // position, they're fixed bars at the top/bottom of the card.
-  // "shipping" (T7) is deliberately NOT in this set — it IS positionable,
-  // like progress/discount/recommend/checkout/totals.
+  // Dividers ("component:divider:<id>") are deliberately NOT in this set —
+  // they ARE positionable, like progress/discount/recommend/checkout/
+  // totals. Shipping no longer appears here at all: it is a plain row
+  // inside the totals block again (T5), not its own component.
   const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation", "component:header", "component:footer"]);
 
   // Every cart item renders the same data-cart-part keys, because one
@@ -160,10 +162,16 @@
   // Field-block IDs for the right-hand panel (renderFocusPartPanel()).
   const PART_FIELD_BLOCK_IDS = [
     "cart-comp-header-fields", "cart-comp-footer-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
-    "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields", "cart-comp-shipping-fields",
+    "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
-    "cart-comp-totals-fields", "cart-comp-totals-divider-fields"
+    "cart-comp-totals-fields", "cart-comp-divider-fields"
   ];
+
+  // T6: "component:divider:<id>" — every divider is its own positionable
+  // component, so the panel branch is matched by prefix instead of an
+  // exact key.
+  const DIVIDER_PREFIX = "component:divider:";
+  const isDividerKey = key => String(key || "").startsWith(DIVIDER_PREFIX);
 
   function renderFocusPartPanel() {
     const empty = document.getElementById("cart-part-empty");
@@ -181,11 +189,10 @@
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
-      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel", "component:footer": "Fußbereich (Zur-Kasse)",
-      "component:shipping": "Versand", "component:totalsDivider": "Trennlinie (über Zwischensumme)"
+      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel", "component:footer": "Fußbereich (Zur-Kasse)"
     };
     const labelEl = document.getElementById("cart-part-label");
-    if (labelEl) labelEl.textContent = labels[sel] || sel;
+    if (labelEl) labelEl.textContent = isDividerKey(sel) ? "Trennlinie" : (labels[sel] || sel);
 
     const config = cart.getConfig();
 
@@ -248,16 +255,6 @@
       dividerGroup?.classList.toggle("hidden", config.itemShape !== "transparent");
       const dividerCb = document.getElementById("cid-show-item-dividers");
       if (dividerCb) dividerCb.checked = !!config.itemDisplay.showItemDividers;
-    } else if (sel === "component:shipping") {
-      document.getElementById("cart-comp-shipping-fields")?.classList.remove("hidden");
-      const shippingLabelInput = document.getElementById("cart-comp-shipping-label");
-      if (shippingLabelInput && document.activeElement !== shippingLabelInput) shippingLabelInput.value = config.shippingLabel || "Versand";
-      const shippingCostInput = document.getElementById("cart-comp-shipping-cost");
-      if (shippingCostInput && document.activeElement !== shippingCostInput) shippingCostInput.value = config.shippingCost != null ? config.shippingCost : 4.95;
-      const shippingFreeInput = document.getElementById("cart-comp-shipping-free-text");
-      if (shippingFreeInput && document.activeElement !== shippingFreeInput) shippingFreeInput.value = config.shippingFreeText || "Kostenlos";
-      const shippingThresholdInput = document.getElementById("cart-comp-shipping-free-threshold");
-      if (shippingThresholdInput && document.activeElement !== shippingThresholdInput) shippingThresholdInput.value = config.shippingFreeThreshold != null ? config.shippingFreeThreshold : "";
     } else if (sel === "component:totals") {
       document.getElementById("cart-comp-totals-fields")?.classList.remove("hidden");
       const currencySelect = document.getElementById("cart-comp-currency");
@@ -284,9 +281,18 @@
         const freeProductValueInput = document.getElementById("cart-comp-free-product-value");
         if (freeProductValueInput && document.activeElement !== freeProductValueInput) freeProductValueInput.value = config.freeProductValueText || "freigeschaltet";
       }
-      document.getElementById("btn-add-totals-divider")?.classList.toggle("hidden", !!config.totalsDividerEnabled);
-    } else if (sel === "component:totalsDivider") {
-      document.getElementById("cart-comp-totals-divider-fields")?.classList.remove("hidden");
+      // T5: Versand ist wieder Teil der Kosten-Übersicht (keine eigene
+      // Komponente mehr) — seine Felder sitzen jetzt in diesem Panel.
+      const shippingLabelInput = document.getElementById("cart-comp-shipping-label");
+      if (shippingLabelInput && document.activeElement !== shippingLabelInput) shippingLabelInput.value = config.shippingLabel || "Versand";
+      const shippingCostInput = document.getElementById("cart-comp-shipping-cost");
+      if (shippingCostInput && document.activeElement !== shippingCostInput) shippingCostInput.value = config.shippingCost != null ? config.shippingCost : 4.95;
+      const shippingFreeInput = document.getElementById("cart-comp-shipping-free-text");
+      if (shippingFreeInput && document.activeElement !== shippingFreeInput) shippingFreeInput.value = config.shippingFreeText || "Kostenlos";
+      const shippingThresholdInput = document.getElementById("cart-comp-shipping-free-threshold");
+      if (shippingThresholdInput && document.activeElement !== shippingThresholdInput) shippingThresholdInput.value = config.shippingFreeThreshold != null ? config.shippingFreeThreshold : "";
+    } else if (isDividerKey(sel)) {
+      document.getElementById("cart-comp-divider-fields")?.classList.remove("hidden");
     } else if (sel === "qty") {
       document.getElementById("cart-comp-qty-fields")?.classList.remove("hidden");
       const qs = document.getElementById("cid-quantity-style"); if (qs) qs.value = config.itemDisplay.quantityStyle || "stepper";
@@ -376,12 +382,17 @@
 
         // Bounds relative to the component's positioning parent — same
         // reasoning as the [data-cart-part] bounds below: keeps
-        // progress/discount/recommend/checkout/shipping/totals inside the
+        // progress/discount/recommend/checkout/totals/dividers inside the
         // visible card area instead of letting them be dragged out
-        // arbitrarily far. Falls back through the most specific ancestor
-        // first (footer bar for the checkout button, otherwise the card
-        // body, otherwise the card itself).
-        const parentEl = compEl.closest(".cart-focus-footer") || compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
+        // arbitrarily far.
+        //
+        // T4: .cart-focus-footer is deliberately NOT part of this chain.
+        // It used to match first for the checkout button, which clamped
+        // that button to the (small) footer bar so it could never be
+        // dragged out of it. Falling through to the card body / the card
+        // itself lets it be positioned anywhere on the card, like every
+        // other component.
+        const parentEl = compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
         let bounds = null;
         if (parentEl) {
           const parentRect = parentEl.getBoundingClientRect();
@@ -617,11 +628,12 @@
     const buildCartParts = window.WebBuilderCartRuntime?.buildCartParts;
     const parts = buildCartParts
       ? buildCartParts(items, { interactive: true, isDemo: usingDemo })
-      : { progress: "", items: "", recommend: "", discount: "", totals: "" };
+      : { dividers: "", progress: "", items: "", recommend: "", discount: "", totals: "" };
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
         <div class="drawer-header cart-focus-header${headerSelectedClass}" data-cart-component="header"><h3>${esc(cartTitle)} (${previewCount})</h3><button type="button" class="close-btn" disabled>&times;</button></div>
         <div class="cart-focus-body">
+          ${parts.dividers}
           <div class="cart-focus-fixed-top">${parts.progress}</div>
           <div class="cart-focus-scroll">${parts.items}</div>
           <div class="cart-focus-fixed-bottom">${parts.recommend}${parts.discount}${parts.totals}</div>
@@ -772,20 +784,25 @@
       refreshCartViews();
     }, true);
 
-    document.getElementById("btn-add-totals-divider")?.addEventListener("click", e => {
+    // T6: Trennlinien sind eine beliebig oft hinzufügbare Komponente. Der
+    // "+"-Knopf hängt am Editor-Panel selbst (nicht mehr in der
+    // Kosten-Übersicht), die neue Linie startet oben im Warenkorb-Körper
+    // und wird sofort ausgewählt, damit sie direkt an ihren Platz gezogen
+    // werden kann.
+    document.getElementById("btn-add-divider")?.addEventListener("click", e => {
       e.preventDefault(); e.stopImmediatePropagation();
-      window.WebBuilderHistory?.arm(); cart.setConfig({ totalsDividerEnabled: true }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-      selectFocusPart("component:totalsDivider");
+      if (!state.cartFocusMode) enterFocusMode();
+      const divider = cart.addDivider();
+      if (divider) selectFocusPart(`${DIVIDER_PREFIX}${divider.id}`);
     }, true);
-    document.getElementById("btn-remove-totals-divider")?.addEventListener("click", e => {
+    document.getElementById("btn-remove-divider")?.addEventListener("click", e => {
       e.preventDefault(); e.stopImmediatePropagation();
-      window.WebBuilderHistory?.arm();
-      cart.setConfig({ totalsDividerEnabled: false }, false);
-      delete state.cartConfig.componentLayout.totalsDivider;
-      window.WebBuilderHistory?.commit();
-      refreshCartViews();
-      selectFocusPart("component:totals");
+      const sel = state.cartFocusSelectedPart;
+      if (!isDividerKey(sel)) return;
+      cart.removeDivider(sel.slice(DIVIDER_PREFIX.length));
+      state.cartFocusSelectedPart = null;
+      renderFocusStage();
+      renderFocusPartPanel();
     }, true);
 
     document.getElementById("cart-comp-shipping-label")?.addEventListener("change", e => {
