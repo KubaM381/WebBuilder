@@ -434,7 +434,11 @@
                dasselbe Muster wie das Freibetrag-Ziel bei den
                Versand-Feldern (siehe js/shop/cart-data.js
                syncDiscountMilestone() und js/shop/cart-render.js
-               renderMilestoneList()). -->
+               renderMilestoneList()). Die Einheit im Label
+               "Rabatt ab Warenkorbwert" ist ein <span>, den
+               js/shop/cart-editor.js renderFocusPartPanel() mit dem
+               Symbol der aktuell gewählten Währung befüllt (siehe
+               #cart-comp-currency im Kosten-Übersicht-Panel). -->
           <div id="cart-comp-discount-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-discount-color">Farbe</label><input type="color" id="cart-comp-discount-color"></div>
             <div class="form-group"><label for="cart-comp-discount-shape">Form</label>
@@ -446,7 +450,7 @@
             </div>
             <hr class="divider modal-divider-tight">
             <div class="form-group"><label for="cart-comp-discount-percent">Extra-Rabatt bei Meilenstein (%)</label><input type="number" id="cart-comp-discount-percent" min="0" max="100" step="1" placeholder="10"></div>
-            <div class="form-group"><label for="cart-comp-discount-threshold">Rabatt ab Warenkorbwert (€)</label><input type="number" id="cart-comp-discount-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
+            <div class="form-group"><label for="cart-comp-discount-threshold">Rabatt ab Warenkorbwert (<span id="cart-discount-threshold-currency">€</span>)</label><input type="number" id="cart-comp-discount-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
             <p class="help-text">Der Extra-Rabatt gilt, sobald entweder ein Meilenstein „Extra-Rabatt“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert. Er kommt zusätzlich zu einem eingelösten Rabattcode obendrauf.</p>
           </div>
 
@@ -461,8 +465,11 @@
                Siehe js/shop/cart-data.js normalizeState() für die
                Default-Werte. Die Versandkosten-Felder sind zur besseren
                Übersicht als eigene, optisch abgesetzte "Subcard"
-               dargestellt (.inspector-subcard, siehe css/inspector.css),
-               statt lose zwischen den übrigen Feldern zu stehen. -->
+               dargestellt (.inspector-subcard, siehe css/inspector.css).
+               Die Einheiten in "Versandkosten (€)" und
+               "Kostenlos ab Warenkorbwert (€)" sind <span>s, die
+               js/shop/cart-editor.js renderFocusPartPanel() mit dem
+               Symbol der links ausgewählten Währung befüllt. -->
           <div id="cart-comp-totals-fields" class="hidden">
             <div class="form-group"><label for="cart-comp-currency">Währung</label>
               <select id="cart-comp-currency">
@@ -475,20 +482,20 @@
             <div class="form-group"><label for="cart-comp-discount-label">Label „Rabatt“</label><input type="text" id="cart-comp-discount-label" placeholder="Rabatt"></div>
             <div class="form-group"><label for="cart-comp-total-label">Label „Gesamt“</label><input type="text" id="cart-comp-total-label" placeholder="Gesamt"></div>
 
-            <!-- Versand als eigenständiger, klar abgegrenzter Block
-                 (T4-Aufgabe "optisch abgesetzt"). Das Freibetrag-Feld
-                 synchronisiert sich bidirektional mit einem "Kostenloser
-                 Versand"-Meilenstein im Fortschrittsbalken-Panel, falls
-                 einer existiert (js/shop/cart-data.js
-                 syncFreeShippingMilestone(), js/shop/cart-render.js
-                 renderMilestoneList()). Ist kein Meilenstein vorhanden,
-                 gilt das Freibetrag-Ziel trotzdem eigenständig. -->
+            <!-- Versand als eigenständiger, klar abgegrenzter Block. Das
+                 Freibetrag-Feld synchronisiert sich bidirektional mit
+                 einem "Kostenloser Versand"-Meilenstein im
+                 Fortschrittsbalken-Panel, falls einer existiert
+                 (js/shop/cart-data.js syncFreeShippingMilestone(),
+                 js/shop/cart-render.js renderMilestoneList()). Ist kein
+                 Meilenstein vorhanden, gilt das Freibetrag-Ziel trotzdem
+                 eigenständig. -->
             <div class="inspector-subcard">
               <div class="inspector-subcard-title">🚚 Versand</div>
               <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
-              <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (€)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
+              <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (<span id="cart-shipping-cost-currency">€</span>)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
               <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
-              <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (€)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
+              <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (<span id="cart-shipping-free-threshold-currency">€</span>)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
               <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist. Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
             </div>
           </div>
