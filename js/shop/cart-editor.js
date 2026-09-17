@@ -24,9 +24,11 @@
 // <div data-cart-component="..."> that is always a direct child of
 // whichever container it visually belongs to (.cart-focus-fixed-top for
 // "progress", .cart-focus-fixed-bottom for "recommend"/"discount"/
-// "totals" as siblings, .cart-focus-footer for the checkout button, and
-// .cart-focus-body itself for the freely placeable dividers) — so no
-// per-component special-casing is needed to find the right siblings.
+// "totals"/"checkout" as siblings, and .cart-focus-body itself for the
+// title and the freely placeable dividers) — so no per-component
+// special-casing is needed to find the right siblings. There is no
+// separate header/footer bar anymore — title and checkout are just two
+// more top-level components like the rest.
 // The resize handle on the article representation
 // (component:itemRepresentation) is a resize, not a move, and stays out
 // of scope per the task description.
@@ -36,7 +38,6 @@
   const cart = window.WebBuilderCart;
   if (!cart) { console.error("WebBuilderCartFocus: WebBuilderCart is not available."); return; }
   function notify(domain, action, payload) { if (typeof state.notify === "function") state.notify(domain, action, payload); }
-  const esc = window.WebBuilderUtils.escapeHtml;
 
   function refreshCartViews() { window.WebBuilderCartRuntime?.refresh?.(); }
 
@@ -114,16 +115,13 @@
       resetPartLayout(sel);
     }
   }
-  // "header" (the drawer-header preview at the top of the stage) and
-  // "footer" (the bar the checkout button sits in) are selectable/
-  // editable but never position-draggable — same reasoning as
-  // background/itemRepresentation: none of them have a sensible free
-  // position, they're fixed bars at the top/bottom of the card.
-  // Dividers ("component:divider:<id>") are deliberately NOT in this set —
-  // they ARE positionable, like progress/discount/recommend/checkout/
-  // totals. Shipping no longer appears here at all: it is a plain row
-  // inside the totals block again (T5), not its own component.
-  const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation", "component:header", "component:footer"]);
+  // "background" (the whole card background) and "itemRepresentation"
+  // (the article box, resized via its own drag handle) are selectable/
+  // editable but never position-draggable — neither has a sensible free
+  // position. Dividers ("component:divider:<id>") are deliberately NOT in
+  // this set — they ARE positionable, like progress/discount/recommend/
+  // totals/checkout/title.
+  const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation"]);
 
   // Every cart item renders the same data-cart-part keys, because one
   // shared pixel offset per part type applies to all items
@@ -141,7 +139,6 @@
       const key = sel.slice("component:".length);
       if (key === "background") stage.querySelector(".cart-focus-card")?.classList.add("cart-component-selected");
       else if (key === "itemRepresentation") stage.querySelectorAll(".cart-item").forEach(el => el.classList.add("cart-component-selected"));
-      else if (key === "footer") stage.querySelector(".cart-focus-footer")?.classList.add("cart-component-selected");
       else stage.querySelectorAll(`[data-cart-component="${key}"]`).forEach(el => el.classList.add("cart-component-selected"));
     } else {
       stage.querySelectorAll(`[data-cart-part="${sel}"]`).forEach(el => el.classList.add("cart-item-part-selected"));
@@ -161,7 +158,7 @@
 
   // Field-block IDs for the right-hand panel (renderFocusPartPanel()).
   const PART_FIELD_BLOCK_IDS = [
-    "cart-comp-header-fields", "cart-comp-footer-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
+    "cart-comp-title-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
     "cart-comp-totals-fields", "cart-comp-divider-fields"
@@ -189,26 +186,20 @@
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
-      "component:totals": "Kosten-Übersicht", "component:header": "Warenkorb-Titel", "component:footer": "Fußbereich (Zur-Kasse)"
+      "component:totals": "Kosten-Übersicht", "component:title": "Warenkorb-Titel"
     };
     const labelEl = document.getElementById("cart-part-label");
     if (labelEl) labelEl.textContent = isDividerKey(sel) ? "Trennlinie" : (labels[sel] || sel);
 
     const config = cart.getConfig();
 
-    if (sel === "component:header") {
-      // T1: editable title shown in the drawer-header preview at the top
-      // of the stage (see renderFocusStage()) and in the real drawer
-      // (cart-render.js renderCart()).
-      document.getElementById("cart-comp-header-fields")?.classList.remove("hidden");
-      const titleInput = document.getElementById("cart-comp-header-title");
+    if (sel === "component:title") {
+      // Der Warenkorb-Titel ist eine ganz normale, frei platzierbare
+      // Komponente (kein eigener Kopfbalken mehr) — siehe
+      // js/shop/cart-render.js buildTitleHtml().
+      document.getElementById("cart-comp-title-fields")?.classList.remove("hidden");
+      const titleInput = document.getElementById("cart-comp-title-label");
       if (titleInput && document.activeElement !== titleInput) titleInput.value = config.cartTitleLabel || "Dein Warenkorb";
-    } else if (sel === "component:footer") {
-      // Fußbereich (der Balken, in dem der Zur-Kasse-Button sitzt) — nur
-      // die Hintergrundfarbe ist konfigurierbar, keine Position.
-      document.getElementById("cart-comp-footer-fields")?.classList.remove("hidden");
-      const bgInput = document.getElementById("cart-comp-footer-bg-color");
-      if (bgInput) bgInput.value = config.footerBackgroundColor || "#f3f4f6";
     } else if (sel === "component:checkout") {
       document.getElementById("cart-comp-checkout-fields")?.classList.remove("hidden");
       const labelInput = document.getElementById("cart-comp-checkout-label");
@@ -370,9 +361,9 @@
         const key = compEl.dataset.cartComponent;
         e.preventDefault(); e.stopPropagation();
         selectFocusPartLight(`component:${key}`);
-        // NON_POSITIONABLE components (header/footer/background/
-        // itemRepresentation) are selectable but never draggable — bail
-        // out before any drag tracking is set up.
+        // NON_POSITIONABLE components (background/itemRepresentation) are
+        // selectable but never draggable — bail out before any drag
+        // tracking is set up.
         if (NON_POSITIONABLE.has(`component:${key}`)) return;
 
         const origin = state.cartConfig.componentLayout[key] || { x: 0, y: 0 };
@@ -380,18 +371,13 @@
         let moved = false;
         let guides = null;
 
-        // Bounds relative to the component's positioning parent — same
-        // reasoning as the [data-cart-part] bounds below: keeps
-        // progress/discount/recommend/totals/dividers inside the visible
-        // card area instead of letting them be dragged out arbitrarily
-        // far. The checkout button is bounded to its own footer bar
-        // (.cart-focus-footer matches first below) — it should only be
-        // repositionable within that dedicated area, not anywhere on the
-        // whole card, matching where a checkout button belongs in a real
-        // cart drawer. Every other component isn't inside the footer bar
-        // at all, so this falls through to .cart-focus-body for them,
-        // unaffected.
-        const parentEl = compEl.closest(".cart-focus-footer") || compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
+        // Bounds relative to the component's positioning parent — keeps
+        // every top-level component (title/progress/discount/recommend/
+        // totals/checkout/dividers) inside the visible card area instead
+        // of letting it be dragged out arbitrarily far. There is no
+        // separate footer bar anymore — the checkout button is bounded to
+        // the same .cart-focus-body area as every other component.
+        const parentEl = compEl.closest(".cart-focus-body") || compEl.closest(".cart-focus-card");
         let bounds = null;
         if (parentEl) {
           const parentRect = parentEl.getBoundingClientRect();
@@ -613,32 +599,24 @@
       items = [{ id: "focus-demo", productId: demoSource.id || null, name: demoSource.name, price: demoSource.price, discountPrice: demoSource.discountPrice, qty: 2, icon: demoSource.icon, description: demoSource.description || "Kurze Beschreibung des Produkts." }];
     }
     const config = cart.getConfig() || {};
-    const checkoutColor = config.buttonColor || "#4f46e5";
-    const checkoutRadius = config.buttonShape === "pill" ? "999px" : (config.buttonShape === "square" ? "0px" : "6px");
-    const checkoutLayout = config.componentLayout.checkout || { x: 0, y: 0 };
-    const checkoutSelectedClass = state.cartFocusSelectedPart === "component:checkout" ? " cart-component-selected" : "";
     const bgSelectedClass = state.cartFocusSelectedPart === "component:background" ? " cart-component-selected" : "";
-    const headerSelectedClass = state.cartFocusSelectedPart === "component:header" ? " cart-component-selected" : "";
-    const footerSelectedClass = state.cartFocusSelectedPart === "component:footer" ? " cart-component-selected" : "";
-    const footerBgStyle = config.footerBackgroundColor ? ` style="background-color:${config.footerBackgroundColor};"` : "";
     const cardBgStyle = config.cardBackgroundColor ? ` style="background-color:${config.cardBackgroundColor};"` : "";
-    const cartTitle = config.cartTitleLabel || "Dein Warenkorb";
-    const previewCount = usingDemo ? (Number(items[0]?.qty) || 0) : cart.getCount();
     const buildCartParts = window.WebBuilderCartRuntime?.buildCartParts;
     const parts = buildCartParts
       ? buildCartParts(items, { interactive: true, isDemo: usingDemo })
-      : { dividers: "", progress: "", items: "", recommend: "", discount: "", totals: "" };
+      : { title: "", dividers: "", progress: "", items: "", recommend: "", discount: "", totals: "", checkout: "" };
+    // Kein eigener Kopf-/Fußbalken mehr — Titel und Zur-Kasse-Button
+    // fließen wie jede andere Komponente ganz normal in .cart-focus-body
+    // mit (siehe js/shop/cart-render.js buildTitleHtml()/
+    // buildCheckoutHtml()).
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
-        <div class="drawer-header cart-focus-header${headerSelectedClass}" data-cart-component="header"><h3>${esc(cartTitle)} (${previewCount})</h3><button type="button" class="close-btn" disabled>&times;</button></div>
         <div class="cart-focus-body">
+          ${parts.title}
           ${parts.dividers}
           <div class="cart-focus-fixed-top">${parts.progress}</div>
           <div class="cart-focus-scroll">${parts.items}</div>
-          <div class="cart-focus-fixed-bottom">${parts.recommend}${parts.discount}${parts.totals}</div>
-        </div>
-        <div class="drawer-footer cart-focus-footer${footerSelectedClass}" data-cart-component="footer"${footerBgStyle}>
-          <button type="button" class="btn btn-primary cart-focus-checkout${checkoutSelectedClass}" data-cart-component="checkout" style="width:100%; background-color:${checkoutColor}; border-radius:${checkoutRadius}; transform:translate(${checkoutLayout.x || 0}px, ${checkoutLayout.y || 0}px);">${esc(state.cartButtonLabel || "Zur Kasse gehen")}</button>
+          <div class="cart-focus-fixed-bottom">${parts.recommend}${parts.discount}${parts.totals}${parts.checkout}</div>
         </div>
       </div>
     `;
@@ -671,13 +649,8 @@
       selectFocusPart("component:itemRepresentation");
     }, true);
 
-    document.getElementById("cart-comp-header-title")?.addEventListener("change", e => {
+    document.getElementById("cart-comp-title-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ cartTitleLabel: e.target.value.trim() || "Dein Warenkorb" }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
-
-    document.getElementById("cart-comp-footer-bg-color")?.addEventListener("input", e => {
-      window.WebBuilderHistory?.arm(); cart.setConfig({ footerBackgroundColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
     }, true);
 
