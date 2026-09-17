@@ -29,9 +29,8 @@
     gbp: { symbol: "£", position: "before", decimal: "." }
   };
   // Shared formatter — used by cart-render.js instead of its own local
-  // eur() helper, and by T7 (shipping)/T8 (discount) once they add their
-  // own amount fields, so every price in the cart uses one consistent
-  // currency everywhere.
+  // eur() helper, and by the shipping/discount amount fields, so every
+  // price in the cart uses one consistent currency everywhere.
   function formatCurrency(value) {
     const currency = getConfig()?.currency || CURRENCY_PRESETS.eur;
     const amount = Number(value || 0).toFixed(2).replace(".", currency.decimal || ",");
@@ -87,6 +86,16 @@
   // stability requirement as normalizeCartItem() above.
   function normalizeRecommendations(list) {
     return window.WebBuilderUtils.normalizeInPlace(Array.isArray(list) ? list : [], normalizeRecommendation);
+  }
+
+  // ------------------------------------------------------------------
+  // Dividers — freely placeable separator lines. Each entry is just an
+  // id; its position lives in cartConfig.componentLayout["divider:<id>"],
+  // exactly like every other positionable component (see
+  // js/shop/cart-render.js buildCartParts() and js/shop/cart-editor.js).
+  // ------------------------------------------------------------------
+  function normalizeDivider(entry = {}) {
+    return { id: (entry && entry.id) || `div_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` };
   }
 
   const CONDITION_LABELS = {
@@ -158,14 +167,10 @@
     if (state.cartConfig.discountButtonShape == null) state.cartConfig.discountButtonShape = "rounded";
     // Fill color of the progress bar track.
     if (state.cartConfig.progressBarColor == null) state.cartConfig.progressBarColor = "#10b981";
-    // T9.2: editierbarer Fallback-Text, wenn kein weiterer Meilenstein
-    // mehr folgt UND der zuletzt erreichte Meilenstein selbst kein
-    // eigenes reachedText gesetzt hat (siehe js/shop/cart-render.js
-    // buildCartParts() progressMsg-Berechnung). Verschieden vom
-    // per-Meilenstein reachedText-Feld (bereits vorhanden, siehe
-    // renderMilestoneList()) — das hier ist der globale Fallback. Default
-    // entspricht dem bisher hartkodierten String, damit bestehende
-    // Projekte unverändert bleiben.
+    // Editierbarer Fallback-Text, wenn kein weiterer Meilenstein mehr
+    // folgt UND der zuletzt erreichte Meilenstein selbst kein eigenes
+    // reachedText gesetzt hat (siehe js/shop/cart-render.js
+    // buildCartParts() progressMsg-Berechnung).
     if (state.cartConfig.progressCompleteText == null) state.cartConfig.progressCompleteText = "✓ Alle Ziele freigeschaltet";
     // Quantity selector "group" variant shape + the closed +/- color
     // palette. Defaults keep existing projects' look unchanged (stepper
@@ -176,7 +181,7 @@
     // so existing projects look unchanged until explicitly enabled.
     if (state.cartConfig.itemDisplay.showItemDividers == null) state.cartConfig.itemDisplay.showItemDividers = false;
     // Cart editor: per-component position offsets (progress, discount,
-    // recommend, checkout, shipping, totals) plus "Artikel-Darstellung"
+    // recommend, checkout, totals, dividers) plus "Artikel-Darstellung"
     // background/size overrides. Empty string / null mean "no override,
     // use the shape's/CSS's own default" so existing projects keep their
     // exact current look until someone explicitly customizes these.
@@ -190,23 +195,20 @@
     if (state.cartConfig.footerBackgroundColor == null) state.cartConfig.footerBackgroundColor = "";
     if (state.cartConfig.itemWidth === undefined) state.cartConfig.itemWidth = null;
     if (state.cartConfig.itemMinHeight === undefined) state.cartConfig.itemMinHeight = null;
-    // T1: editable title of the cart drawer/editor header (e.g. "Dein
+    // Editable title of the cart drawer/editor header (e.g. "Dein
     // Warenkorb"). Default matches the previously hardcoded string
     // exactly, so existing projects render byte-identical until changed.
     if (state.cartConfig.cartTitleLabel == null) state.cartConfig.cartTitleLabel = "Dein Warenkorb";
     // "Kosten-Übersicht" (component:totals, cart-editor.js): editable
-    // labels for the subtotal/discount/total rows. Versand-spezifische
-    // Felder (Label/Betrag/Freitext/Freibetrag-Ziel) sind seit T7 eine
-    // eigene Komponente (component:shipping), siehe shippingLabel/
-    // shippingCost/shippingFreeText/shippingFreeThreshold unten. Defaults
-    // entsprechen dem bisherigen fest verdrahteten Verhalten, damit
-    // bestehende Projekte unverändert bleiben.
+    // labels for the subtotal/discount/shipping/total rows. Versand ist
+    // seit T5 wieder Teil dieses Blocks (keine eigene Komponente mehr),
+    // die Felder selbst bleiben unverändert erhalten.
     if (state.cartConfig.subtotalLabel == null) state.cartConfig.subtotalLabel = "Zwischensumme";
     if (state.cartConfig.discountLabel == null) state.cartConfig.discountLabel = "Rabatt";
     if (state.cartConfig.shippingLabel == null) state.cartConfig.shippingLabel = "Versand";
     if (state.cartConfig.shippingCost == null) state.cartConfig.shippingCost = 4.95;
     if (state.cartConfig.shippingFreeText == null) state.cartConfig.shippingFreeText = "Kostenlos";
-    // T7: optionales Freibetrag-Ziel (Warenkorbwert, ab dem der Versand
+    // Optionales Freibetrag-Ziel (Warenkorbwert, ab dem der Versand
     // automatisch kostenlos wird) — unabhängig von einem "Kostenloser
     // Versand"-Meilenstein, aber mit einem solchen bidirektional
     // synchronisiert, falls er existiert (siehe syncFreeShippingMilestone()
@@ -214,50 +216,55 @@
     // js/shop/cart-render.js renderMilestoneList()). null = kein
     // automatisches Ziel konfiguriert, unverändertes Verhalten.
     if (state.cartConfig.shippingFreeThreshold === undefined) state.cartConfig.shippingFreeThreshold = null;
-    // T8 (Spiegelbild von T7): meilenstein-getriebener Extra-Rabatt.
-    // milestoneDiscountPercent ersetzt den bisher in
-    // js/shop/cart-render.js hartkodierten Wert 10 — der Default ist
-    // deshalb exakt 10, damit bestehende Projekte identisch rechnen.
-    // milestoneDiscountThreshold ist wie shippingFreeThreshold nullable
-    // ("kein automatisches Ziel") und wird bidirektional mit einem
-    // Meilenstein mit action "discount" synchronisiert (siehe
-    // syncDiscountMilestone() unten + der ".ms-amount"/".ms-action"-Sync
-    // in js/shop/cart-render.js renderMilestoneList()).
+    // Meilenstein-getriebener Extra-Rabatt. milestoneDiscountPercent
+    // ersetzt den früher in js/shop/cart-render.js hartkodierten Wert 10 —
+    // der Default ist deshalb exakt 10, damit bestehende Projekte
+    // identisch rechnen. milestoneDiscountThreshold ist wie
+    // shippingFreeThreshold nullable ("kein automatisches Ziel") und wird
+    // bidirektional mit einem Meilenstein mit action "discount"
+    // synchronisiert (siehe syncDiscountMilestone() unten + der
+    // ".ms-amount"/".ms-action"-Sync in js/shop/cart-render.js
+    // renderMilestoneList()).
     if (state.cartConfig.milestoneDiscountPercent == null) state.cartConfig.milestoneDiscountPercent = 10;
     if (state.cartConfig.milestoneDiscountThreshold === undefined) state.cartConfig.milestoneDiscountThreshold = null;
     if (state.cartConfig.totalLabel == null) state.cartConfig.totalLabel = "Gesamt";
-    // T10: "Gratis-Produkt"-Zeile in der Kosten-Übersicht — Label und
-    // Wert-Text waren bisher in js/shop/cart-render.js hartkodiert
-    // ("🎁 Gratis-Produkt" / "freigeschaltet") und sind jetzt editierbar.
-    // Defaults entsprechen exakt dem bisherigen Text, damit bestehende
-    // Projekte unverändert bleiben. Im Warenkorb-Editor (siehe
-    // js/shop/cart-editor.js renderFocusPartPanel()) wird das zugehörige
-    // Eingabefeld-Paar nur angezeigt, wenn im Projekt tatsächlich ein
-    // Meilenstein mit Aktion "free-product" existiert.
+    // "Gratis-Produkt"-Zeile in der Kosten-Übersicht — Label und Wert-Text
+    // sind editierbar. Defaults entsprechen exakt dem früheren
+    // hartkodierten Text, damit bestehende Projekte unverändert bleiben.
     if (state.cartConfig.freeProductLabel == null) state.cartConfig.freeProductLabel = "🎁 Gratis-Produkt";
     if (state.cartConfig.freeProductValueText == null) state.cartConfig.freeProductValueText = "freigeschaltet";
-    // T9.3: eigene, optionale, positionierbare Trennlinie direkt über der
-    // Zwischensumme-Zeile in der Kosten-Übersicht (component:totalsDivider,
-    // siehe js/shop/cart-editor.js). Ersetzt die bisher fest in CSS
-    // verdrahtete border-top-Linie auf .cart-totals (css/modals.css) —
-    // Default false, da es sich um eine neue, ausdrücklich über den
-    // "+ Trennlinie hinzufügen"-Button zuschaltbare Komponente handelt,
-    // nicht um eine immer sichtbare Linie.
-    if (state.cartConfig.totalsDividerEnabled == null) state.cartConfig.totalsDividerEnabled = false;
-    // T4: Empfehlungskarte — Form + Farbe des "+"-Buttons, sowie eine
-    // eigene Positions-Map für ihre Unterteile (Icon/Name/Preis/Plus).
-    // Eigene Map statt itemDisplay.layout, da die Empfehlungskarte kein
-    // Warenkorb-Artikel ist (anderes Elternelement) — siehe
-    // js/shop/cart-render.js buildRecommendCardContentHtml() und
-    // js/shop/cart-editor.js resolveLayoutMap(). Defaults entsprechen dem
-    // bisherigen fest verdrahteten Aussehen (css/modals.css
-    // .cart-recommend-card / .cart-recommend-add), damit bestehende
-    // Projekte unverändert bleiben.
+    // T6: Trennlinien sind jetzt eine beliebig wiederholbare Komponente
+    // (gleiches Muster wie recommendations/milestones: eigenständige
+    // Einträge mit eigener id) statt der früheren einzelnen, fest in der
+    // Kosten-Übersicht sitzenden Linie (totalsDividerEnabled). Jede
+    // Trennlinie ist über componentLayout["divider:<id>"] frei
+    // positionierbar, genau wie jede andere Komponente.
+    state.cartConfig.dividers = window.WebBuilderUtils.normalizeInPlace(
+      Array.isArray(state.cartConfig.dividers) ? state.cartConfig.dividers : [],
+      normalizeDivider
+    );
+    // Migration der alten Einzel-Trennlinie inklusive ihres bisherigen
+    // Positions-Offsets. Danach werden beide Alt-Felder entfernt, damit
+    // sie nicht als Leiche im Snapshot weiterleben.
+    if (state.cartConfig.totalsDividerEnabled) {
+      const migrated = normalizeDivider({});
+      state.cartConfig.dividers.push(migrated);
+      const oldLayout = state.cartConfig.componentLayout.totalsDivider;
+      if (oldLayout) state.cartConfig.componentLayout[`divider:${migrated.id}`] = oldLayout;
+    }
+    delete state.cartConfig.totalsDividerEnabled;
+    delete state.cartConfig.componentLayout.totalsDivider;
+    // Empfehlungskarte — Form + Farbe des "+"-Buttons, sowie eine eigene
+    // Positions-Map für ihre Unterteile (Icon/Name/Preis/Plus). Eigene Map
+    // statt itemDisplay.layout, da die Empfehlungskarte kein Warenkorb-
+    // Artikel ist (anderes Elternelement) — siehe js/shop/cart-render.js
+    // buildRecommendCardContentHtml() und js/shop/cart-editor.js
+    // resolveLayoutMap().
     if (state.cartConfig.recommendShape == null) state.cartConfig.recommendShape = "rounded";
     if (state.cartConfig.recommendAddButtonColor == null) state.cartConfig.recommendAddButtonColor = "#4f46e5";
     if (!state.cartConfig.recommendDisplay || typeof state.cartConfig.recommendDisplay !== "object") state.cartConfig.recommendDisplay = {};
     if (!state.cartConfig.recommendDisplay.layout || typeof state.cartConfig.recommendDisplay.layout !== "object") state.cartConfig.recommendDisplay.layout = {};
-    // T6: global currency. Default matches the previously hardcoded
+    // Global currency. Default matches the previously hardcoded
     // "19,99 €"-style formatting exactly, so existing projects render
     // byte-identical until someone explicitly picks a different currency.
     if (!state.cartConfig.currency || typeof state.cartConfig.currency !== "object") {
@@ -335,11 +342,32 @@
     return rec;
   }
 
+  // T6: Trennlinien. Eine neue Linie startet ohne Offset (also an ihrer
+  // natürlichen Flussposition oben im Warenkorb-Körper) und wird danach
+  // im Editor an die gewünschte Stelle gezogen. removeDivider() räumt
+  // auch den zugehörigen componentLayout-Eintrag mit auf.
+  function addDivider() {
+    window.WebBuilderHistory?.arm();
+    if (!Array.isArray(state.cartConfig.dividers)) state.cartConfig.dividers = [];
+    const divider = normalizeDivider({});
+    state.cartConfig.dividers.push(divider);
+    window.WebBuilderHistory?.commit();
+    notify("cart", "dividers", state.cartConfig.dividers);
+    return divider;
+  }
+  function removeDivider(dividerId) {
+    window.WebBuilderHistory?.arm();
+    state.cartConfig.dividers = (state.cartConfig.dividers || []).filter(d => d.id !== dividerId);
+    delete state.cartConfig.componentLayout[`divider:${dividerId}`];
+    window.WebBuilderHistory?.commit();
+    notify("cart", "dividers", state.cartConfig.dividers);
+  }
+
   // Progress-bar milestones. `icon` is an optional emoji/short text shown
   // once the milestone is reached, `reachedText` is an optional custom
   // message shown in the progress area once this milestone is the
   // highest one reached and no further milestone follows (see
-  // cart-render.js buildCartHtml()).
+  // cart-render.js buildCartParts()).
   function addMilestone() {
     window.WebBuilderHistory?.arm();
     if (!Array.isArray(state.cartConfig.milestones)) state.cartConfig.milestones = [];
@@ -354,14 +382,15 @@
     notify("cart", "milestones", state.cartConfig.milestones);
   }
 
-  // T7: keeps a "free-shipping" milestone's amount and
+  // Keeps a "free-shipping" milestone's amount and
   // cartConfig.shippingFreeThreshold in sync. Called from the shipping
-  // panel's threshold field (js/shop/cart-editor.js) whenever it changes;
-  // the reverse direction (editing the milestone's own amount/action) is
-  // handled directly in js/shop/cart-render.js renderMilestoneList().
-  // Returns false (no-op) when no free-shipping milestone exists yet —
-  // the threshold still applies on its own in that case (see
-  // js/shop/cart-render.js buildCartHtml()'s "free" calculation).
+  // fields in the Kosten-Übersicht panel (js/shop/cart-editor.js) whenever
+  // it changes; the reverse direction (editing the milestone's own
+  // amount/action) is handled directly in js/shop/cart-render.js
+  // renderMilestoneList(). Returns false (no-op) when no free-shipping
+  // milestone exists yet — the threshold still applies on its own in that
+  // case (see js/shop/cart-render.js buildCartParts()'s "free"
+  // calculation).
   function syncFreeShippingMilestone(amount, recordHistory = true) {
     const milestone = (state.cartConfig.milestones || []).find(m => m.action === "free-shipping");
     if (!milestone) return false;
@@ -372,14 +401,14 @@
     return true;
   }
 
-  // T8: exaktes Pendant zu syncFreeShippingMilestone() — hält den
-  // Meilenstein mit action "discount" und
-  // cartConfig.milestoneDiscountThreshold synchron. Aufgerufen aus dem
-  // Rabatt-Panel (js/shop/cart-editor.js); die Rückrichtung (Bearbeiten
-  // von amount/action direkt in der Meilenstein-Liste) liegt in
-  // js/shop/cart-render.js renderMilestoneList(). Rückgabe false = kein
-  // passender Meilenstein vorhanden; das Ziel gilt trotzdem eigenständig
-  // (siehe "extra"-Berechnung in js/shop/cart-render.js buildCartParts()).
+  // Exaktes Pendant zu syncFreeShippingMilestone() — hält den Meilenstein
+  // mit action "discount" und cartConfig.milestoneDiscountThreshold
+  // synchron. Aufgerufen aus dem Rabatt-Panel (js/shop/cart-editor.js);
+  // die Rückrichtung (Bearbeiten von amount/action direkt in der
+  // Meilenstein-Liste) liegt in js/shop/cart-render.js
+  // renderMilestoneList(). Rückgabe false = kein passender Meilenstein
+  // vorhanden; das Ziel gilt trotzdem eigenständig (siehe
+  // "extra"-Berechnung in js/shop/cart-render.js buildCartParts()).
   function syncDiscountMilestone(amount, recordHistory = true) {
     const milestone = (state.cartConfig.milestones || []).find(m => m.action === "discount");
     if (!milestone) return false;
@@ -398,6 +427,7 @@
     normalizeCartItem, normalizeState,
     applyDiscountCode,
     addRecommendation, removeRecommendation, updateRecommendation,
+    addDivider, removeDivider,
     addMilestone, removeMilestone, syncFreeShippingMilestone, syncDiscountMilestone,
     // Internal helpers also used by shop/cart-render.js and
     // shop/cart-editor.js (kept here since they operate on the cart data/
