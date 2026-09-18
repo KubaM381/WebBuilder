@@ -4,187 +4,81 @@ Visual drag-and-drop website builder (vanilla JS, no build tool/framework).
 Users place elements via drag & drop, style header/footer, manage products
 and a cart, and save projects locally or to Supabase.
 
-> **Structure refactor in progress.** Some `js/` files are being split into
-> smaller, single-responsibility files in phases, since a few had grown
-> too large to safely edit (especially for an AI working on one change at
-> a time). See `docs/STRUCTURE_PLAN.md` for the target structure and
-> current phase status, and `docs/AI_REFACTOR_GUIDE.md` for the rules any
-> AI session should follow when continuing it. Phase 1
-> (`canvas/elements.js`, `canvas/canvas.js`, `layout/header-footer.js`),
-> Phase 2 (`shop/cart-render.js` → `cart-html.js`/`cart-drawer.js`/
-> `cart-sidebar.js`) and Phase 3 (`shop/cart-editor.js` →
-> `cart-editor-stage.js`/`cart-editor-drag.js`/`cart-editor-panel.js`/
-> `cart-editor-bindings.js`) are done; Phase 4 (feinschliff) is split into
-> three sub-tasks, of which the first (`editor/inspector.js` split) is
-> done — see `docs/STRUCTURE_PLAN.md` for the remaining two.
-
 ## Project structure
 
 ```text
 WebBuilder/
-├── web.html              single HTML entry page (editor UI)
-├── index.html             marketing/landing page — intentionally kept,
-│                          not part of the builder app itself (confirmed
-│                          by the project owner, not a "maybe delete" item)
-├── README.md              this document
+├── web.html               single HTML entry page (editor UI)
+├── index.html              marketing/landing page — intentionally kept,
+│                           not part of the builder app itself
+├── README.md               this file
 ├── docs/
-│   ├── CART_EDITOR_TASKS.md  active task specification for the current
-│   │                      cart focus editor round — read this before
-│   │                      touching any of the js/shop/cart-editor-*.js
-│   │                      files
-│   ├── STRUCTURE_PLAN.md     target file structure for the ongoing
-│   │                      js/-split refactor, with phase status
-│   └── AI_REFACTOR_GUIDE.md  rules for any AI session continuing that
-│                          refactor
+│   └── CART_EDITOR_TASKS.md   active task list for the current cart focus
+│                           editor round — read this before touching any
+│                           js/shop/cart-editor-*.js file
 ├── css/
-│   ├── README.md          CSS architecture, see there for details
+│   ├── README.md           CSS file map
 │   └── *.css
 └── js/
-    ├── README.md          module overview, load order, event conventions
-    │                      — see there for details
-    ├── builder.js          bootstrap / load order (orchestrator only)
-    ├── toolbar.js          zoom/undo/redo/save toolbar bindings
-    ├── export.js            static HTML export
-    ├── preview.js            preview mode + click-action runtime
-    ├── core/                shared state, utils, storage/history
-    ├── canvas/              canvas rendering, drag/alignment, elements +
-    │                        icon registry (canvas/icon-registry.js)
-    ├── editor/              right-hand inspector panel for canvas
-    │                        elements, split into the core panel
-    │                        (inspector.js) and its "Erweiterte
-    │                        Eigenschaften" block (inspector-special.js),
-    │                        plus the background editor
-    │                        (editor/background.js)
-    ├── layout/              header/footer domain, split into a data file
-    │                        (header-footer-data.js), a canvas-rendering
-    │                        file (header-footer-render.js) and an
-    │                        inspector/sidebar file
-    │                        (header-footer-inspector.js)
-    ├── shop/                products + cart, split by concern: data
-    │                        (cart-data.js), pure HTML building
-    │                        (cart-html.js), the real drawer
-    │                        (cart-drawer.js), left-sidebar config UI
-    │                        (cart-sidebar.js) and the focus editor, split
-    │                        into stage/selection (cart-editor-stage.js),
-    │                        pointer-drag interaction
-    │                        (cart-editor-drag.js), right-hand panel
-    │                        rendering (cart-editor-panel.js) and that
-    │                        panel's field bindings
-    │                        (cart-editor-bindings.js)
-    ├── ui/                  cross-domain UI helpers: toast, modals, shared
-    │                        inspector markup, sidebar-tab switching
-    ├── pages/               reserved for future multi-page client logic
-    │                        (currently only rudimentary in Supabase/)
-    └── Supabase/            Supabase client, auth, project/page CRUD, cloud modal UI
+    ├── README.md            signpost: architecture, folder map, load order
+    ├── core/README.md       state, utils, storage/history
+    ├── canvas/README.md     canvas rendering, elements, icons, drag/alignment
+    ├── editor/README.md     right-hand properties panel + background editor
+    ├── layout/README.md     header/footer domain
+    ├── shop/README.md       products + cart (incl. cart focus editor)
+    ├── ui/README.md         toast/modal/tabs/shared markup
+    └── Supabase/README.md   Supabase client, auth, cloud modal
 ```
 
 ## Core architecture at a glance
 
-- **One central state**: `js/core/state.js` defines `window.WebBuilderState` —
+- **One central state**: `js/core/state.js` (`window.WebBuilderState`) is
   the single source of truth for elements, products, cart, header/footer,
-  background, zoom, history. `js/core/utils.js` provides the shared,
-  stateless helpers (`escapeHtml`, `buildTextStyleCss`, `normalizeInPlace`).
-- **Pub/sub instead of direct coupling**: modules change state and call
-  `state.notify(domain, action, payload)`; other modules listen via
-  `state.subscribe(fn)` for the domains they care about (`"elements"`,
-  `"products"`, `"cart"`, `"preview"`, `"background"`, `"selection"`).
-  Header/footer changes are the one exception — see `js/README.md`'s
-  "Event conventions" section.
-- **One serialization format for everything**: `js/core/storage.js` →
-  `createSnapshot()` / `applySnapshot()`. Shared by local save, undo/redo
-  **and** Supabase cloud save. A new persistable property must be added
-  **here**, or it's lost on save/load.
-- **Shared drag/click + alignment guides**: `js/canvas/alignment.js`
-  (`window.WebBuilderAlignment`) owns the pointer-event drag controller and
-  Canva-style center/edge alignment-guide snapping (`attachInteraction()`),
-  used by `canvas/canvas.js` (canvas elements) and
-  `layout/header-footer-render.js` (bar items). The cart focus editor
-  (`shop/cart-editor-drag.js`) has its own pointer handling instead — its
-  stage positions parts/components via a CSS transform offset on an
-  unscaled surface, not `attachInteraction()`'s absolute left/top model —
-  but it reuses `alignment.js`'s exported snapping primitives
-  (`collectSnapTargets`/`snapPosition`/guide-layer helpers) so dragging a
-  cart part or component shows the same alignment guides as canvas
-  elements and header/footer bar items.
-- **One module per domain**, self-initializing on load
-  (`DOMContentLoaded`), exposing its API under `window.WebBuilderXxx`.
-  A domain can be split across multiple files (e.g. `layout/`'s three
-  `header-footer-*.js` files, `shop/`'s `cart-data.js`/`cart-html.js`/
-  `cart-drawer.js`/`cart-sidebar.js`, the four `shop/cart-editor-*.js`
-  files, `editor/`'s `inspector.js` + `inspector-special.js`, or
-  `canvas/`'s `elements.js` + `icon-registry.js`) — they still expose
-  exactly one shared `window.WebBuilderXxx` object per domain. Details:
-  see `js/README.md`.
-- **Load order matters**: `js/builder.js` loads all modules in sequence via
-  `document.write`. `shop/products.js` **must load before**
-  `shop/cart-data.js` (cart-data.js references products only via
-  `window.WebBuilderProducts`), `shop/cart-data.js` **must load before**
-  `shop/cart-html.js`/`cart-drawer.js`/`cart-sidebar.js`/the four
-  `cart-editor-*.js` files, `js/canvas/alignment.js` **must load before**
-  `canvas/canvas.js` and `layout/header-footer-render.js`, and
-  `js/ui/shared-markup.js` **must load before**
-  `editor/inspector.js`/`layout/header-footer-inspector.js` (see
-  `js/README.md`).
+  background, zoom, history.
+- **Pub/sub instead of direct coupling**: `state.notify(domain, action,
+  payload)` / `state.subscribe(fn)`. Exception: header/footer changes use
+  their own CustomEvent instead — see `js/layout/README.md`.
+- **One serialization format**: `js/core/storage.js`
+  (`createSnapshot()`/`applySnapshot()`) — shared by local save, undo/redo
+  and Supabase cloud save.
+- **One module per domain**, self-initializing on `DOMContentLoaded`,
+  exposed as `window.WebBuilderXxx`. A domain can span several files (see
+  the relevant `js/*/README.md`).
+- **Load order matters**: `js/builder.js` loads every module in a fixed
+  sequence via `document.write`. See `js/README.md` for the summary and
+  `builder.js`'s own comments for the exact reasoning behind each
+  constraint.
 
-## Supabase schema
+## Supabase
 
-```text
-projects (id, user_id, name, slug, updated_at)
-   └── pages (id, project_id, name, slug, content JSON, updated_at)
-```
-
-`content` in `pages` is exactly the result of
-`WebBuilderStorage.createSnapshot()` — never build a separate, different
-format.
+Schema, auth flow and file split: see `js/Supabase/README.md`.
 
 ## Security
 
-- The client (`js/Supabase/supabase-config.js`) may contain **only** the
-  publishable key, never a secret/service-role key.
+- `js/Supabase/supabase-config.js` may contain **only** the publishable
+  key, never a secret/service-role key.
 - Access control runs through Supabase Row Level Security (RLS) at the DB
   level, not client-side logic.
 
-## For further development (including AI assistants)
+## Working on this project (including AI assistants)
 
-1. Before any change: read only the files actually affected (see
-   `js/README.md` for "who does what").
-2. If you're picking up cart-focus-editor work, read
-   `docs/CART_EDITOR_TASKS.md` first — it is the current, authoritative
-   task list for that area.
-3. If you're picking up the ongoing file-split refactor, read
-   `docs/STRUCTURE_PLAN.md` (target structure + phase status) and
-   `docs/AI_REFACTOR_GUIDE.md` (rules to follow) first.
-4. No drive-by refactors — if a structural improvement seems useful,
-   propose it instead of doing it unasked.
-5. Always add new persistable state fields to `core/storage.js` too
-   (`createSnapshot`/`applySnapshot`) — note that nested fields under
-   `state.cartConfig`/`state.background`/etc. are already covered since
-   those top-level objects are cloned whole; only a genuinely **new
-   top-level** `state.*` field needs an explicit addition there.
-6. Keep new comments short (why, not bug history). History belongs in
-   commit messages.
-7. Comments and READMEs are written in English; chat with the developer
+1. Before any change: read only the files actually affected — check the
+   relevant `js/*/README.md` for "who does what" first.
+2. Picking up cart-focus-editor work? Read `docs/CART_EDITOR_TASKS.md`
+   first — the current, authoritative task list for that area.
+3. No drive-by refactors — propose a structural change instead of doing
+   it unasked.
+4. New persistable state fields always need an entry in `core/storage.js`
+   too (`createSnapshot`/`applySnapshot`). Nested fields under an
+   already-covered top-level object (`cartConfig`, `background`, …)
+   don't — only a genuinely new top-level `state.*` field does.
+5. Comments and READMEs are written in English; chat with the developer
    stays in German. UI copy shown to end users (labels, button text,
-   toasts) stays German, matching the existing app.
-8. Before editing any file, make sure you actually have its complete,
-   untruncated current content — if you're unsure, say so instead of
-   guessing or reconstructing from memory. A truncated file that gets
-   pasted back into the repo as-is causes a silent JS syntax error: the
-   whole script fails to run, its `window.WebBuilderXxx` API is never
-   defined, and every other module's optional-chaining call into it
-   (`window.WebBuilderXxx?.method?.()`) fails silently with no console
-   error.
-
-## Known technical debt
-
-- `preview.js` is densely written (many statements per line) — harder to
-  read than the rest of the project; should be unified to the rest of the
-  codebase's style (multi-line, one statement per line) next time it's
-  touched.
-- The cart focus editor (`shop/cart-editor-*.js`) has a small, actively-
-  tracked list of open fixes/refinements — see `docs/CART_EDITOR_TASKS.md`
-  instead of duplicating that list here.
-
-> Note for future AI sessions: this list reflects only what is genuinely
-> still open. Items that get fixed should be removed here, not left
-> marked "done" — completed work stays in git/chat history instead.
+   toasts) stays German.
+6. Before editing any file, make sure you actually have its complete,
+   untruncated current content — if unsure, say so instead of guessing or
+   reconstructing from memory. A truncated file pasted back as-is causes
+   a silent JS syntax error: the whole script stops running, its
+   `window.WebBuilderXxx` API is never defined, and every
+   optional-chaining call into it (`window.WebBuilderXxx?.method?.()`)
+   fails silently with no console error.
