@@ -91,16 +91,32 @@ js/
 │   │                          height, product segments, recommendation
 │   │                          list editor, milestone list editor —
 │   │                          window.WebBuilderCartConfigRuntime
-│   └── cart-editor.js           cart focus editor: stage, drag
-│                              interactions (reusing canvas/alignment.js's
-│                              snapping primitives, not its shared
-│                              controller), part/component panel,
-│                              recommendation/milestone list UI —
-│                              window.WebBuilderCartFocus. See
+│   ├── cart-editor-stage.js     cart focus editor: enter/exit focus mode,
+│   │                          the on-canvas stage DOM, part/component
+│   │                          selection state, and the shared layout
+│   │                          data model (get/set/reset a part's or
+│   │                          component's pixel offset) — contributes
+│   │                          enter/exit/isActive/renderStage plus
+│   │                          selection + layout helpers to
+│   │                          window.WebBuilderCartFocus
+│   ├── cart-editor-drag.js      cart focus editor: all pointer-drag
+│   │                          interaction on the stage (article resize,
+│   │                          component drag, part drag), reusing
+│   │                          canvas/alignment.js's snapping primitives —
+│   │                          contributes bindFocusStageInteractions to
+│   │                          window.WebBuilderCartFocus
+│   ├── cart-editor-panel.js     cart focus editor: renders the right-hand
+│   │                          #cart-inspector-form field groups for
+│   │                          whichever part/component is selected —
+│   │                          contributes renderPartPanel to
+│   │                          window.WebBuilderCartFocus
+│   └── cart-editor-bindings.js  cart focus editor: every field event
+│                              binding for #cart-inspector-form plus the
+│                              open/close-editor buttons. See
 │                              ../docs/CART_EDITOR_TASKS.md for the
-│                              current task list before changing this
-│                              file (candidate for a further split — see
-│                              docs/STRUCTURE_PLAN.md Phase 3).
+│                              current feature-level task list before
+│                              changing any of the four cart-editor-*.js
+│                              files.
 │
 ├── pages/                       reserved for a future multi-page client
 │                              feature (currently only rudimentary support
@@ -129,7 +145,8 @@ core/state.js → core/utils.js → ui/toast.js → core/storage.js
 → canvas/elements.js → canvas/icon-registry.js
 → shop/products.js → shop/cart-data.js
 → shop/cart-html.js → shop/cart-drawer.js → shop/cart-sidebar.js
-→ shop/cart-preview-bars.js → shop/cart-editor.js
+→ shop/cart-editor-stage.js → shop/cart-editor-drag.js
+→ shop/cart-editor-panel.js → shop/cart-editor-bindings.js
 → canvas/alignment.js → canvas/canvas.js → editor/background.js
 → ui/shared-markup.js → editor/inspector.js → toolbar.js
 → layout/header-footer-data.js → layout/header-footer-render.js
@@ -157,22 +174,22 @@ Dependencies that matter most (each module reads the ones before it via
   references products exclusively via `window.WebBuilderProducts` (no own
   product data).
 - **`shop/cart-data.js` before `shop/cart-html.js`, `shop/cart-drawer.js`,
-  `shop/cart-sidebar.js`, `shop/cart-preview-bars.js` and
-  `shop/cart-editor.js`** — all five read `window.WebBuilderCart` and/or
-  `window.WebBuilderState` at top-level parse time. `cart-preview-bars.js`
-  is otherwise fully independent of the other `shop/cart-*.js` files.
-  `cart-drawer.js` and `cart-sidebar.js` only reach into
-  `window.WebBuilderCartHtml` inside function bodies (at runtime), so
-  their load order relative to `cart-html.js` doesn't strictly matter —
-  `cart-html.js` is listed first by convention (data → html → drawer/
-  sidebar → editor).
+  `shop/cart-sidebar.js` and the four `shop/cart-editor-*.js` files** —
+  each reads `window.WebBuilderCart` and/or `window.WebBuilderState` at
+  top-level parse time (`cart-editor-drag.js` only needs `window.WebBuilderState`,
+  the other three also need `window.WebBuilderCart`). `cart-drawer.js` and
+  `cart-sidebar.js` only reach into `window.WebBuilderCartHtml` inside
+  function bodies (at runtime), so their load order relative to
+  `cart-html.js` doesn't strictly matter — `cart-html.js` is listed first
+  by convention (data → html → drawer/sidebar → editor).
 - **`canvas/alignment.js` before `canvas/canvas.js` and
   `layout/header-footer-render.js`** — both call
   `window.WebBuilderAlignment.attachInteraction()`/`toLocalCoords()` for
-  drag/click handling and snapping. `shop/cart-editor.js` loads after it
-  too, but only reuses its exported snapping primitives
-  (`collectSnapTargets`/`snapPosition`/guide-layer helpers), not
-  `attachInteraction()` itself — see the module sections below for why.
+  drag/click handling and snapping. The four `shop/cart-editor-*.js` files
+  load after it too, but only `cart-editor-drag.js` reuses its exported
+  snapping primitives (`collectSnapTargets`/`snapPosition`/guide-layer
+  helpers), not `attachInteraction()` itself — see that module's section
+  below for why.
 - **`canvas/canvas.js` before `editor/background.js`** — `background.js`
   calls `window.WebBuilderCanvas.setBackground()` at runtime (inside its
   form's `commit()` handler).
@@ -200,6 +217,13 @@ Dependencies that matter most (each module reads the ones before it via
   runtime, long after both have loaded. They are still listed in this
   order in `builder.js` by convention (rendering before the panel that
   reacts to it), not because it's required.
+- **The four `shop/cart-editor-*.js` files have no parse-time requirement
+  relative to each other** — each only reaches into the others' exports
+  via `window.WebBuilderCartFocus` inside function bodies, at runtime.
+  They are listed `-stage` → `-drag` → `-panel` → `-bindings` in
+  `builder.js` by convention (data/rendering foundation before
+  interaction before the panel before its field wiring), not because it's
+  required.
 
 `ui/toast.js`, `ui/modals.js`, `ui/tabs.js` and `canvas/icon-registry.js`
 have no load-order requirement of their own — every module only calls
@@ -248,8 +272,8 @@ Exposes `window.WebBuilderStorage` and `window.WebBuilderHistory`.
 - `WebBuilderHistory.undoSnapshot()` / `.redoSnapshot()` return snapshots
   to restore.
 - `normalizeRuntimeState()` calls each domain's own `normalizeState()`
-  (elements, products, cart, header/footer, canvas, cart-preview-bars)
-  after every load/apply — this is where legacy-field migrations (see
+  (elements, products, cart, header/footer, canvas) after every
+  load/apply — this is where legacy-field migrations (see
   `canvas/elements.js`) run.
 
 ### `ui/toast.js`
@@ -305,19 +329,18 @@ a movement threshold and `state.dragLock`) plus Canva-style center/edge
 alignment-guide snapping (`window.WebBuilderAlignment`). Used by
 `canvas/canvas.js` for canvas elements and by
 `layout/header-footer-render.js` for bar items — neither of those files
-implements its own drag/snap logic. `shop/cart-editor.js` does **not** use
-`attachInteraction()` itself — its stage positions parts/components via a
-CSS transform offset from their natural flow position on an unscaled
-surface, outside the zoom-scaled `#canvas-column`, whereas
+implements its own drag/snap logic. `shop/cart-editor-drag.js` does
+**not** use `attachInteraction()` itself — its stage positions parts/
+components via a CSS transform offset from their natural flow position on
+an unscaled surface, outside the zoom-scaled `#canvas-column`, whereas
 `attachInteraction()` assumes absolute left/top positioning inside a
 zoom-scaled container. It does reuse this file's exported snapping
 primitives directly (`collectSnapTargets`/`snapPosition`/`createGuideLayer`/
 `removeGuideLayer`/`updateGuideVisibility`, each accepting an explicit
 `zoomOverride` since the cart stage is never zoom-scaled) so cart dragging
 shows the same alignment guides without inheriting `canvas.js`'s zoom
-assumption — see `shop/cart-editor.js` below for how. Also exposes
-`toLocalCoords()`, used for translating pointer/drop coordinates into the
-zoom-adjusted canvas coordinate space.
+assumption. Also exposes `toLocalCoords()`, used for translating
+pointer/drop coordinates into the zoom-adjusted canvas coordinate space.
 
 ### `canvas/canvas.js`
 Rendering of canvas elements, zoom, canvas size, drag-and-drop from the
@@ -384,12 +407,9 @@ exclusive), and the master `render()` that ties the whole domain together
 and triggers a bar re-render via `window.WebBuilderHeaderFooterRuntime.renderBars()`).
 Like `editor/inspector.js`, its `<select>` options and toolbar buttons
 come from `ui/shared-markup.js`. Contributes `render` to
-`window.WebBuilderHeaderFooterRuntime`. Do not confuse any of the three
-`layout/header-footer-*.js` files with `shop/cart-preview-bars.js`, which
-renders unrelated decorative preview bars only inside the cart focus
-editor. While the cart focus editor is open, the real header/footer is
-hidden and non-interactive (`css/styles.css`
-`body.cart-focus-active .builder-bar`).
+`window.WebBuilderHeaderFooterRuntime`. While the cart focus editor is
+open, the real header/footer is hidden and non-interactive
+(`css/styles.css` `body.cart-focus-active .builder-bar`).
 
 ### `shop/products.js`
 Product management: CRUD + normalization + rendering/handling of the
@@ -420,7 +440,7 @@ state mutation. Builds the shared cart body (title, dividers, progress
 bar, items, product segments, recommendation, discount, totals incl.
 shipping, checkout button) used identically by both the real drawer
 (`interactive: false`, see `cart-drawer.js`) and the cart focus editor
-stage (`interactive: true`, see `cart-editor.js`), so both stay
+stage (`interactive: true`, see `cart-editor-stage.js`), so both stay
 pixel-identical apart from editing affordances — this invariant must be
 preserved by any change here. `wrapComponent()`/`wrapLayoutPart()` are the
 two positioning primitives: they wrap a top-level cart block / a
@@ -433,9 +453,8 @@ render with zero extra markup. Exposes `window.WebBuilderCartHtml`
 contributes `buildCartHtml`/`buildCartParts` onto
 `window.WebBuilderCartRuntime` (the other contributor is
 `shop/cart-drawer.js`, via `Object.assign` onto the same object), since
-`shop/cart-editor.js` calls `window.WebBuilderCartRuntime.buildCartParts()`
-at runtime. Split out of the former `shop/cart-render.js` — see
-`docs/STRUCTURE_PLAN.md` Phase 2.
+`shop/cart-editor-stage.js` calls
+`window.WebBuilderCartRuntime.buildCartParts()` at runtime.
 
 ### `shop/cart-drawer.js`
 The real slide-in cart drawer (`#cart-drawer`/`#cart-items-list`):
@@ -447,8 +466,7 @@ is `shop/cart-html.js`, via `Object.assign` onto the same object so load
 order between the two doesn't matter). `refresh()` is the single place
 that re-renders both the drawer and — if open — the cart focus editor
 stage; other modules call it via `window.WebBuilderCartRuntime.refresh()`
-rather than duplicating that logic. Split out of the former
-`shop/cart-render.js` — see `docs/STRUCTURE_PLAN.md` Phase 2.
+rather than duplicating that logic.
 
 ### `shop/cart-sidebar.js`
 The left sidebar's cart config UI (`#panel-cart`): the discount/recommend/
@@ -456,45 +474,78 @@ progress enable toggles, the items-list max-height field, product-segment
 management (create/edit/delete via a picker modal), the recommendation
 list editor, and the milestone list editor. None of this ties to
 selecting a specific on-canvas part, which is why it lives here rather
-than in the right-hand cart editor panel (`shop/cart-editor.js`). Exposes
-`window.WebBuilderCartConfigRuntime` (`render`, `renderRecommendList`,
-`renderMilestoneList`, `renderSegmentList`). Calls
+than in the right-hand cart editor panel (`shop/cart-editor-panel.js`).
+Exposes `window.WebBuilderCartConfigRuntime` (`render`,
+`renderRecommendList`, `renderMilestoneList`, `renderSegmentList`). Calls
 `window.WebBuilderCartRuntime.refresh()` at runtime after any change here
-instead of re-rendering the drawer itself. Split out of the former
-`shop/cart-render.js` — see `docs/STRUCTURE_PLAN.md` Phase 2.
+instead of re-rendering the drawer itself.
 
-### `shop/cart-editor.js`
-The cart focus editor ("Warenkorb-Editor", `state.cartFocusMode`): a
-dedicated editing stage mounted into `.canvas-container`, showing the full
-cart body (via `shop/cart-html.js`'s `buildCartHtml()`) centered over the
-canvas. Every top-level block (progress bar, discount field,
-recommendation, checkout button, totals) is individually
-selectable/draggable via `cartConfig.componentLayout`; individual
-cart-item sub-parts (icon/name, qty, price, remove, description) via
-`cartConfig.itemDisplay.layout`; recommend-card sub-parts (icon/name/
-price/add) via `cartConfig.recommendDisplay.layout`; the article box as a
-whole ("Artikel-Darstellung") is selectable via its background and
-resizable via a drag handle; the card background is selectable too.
-Drives the right-hand `#cart-inspector-form` panel. Exposed as
-`window.WebBuilderCartFocus` (`enter`, `exit`, `isActive`, `renderStage`,
-`renderPartPanel`). Dragging here is **not** implemented via
-`canvas/alignment.js`'s shared `attachInteraction()` controller — it has
-its own raw pointer-event handling in `bindFocusStageInteractions()`,
-positioning parts/components via a CSS transform offset instead of
-absolute left/top — but it reuses `alignment.js`'s exported snapping
-primitives (`collectSnapTargets`/`snapPosition`/guide-layer helpers,
-always with `zoomOverride: 1` since the stage is never zoom-scaled) so
-both cart-item/recommend-card sub-part dragging and top-level component
-dragging show the same Canva-style alignment guides as `canvas/canvas.js`
-and `layout/header-footer-render.js`. `resolveLayoutMap()` is the single
-place deciding whether a given part key belongs to `itemDisplay.layout` or
-`recommendDisplay.layout`. The resize handle on the article
-representation (`component:itemRepresentation`) is a resize, not a move,
-and has no snapping — that has always been out of scope. **Read
-`../docs/CART_EDITOR_TASKS.md` before changing this file.** This file
-mixes several concerns (stage rendering, drag interaction, panel
-rendering, field bindings) and is a candidate for a further split — see
-`docs/STRUCTURE_PLAN.md` Phase 3.
+### `shop/cart-editor-stage.js`
+The cart focus editor's ("Warenkorb-Editor") stage and selection layer.
+Owns `state.cartFocusMode`'s lifecycle (`enterFocusMode`/`exitFocusMode`),
+the on-canvas stage DOM (`renderFocusStage`, built from
+`shop/cart-html.js`'s `buildCartParts()`), which part or component is
+currently selected (`state.cartFocusSelectedPart`,
+`selectFocusPart`/`selectFocusPartLight`, `applySelectionHighlight`), and
+the shared layout data model used by every other cart-editor file:
+`getPartLayout`/`setPartLayoutSilent`/`setPartLayout`/`resetPartLayout`
+for cart-item/recommend-card sub-parts (`cartConfig.itemDisplay.layout`/
+`cartConfig.recommendDisplay.layout`, picked by `resolveLayoutMap()`) and
+`getSelectedLayout`/`setSelectedLayout`/`resetSelectedLayout` for
+whichever part or top-level component is currently selected (top-level
+components use the flat `cartConfig.componentLayout` map instead).
+`NON_POSITIONABLE` (the "background"/"itemRepresentation" components,
+selectable but never draggable) and the divider key helpers
+(`DIVIDER_PREFIX`, `isDividerKey`) also live here since they're part of
+this same selection/layout model. Exposes `window.WebBuilderCartFocus`
+(`enter`, `exit`, `isActive`, `renderStage`, plus the selection/layout
+helpers above) — the other three `cart-editor-*.js` files extend the same
+object via `Object.assign` and call back into it at runtime rather than
+duplicating any of this.
+
+### `shop/cart-editor-drag.js`
+All pointer-event drag handling on the cart editor stage
+(`bindFocusStageInteractions`, called by `cart-editor-stage.js`'s
+`renderFocusStage()` at runtime): resizing the article representation
+("Artikel-Darstellung") via its own drag handle, dragging a top-level
+component (progress/discount/recommend/checkout/totals/title/divider),
+and dragging a cart-item or recommend-card sub-part. Has its own raw
+pointer-event handling instead of `canvas/alignment.js`'s shared
+`attachInteraction()` controller — it positions parts/components via a
+CSS transform offset from their natural flow position on an unscaled
+stage, not `attachInteraction()`'s absolute left/top + zoom-scaled model —
+but reuses `alignment.js`'s exported snapping primitives
+(`collectSnapTargets`/`snapPosition`/guide-layer helpers, always with
+`zoomOverride: 1`) so dragging here shows the same alignment guides as
+canvas elements and header/footer bar items. Reads and writes position
+exclusively through `window.WebBuilderCartFocus` (`cart-editor-stage.js`'s
+layout helpers) — never its own copy of that data model. Contributes
+`bindFocusStageInteractions` to `window.WebBuilderCartFocus`.
+
+### `shop/cart-editor-panel.js`
+Renders the right-hand `#cart-inspector-form` panel
+(`renderFocusPartPanel`): shows the field group for whichever part or
+component `state.cartFocusSelectedPart` currently points at (cart title,
+checkout button, discount field incl. its milestone-driven extra
+discount, progress bar incl. milestones, recommendation, background,
+article representation, Kosten-Übersicht incl. shipping, a divider, or a
+cart-item sub-part like qty/price/remove), and fills each visible field
+with its current value. Read-only — turning user input into
+`cart.setConfig()`/`cart.setItemDisplay()` calls is
+`shop/cart-editor-bindings.js`'s job, not this file's. Contributes
+`renderPartPanel` to `window.WebBuilderCartFocus`.
+
+### `shop/cart-editor-bindings.js`
+Every field event listener for the `#cart-inspector-form` panel plus the
+"open editor"/"close editor"/"select article representation" buttons and
+the divider add/remove buttons — the layer that actually calls
+`cart.setConfig()`/`cart.setItemDisplay()`/`cart.setButtonLabel()`/
+`cart.addDivider()`/`cart.removeDivider()` in response to user input, then
+refreshes the drawer/stage/panel via
+`window.WebBuilderCartRuntime.refresh()`. Reads/writes selection and
+layout only through `window.WebBuilderCartFocus`
+(`cart-editor-stage.js`'s exports). Self-initializing on
+`DOMContentLoaded`, like the rest of the project's UI-binding modules.
 
 ### `toolbar.js`
 Top toolbar: zoom controls (delegates to `canvas/canvas.js`), undo/redo
@@ -533,8 +584,8 @@ UI layer (`supabase-ui.js`) — **details and rationale in
   must respect this flag (see `scheduleRender()` in `canvas/canvas.js` and
   `render()` in `layout/header-footer-inspector.js`), otherwise a
   re-render mid-drag can replace the DOM node under the cursor and abort
-  the move. `shop/cart-editor.js` uses its own pointer handling (see its
-  module section above) and does not set `state.dragLock`.
+  the move. `shop/cart-editor-drag.js` uses its own pointer handling (see
+  its module section above) and does not set `state.dragLock`.
 - Header/footer changes do NOT go through `state.notify()` — see
   `layout/header-footer-data.js` above (`emitChange()`/`onChange()`).
 - Supabase password recovery: `Supabase/supabase-data.js` dispatches
