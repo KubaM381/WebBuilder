@@ -7,6 +7,13 @@ relevant**, not just cosmetic. Exception: the three `type="module"` lines
 at the end (Supabase) — their actual load order is resolved by the browser
 via ES `import` statements, not by `document.write()` order.
 
+> **Structure refactor in progress.** This project is being split into
+> smaller, single-responsibility files in phases — see
+> `docs/STRUCTURE_PLAN.md` for the target end-state and current phase
+> status, and `docs/AI_REFACTOR_GUIDE.md` for the rules to follow when
+> continuing it. This file always reflects the current (not the target)
+> state.
+
 ## Folder structure
 
 ```text
@@ -25,25 +32,43 @@ js/
 │
 ├── canvas/
 │   ├── canvas.js              viewport, zoom, rendering of placed
-│   │                          elements, background-editor binding,
-│   │                          palette drag & drop
+│   │                          elements, palette drag & drop, "Eigene
+│   │                          Icons"-palette UI (background editor lives
+│   │                          in editor/background.js)
 │   ├── alignment.js            shared drag/click controller
 │   │                          (window.WebBuilderAlignment) + Canva-style
 │   │                          alignment-guide snapping, used by both
-│   │                          canvas.js and layout/header-footer.js
-│   └── elements.js             canvas-element CRUD + icon registry
-│                              (window.WebBuilderIconRegistry, incl.
-│                              "Eigene Icons" upload)
+│   │                          canvas.js and layout/header-footer-render.js
+│   ├── elements.js             canvas-element CRUD only (create, update,
+│   │                          remove, duplicate, selection)
+│   └── icon-registry.js        icon registry (window.WebBuilderIconRegistry:
+│                              register, get, getAll, addCustom,
+│                              getCustomNames), incl. "Eigene Icons" upload
+│                              support — split out of elements.js since
+│                              element CRUD and icon lookup are independent
+│                              concerns
 │
 ├── editor/
-│   └── inspector.js            right-hand properties panel for normal
-│                              canvas elements
-│   (background.js not yet split out — the background editor still lives
-│   inside canvas/canvas.js, move it here once that area needs real growth)
+│   ├── inspector.js            right-hand properties panel for normal
+│   │                          canvas elements
+│   └── background.js           background editor (solid/gradient/image
+│                              form + bindings), split out of
+│                              canvas/canvas.js
 │
 ├── layout/
-│   └── header-footer.js        header/footer domain: data, canvas
-│                              rendering, own right-hand inspector panel
+│   ├── header-footer-data.js    header/footer state: normalization,
+│   │                          getters (getHeader/getFooter) and mutators
+│   │                          (updateHeader/updateFooter/addItem/
+│   │                          removeItem/updateItem) — window.WebBuilderHeaderFooter
+│   ├── header-footer-render.js  canvas rendering of the bars + bar-item
+│   │                          drag/click interaction + bar-item selection
+│   │                          state — contributes to
+│   │                          window.WebBuilderHeaderFooterRuntime
+│   └── header-footer-inspector.js  left sidebar item list/bg controls +
+│                              right-hand inspector panel for a selected
+│                              bar element + the master render() —
+│                              contributes to
+│                              window.WebBuilderHeaderFooterRuntime
 │
 ├── shop/
 │   ├── products.js             product CRUD + products-tab UI
@@ -55,6 +80,8 @@ js/
 │   │                          wrapPart/wrapComponent), drawer bindings,
 │   │                          base toggles — window.WebBuilderCartRuntime
 │   │                          + window.WebBuilderCartConfigRuntime
+│   │                          (candidate for a further split — see
+│   │                          docs/STRUCTURE_PLAN.md Phase 2)
 │   └── cart-editor.js           cart focus editor: stage, drag
 │                              interactions (reusing canvas/alignment.js's
 │                              snapping primitives, not its shared
@@ -63,7 +90,8 @@ js/
 │                              window.WebBuilderCartFocus. See
 │                              ../docs/CART_EDITOR_TASKS.md for the
 │                              current task list before changing this
-│                              file.
+│                              file (candidate for a further split — see
+│                              docs/STRUCTURE_PLAN.md Phase 3).
 │
 ├── pages/                       reserved for a future multi-page client
 │                              feature (currently only rudimentary support
@@ -89,10 +117,13 @@ js/
 
 ```text
 core/state.js → core/utils.js → ui/toast.js → core/storage.js
-→ canvas/elements.js → shop/products.js → shop/cart-data.js
+→ canvas/elements.js → canvas/icon-registry.js
+→ shop/products.js → shop/cart-data.js
 → shop/cart-render.js → shop/cart-preview-bars.js → shop/cart-editor.js
-→ canvas/alignment.js → canvas/canvas.js → ui/shared-markup.js
-→ editor/inspector.js → toolbar.js → layout/header-footer.js → export.js
+→ canvas/alignment.js → canvas/canvas.js → editor/background.js
+→ ui/shared-markup.js → editor/inspector.js → toolbar.js
+→ layout/header-footer-data.js → layout/header-footer-render.js
+→ layout/header-footer-inspector.js → export.js
 → ui/modals.js → preview.js → ui/tabs.js
 → Supabase/supabase-config.js (module)
 → Supabase/supabase-data.js (module)
@@ -104,11 +135,14 @@ Dependencies that matter most (each module reads the ones before it via
 
 - **`core/utils.js` before anything that uses `window.WebBuilderUtils` at
   parse time** — `shop/products.js`, `shop/cart-data.js`,
-  `canvas/canvas.js` and `layout/header-footer.js` all read it immediately
-  when their script runs (not inside a deferred callback).
-- **`canvas/elements.js` before `canvas/canvas.js` and
-  `editor/inspector.js`** — both read `window.WebBuilderElements` at
-  top-level parse time.
+  `canvas/canvas.js` and `layout/header-footer-data.js`/
+  `-render.js`/`-inspector.js` all read it immediately when their script
+  runs (not inside a deferred callback).
+- **`canvas/elements.js` before `editor/inspector.js`** — it reads
+  `window.WebBuilderElements` at top-level parse time. `canvas/canvas.js`
+  also reads it at top-level parse time. `canvas/icon-registry.js` has no
+  such requirement (see its own module section below) but is kept
+  adjacent to `elements.js` for readability.
 - **`shop/products.js` before `shop/cart-data.js`**, since `cart-data.js`
   references products exclusively via `window.WebBuilderProducts` (no own
   product data).
@@ -118,32 +152,46 @@ Dependencies that matter most (each module reads the ones before it via
   parse time. `cart-preview-bars.js` is otherwise fully independent of the
   other `shop/cart-*.js` files.
 - **`canvas/alignment.js` before `canvas/canvas.js` and
-  `layout/header-footer.js`** — both call
+  `layout/header-footer-render.js`** — both call
   `window.WebBuilderAlignment.attachInteraction()`/`toLocalCoords()` for
   drag/click handling and snapping. `shop/cart-editor.js` loads after it
   too, but only reuses its exported snapping primitives
   (`collectSnapTargets`/`snapPosition`/guide-layer helpers), not
   `attachInteraction()` itself — see the module sections below for why.
+- **`canvas/canvas.js` before `editor/background.js`** — `background.js`
+  calls `window.WebBuilderCanvas.setBackground()` at runtime (inside its
+  form's `commit()` handler).
 - **`core/storage.js` and `canvas/canvas.js` before `toolbar.js`** —
   `toolbar.js` reads `window.WebBuilderCanvas` and `window.WebBuilderHistory`
   at top-level parse time.
-- **`canvas/canvas.js` and `layout/header-footer.js` before `export.js`** —
-  `export.js` reads both at top-level parse time.
+- **`canvas/canvas.js` and `layout/header-footer-data.js` before
+  `export.js`** — `export.js` reads both at top-level parse time (via
+  `window.WebBuilderHeaderFooter` for `getHeader()`/`getFooter()`, and
+  `window.WebBuilderHeaderFooterRuntime` at runtime for `itemInnerHtml()`).
 - **`ui/shared-markup.js` before `editor/inspector.js` and
-  `layout/header-footer.js`**: it fills the action-type `<select>` options
-  and the text-format toolbar buttons that those two modules read `.value`
-  from / bind id-based click listeners to, right after `DOMContentLoaded`.
-  Both register their `DOMContentLoaded` listener, so as long as
-  `shared-markup.js`'s listener is registered first (i.e. its `<script>`
-  tag loads first), its markup is in place before either panel renders or
-  binds.
+  `layout/header-footer-inspector.js`**: it fills the action-type `<select>`
+  options and the text-format toolbar buttons that those two modules read
+  `.value` from / bind id-based click listeners to, right after
+  `DOMContentLoaded`. All three register their `DOMContentLoaded`
+  listener, so as long as `shared-markup.js`'s listener is registered
+  first (i.e. its `<script>` tag loads first), its markup is in place
+  before either panel renders or binds.
+- **`layout/header-footer-data.js` before `layout/header-footer-render.js`
+  and `layout/header-footer-inspector.js`** — both read
+  `window.WebBuilderHeaderFooter` at top-level parse time.
+  `-render.js` and `-inspector.js` have **no** parse-time requirement
+  relative to each other: each only reaches into the other's exports via
+  `window.WebBuilderHeaderFooterRuntime` inside function bodies, at
+  runtime, long after both have loaded. They are still listed in this
+  order in `builder.js` by convention (rendering before the panel that
+  reacts to it), not because it's required.
 
-`ui/toast.js`, `ui/modals.js` and `ui/tabs.js` have no load-order
-requirement of their own — every module only calls
-`window.WebBuilderToast?.show?.()` / `window.WebBuilderModals?.open?.()`
-etc. from inside event handlers or `state.subscribe()` callbacks (i.e. at
-runtime, long after all scripts have loaded), never at top-level parse
-time.
+`ui/toast.js`, `ui/modals.js`, `ui/tabs.js` and `canvas/icon-registry.js`
+have no load-order requirement of their own — every module only calls
+`window.WebBuilderToast?.show?.()` / `window.WebBuilderModals?.open?.()` /
+`window.WebBuilderIconRegistry?.get?.()` etc. from inside event handlers or
+`state.subscribe()` callbacks (i.e. at runtime, long after all scripts
+have loaded), never at top-level parse time.
 
 ## Core building blocks
 
@@ -207,7 +255,7 @@ font-family `<select>`, and the text-format toolbar (bold/italic/
 underline/align buttons + color input + font-family select). Builds
 strings only — no event binding, no state access. See "Load order" above
 for why this must load before `editor/inspector.js` and
-`layout/header-footer.js`.
+`layout/header-footer-inspector.js`.
 
 ### `ui/tabs.js`
 Sidebar tab switching (Elemente/Kopf-Fuß/Warenkorb/Produkte). Also ends an
@@ -222,38 +270,59 @@ data: CRUD (`add`, `update`, `remove`, `duplicate`), selection
 (`setSelected`/`getSelected`). `normalizeState()` migrates legacy
 click-action field names (`action`, `action_type`, `url`, `message`,
 `product_id`, …) from elements saved before the
-`actionType`/`actionUrl`/`actionMsg`/`productId` rename. Also contains the
-**icon registry** (`window.WebBuilderIconRegistry`: `register`, `get`,
-`getAll`, `addCustom`, `getCustomNames`) — pure data/registry, no DOM
-access. Custom icons added via `addCustom()` are session-only, never
-persisted.
+`actionType`/`actionUrl`/`actionMsg`/`productId` rename. The icon registry
+used to live in this file too — it's now `canvas/icon-registry.js` (see
+below), since element CRUD and icon lookup are independent concerns.
+
+### `canvas/icon-registry.js`
+The icon registry (`window.WebBuilderIconRegistry`: `register`, `get`,
+`getAll`, `getMergedMap`, `addCustom`, `getCustomNames`) — pure
+data/registry, no DOM access. Split out of `canvas/elements.js`. Used by
+icon canvas elements, header/footer icons
+(`layout/header-footer-render.js`) and the "Eigene Icons" upload UI
+(`canvas/canvas.js`'s `bindCustomIconForm()`/`renderCustomIconPalette()`).
+Custom icons added via `addCustom()` are session-only, never persisted.
+No load-order requirement of its own (see "Load order" above).
 
 ### `canvas/alignment.js`
 Shared click+drag controller (`attachInteraction()`, Pointer Events, with
 a movement threshold and `state.dragLock`) plus Canva-style center/edge
 alignment-guide snapping (`window.WebBuilderAlignment`). Used by
-`canvas/canvas.js` for canvas elements and by `layout/header-footer.js`
-for bar items — neither of those files implements its own drag/snap
-logic. `shop/cart-editor.js` does **not** use `attachInteraction()` itself
-— its stage positions parts/components via a CSS transform offset from
-their natural flow position on an unscaled surface (outside the
-zoom-scaled `#canvas-column`), whereas `attachInteraction()` assumes
-absolute left/top positioning inside a zoom-scaled container. It does
-reuse this file's exported snapping primitives directly
-(`collectSnapTargets`/`snapPosition`/`createGuideLayer`/`removeGuideLayer`/
-`updateGuideVisibility`, each accepting an explicit `zoomOverride` since
-the cart stage is never zoom-scaled) so cart dragging shows the same
-alignment guides without inheriting `canvas.js`'s zoom assumption — see
-`shop/cart-editor.js` below for how. Also exposes `toLocalCoords()`, used
-for translating pointer/drop coordinates into the zoom-adjusted canvas
-coordinate space.
+`canvas/canvas.js` for canvas elements and by
+`layout/header-footer-render.js` for bar items — neither of those files
+implements its own drag/snap logic. `shop/cart-editor.js` does **not** use
+`attachInteraction()` itself — its stage positions parts/components via a
+CSS transform offset from their natural flow position on an unscaled
+surface, outside the zoom-scaled `#canvas-column`, whereas
+`attachInteraction()` assumes absolute left/top positioning inside a
+zoom-scaled container. It does reuse this file's exported snapping
+primitives directly (`collectSnapTargets`/`snapPosition`/`createGuideLayer`/
+`removeGuideLayer`/`updateGuideVisibility`, each accepting an explicit
+`zoomOverride` since the cart stage is never zoom-scaled) so cart dragging
+shows the same alignment guides without inheriting `canvas.js`'s zoom
+assumption — see `shop/cart-editor.js` below for how. Also exposes
+`toLocalCoords()`, used for translating pointer/drop coordinates into the
+zoom-adjusted canvas coordinate space.
 
 ### `canvas/canvas.js`
 Rendering of canvas elements, zoom, canvas size, drag-and-drop from the
-palette, background-editor binding (until `editor/background.js` exists,
-see below), palette UI for custom icons. Text-style CSS (bold/italic/
+palette, palette UI for custom icons. Text-style CSS (bold/italic/
 underline/font-family) for rendered elements comes from the shared
 `WebBuilderUtils.buildTextStyleCss()` helper, also used by `export.js`.
+The background editor form/bindings live in `editor/background.js`, which
+calls this file's `setBackground()`/`computeBackgroundCss()` at runtime.
+
+### `editor/background.js`
+The background editor: solid/gradient/image form controls
+(`#bg-type`, `#bg-color-input`, `#bg-grad-*`, `#bg-image-*`) and their
+bindings. Split out of `canvas/canvas.js`, which still owns the actual
+`setBackground()`/`computeBackgroundCss()` application logic (used by
+canvas rendering and `export.js`) — this file only owns the form. Exposes
+`window.WebBuilderBackground` (`bind`, `refresh`), and also sets
+`window.WebBuilderCanvas.refreshBackgroundEditor` as a backward-compatible
+alias for existing call sites (`builder.js`'s initial render,
+`Supabase/supabase-data.js` after a cloud load). Must load after
+`canvas/canvas.js`.
 
 ### `editor/inspector.js`
 Right-hand properties panel for normal canvas elements: text content,
@@ -264,33 +333,56 @@ duplicate/delete. The `<select>` options and toolbar buttons it binds to
 are injected by `ui/shared-markup.js` — `inspector.js` itself never builds
 that markup. `select(id)` deliberately ends an open cart focus editor
 whenever a real canvas element id is selected, but is also called with
-`id = null` from `layout/header-footer.js`'s `selectItem()` purely to
-clear the normal canvas selection — that `null` call must NOT end the cart
-editor (gated on `id != null`).
+`id = null` from `layout/header-footer-render.js`'s `selectItem()` purely
+to clear the normal canvas selection — that `null` call must NOT end the
+cart editor (gated on `id != null`).
 
-### `layout/header-footer.js`
-Standalone domain for the **real page** header/footer: state, rendering
-of the bars with their elements on the canvas, resize handle, and its
-**own right-hand inspector panel** for bar elements (separate from the
-normal element inspector, since both panels are mutually exclusive). Drag/
-click interaction for bar items goes through `canvas/alignment.js`'s
+### `layout/header-footer-data.js`
+Data layer for the **real page** header/footer: state normalization
+(`normalizeState`, `normalizeItem`, `clampItemsToHeight`), getters
+(`getHeader`, `getFooter`) and mutators (`updateHeader`, `updateFooter`,
+`addItem`, `removeItem`, `updateItem`). Exposes
+`window.WebBuilderHeaderFooter`. `state.notify()` is **not** used for
+header/footer changes — this module dispatches its own
+`webbuilder:header-footer-change` CustomEvent instead (`emitChange()`/
+`onChange(cb)`) — see "Event conventions" below.
+
+### `layout/header-footer-render.js`
+Canvas rendering of the header/footer bars and their elements
+(`buildBarElement`, `renderBars`), the resize handle, and bar-item
+selection state (`currentSelection`, `selectItem`, `clearSelection`) since
+selection directly drives the bar-item highlight class rendered here.
+Drag/click interaction for bar items goes through `canvas/alignment.js`'s
 `attachInteraction()` (`window.WebBuilderAlignment`), not its own copy.
+Contributes `renderBars`, `selectItem`, `clearSelection`,
+`currentSelection`, `itemInnerHtml` to `window.WebBuilderHeaderFooterRuntime`
+(the other contributor is `layout/header-footer-inspector.js`, via
+`Object.assign` onto the same object so load order between the two
+doesn't matter).
+
+### `layout/header-footer-inspector.js`
+The left sidebar's header/footer element list + background controls, the
+**own right-hand inspector panel** for a selected bar element (separate
+from the normal element inspector, since both panels are mutually
+exclusive), and the master `render()` that ties the whole domain together
+(re-syncs sidebar toggles/lists/bg controls, re-renders the right panel,
+and triggers a bar re-render via `window.WebBuilderHeaderFooterRuntime.renderBars()`).
 Like `editor/inspector.js`, its `<select>` options and toolbar buttons
-come from `ui/shared-markup.js`. Do not confuse this with
-`shop/cart-preview-bars.js`, which renders unrelated decorative preview
-bars only inside the cart focus editor. `state.notify()` is **not** used
-for header/footer changes — this module dispatches its own
-`webbuilder:header-footer-change` CustomEvent instead (`onChange(cb)`
-subscribes to it) — see "Event conventions" below. While the cart focus
-editor is open, the real header/footer is hidden and non-interactive
-(`css/styles.css` `body.cart-focus-active .builder-bar`).
+come from `ui/shared-markup.js`. Contributes `render` to
+`window.WebBuilderHeaderFooterRuntime`. Do not confuse any of the three
+`layout/header-footer-*.js` files with `shop/cart-preview-bars.js`, which
+renders unrelated decorative preview bars only inside the cart focus
+editor. While the cart focus editor is open, the real header/footer is
+hidden and non-interactive (`css/styles.css`
+`body.cart-focus-active .builder-bar`).
 
 ### `shop/products.js`
 Product management: CRUD + normalization + rendering/handling of the
 product tab (`#product-list`, `#btn-add-product`). `window.WebBuilderProducts`
 is the canonical interface used by `editor/inspector.js`,
-`layout/header-footer.js`, `preview.js`, `core/storage.js`, `shop/cart-*.js`.
-`window.WebBuilderProductsRuntime.render()` re-renders the tab.
+`layout/header-footer-inspector.js`, `preview.js`, `core/storage.js`,
+`shop/cart-*.js`. `window.WebBuilderProductsRuntime.render()` re-renders
+the tab.
 
 ### `shop/cart-data.js`
 Cart data model: items, config (shape, colors, quantity control, price
@@ -320,7 +412,10 @@ draggable/selectable span only when `interactive` is true or a non-zero
 offset is already stored, so untouched projects render with zero extra
 markup. Exposes `window.WebBuilderCartRuntime` (`render`, `refresh`,
 `open`, `close`, `buildCartHtml`) and `window.WebBuilderCartConfigRuntime`
-(`render`, `renderRecommendList`, `renderMilestoneList`).
+(`render`, `renderRecommendList`, `renderMilestoneList`). This file mixes
+several concerns (pure HTML building, the real drawer, and left-sidebar
+UI) and is a candidate for a further split — see
+`docs/STRUCTURE_PLAN.md` Phase 2.
 
 ### `shop/cart-editor.js`
 The cart focus editor ("Warenkorb-Editor", `state.cartFocusMode`): a
@@ -345,13 +440,15 @@ primitives (`collectSnapTargets`/`snapPosition`/guide-layer helpers,
 always with `zoomOverride: 1` since the stage is never zoom-scaled) so
 both cart-item/recommend-card sub-part dragging and top-level component
 dragging show the same Canva-style alignment guides as `canvas/canvas.js`
-and `layout/header-footer.js`. `resolveLayoutMap()` is the single place
-deciding whether a given part key belongs to `itemDisplay.layout` or
+and `layout/header-footer-render.js`. `resolveLayoutMap()` is the single
+place deciding whether a given part key belongs to `itemDisplay.layout` or
 `recommendDisplay.layout`. The resize handle on the article
 representation (`component:itemRepresentation`) is a resize, not a move,
 and has no snapping — that has always been out of scope. **Read
-`../docs/CART_EDITOR_TASKS.md` before changing this file** — it is the
-current, authoritative task/bug list for this module.
+`../docs/CART_EDITOR_TASKS.md` before changing this file.** This file
+mixes several concerns (stage rendering, drag interaction, panel
+rendering, field bindings) and is a candidate for a further split — see
+`docs/STRUCTURE_PLAN.md` Phase 3.
 
 ### `toolbar.js`
 Top toolbar: zoom controls (delegates to `canvas/canvas.js`), undo/redo
@@ -383,23 +480,21 @@ UI layer (`supabase-ui.js`) — **details and rationale in
   `actionType`, `actionUrl`, `actionMsg`, `productId`. Legacy names
   (`action`, `action_type`, `product_id`, `message`, …) are migrated once
   on load by each domain's `normalizeState()` (`canvas/elements.js`,
-  `layout/header-footer.js`'s `normalizeItem`) — `preview.js`/
+  `layout/header-footer-data.js`'s `normalizeItem`) — `preview.js`/
   `editor/inspector.js` read only the canonical names.
 - Drag interactions set `state.dragLock = true` while a move is active
   (see `canvas/alignment.js`). Any module that re-renders on state changes
   must respect this flag (see `scheduleRender()` in `canvas/canvas.js` and
-  `render()` in `layout/header-footer.js`), otherwise a re-render
-  mid-drag can replace the DOM node under the cursor and abort the move.
-  `shop/cart-editor.js` uses its own pointer handling (see its module
-  section above) and does not set `state.dragLock`.
+  `render()` in `layout/header-footer-inspector.js`), otherwise a
+  re-render mid-drag can replace the DOM node under the cursor and abort
+  the move. `shop/cart-editor.js` uses its own pointer handling (see its
+  module section above) and does not set `state.dragLock`.
 - Header/footer changes do NOT go through `state.notify()` — see
-  `layout/header-footer.js` above (`emitChange()`/`onChange()`).
+  `layout/header-footer-data.js` above (`emitChange()`/`onChange()`).
 - Supabase password recovery: `Supabase/supabase-data.js` dispatches
   `CustomEvent("webbuilder:supabase-password-recovery")`,
   `Supabase/supabase-ui.js` listens and opens the password modal. Same
   pattern as `webbuilder:state-change` in `core/state.js`.
-
-## Known technical debt
 
 See root `README.md`'s "Known technical debt" section — kept there, not
 duplicated here, so there's exactly one place to check.
