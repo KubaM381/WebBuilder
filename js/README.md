@@ -50,7 +50,12 @@ js/
 │
 ├── editor/
 │   ├── inspector.js            right-hand properties panel for normal
-│   │                          canvas elements
+│   │                          canvas elements: selection, CRUD, core +
+│   │                          click-action fields
+│   ├── inspector-special.js    "Erweiterte Eigenschaften" field group
+│   │                          (icon frame, shape style, modal/message
+│   │                          fields) — contributes to
+│   │                          window.WebBuilderInspector
 │   └── background.js           background editor (solid/gradient/image
 │                              form + bindings), split out of
 │                              canvas/canvas.js
@@ -148,7 +153,8 @@ core/state.js → core/utils.js → ui/toast.js → core/storage.js
 → shop/cart-editor-stage.js → shop/cart-editor-drag.js
 → shop/cart-editor-panel.js → shop/cart-editor-bindings.js
 → canvas/alignment.js → canvas/canvas.js → editor/background.js
-→ ui/shared-markup.js → editor/inspector.js → toolbar.js
+→ ui/shared-markup.js → editor/inspector.js → editor/inspector-special.js
+→ toolbar.js
 → layout/header-footer-data.js → layout/header-footer-render.js
 → layout/header-footer-inspector.js → export.js
 → ui/modals.js → preview.js → ui/tabs.js
@@ -224,6 +230,11 @@ Dependencies that matter most (each module reads the ones before it via
   `builder.js` by convention (data/rendering foundation before
   interaction before the panel before its field wiring), not because it's
   required.
+- **`editor/inspector.js` and `editor/inspector-special.js` have no
+  parse-time requirement relative to each other** — both only reach into
+  the other's exports via `window.WebBuilderInspector` inside function
+  bodies, at runtime. They are listed core-panel-first in `builder.js` by
+  convention, not because it's required.
 
 `ui/toast.js`, `ui/modals.js`, `ui/tabs.js` and `canvas/icon-registry.js`
 have no load-order requirement of their own — every module only calls
@@ -363,17 +374,30 @@ alias for existing call sites (`builder.js`'s initial render,
 `canvas/canvas.js`.
 
 ### `editor/inspector.js`
-Right-hand properties panel for normal canvas elements: text content,
-image, size, text formatting, click actions
-(`actionType`/`actionUrl`/`actionMsg`/`productId`), advanced properties
-(icon frame, shape style, modal content, message position),
-duplicate/delete. The `<select>` options and toolbar buttons it binds to
-are injected by `ui/shared-markup.js` — `inspector.js` itself never builds
+Right-hand properties panel for normal canvas elements: selection, CRUD
+(`update`/`remove`/`duplicate`), text content, image, size, text
+formatting, click actions (`actionType`/`actionUrl`/`actionMsg`/
+`productId`). The `<select>` options and toolbar buttons it binds to are
+injected by `ui/shared-markup.js` — `inspector.js` itself never builds
 that markup. `select(id)` deliberately ends an open cart focus editor
 whenever a real canvas element id is selected, but is also called with
 `id = null` from `layout/header-footer-render.js`'s `selectItem()` purely
 to clear the normal canvas selection — that `null` call must NOT end the
-cart editor (gated on `id != null`).
+cart editor (gated on `id != null`). The advanced-properties block (icon
+frame, shape style, modal content, message position) lives in
+`editor/inspector-special.js` instead — that file's `renderSpecial` and
+this file's own `renderAll` both contribute to
+`window.WebBuilderInspector` alongside `getSelected`/`select`/`update`/
+`updateField`/`remove`/`duplicate`.
+
+### `editor/inspector-special.js`
+The "Erweiterte Eigenschaften" field group (icon frame + color, per-icon
+hover highlight, shape type/style, modal title/body/footer, message
+position), rendered below `editor/inspector.js`'s fields in the same
+`#inspector-form`. Builds its panel once, lazily, on first render. Reaches
+`editor/inspector.js`'s selection/update/render API only through
+`window.WebBuilderInspector` at runtime — no load-order requirement
+between the two. Contributes `renderSpecial` to `window.WebBuilderInspector`.
 
 ### `layout/header-footer-data.js`
 Data layer for the **real page** header/footer: state normalization
