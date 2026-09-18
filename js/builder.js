@@ -18,7 +18,18 @@ document.write('<script src="js/canvas/icon-registry.js"><\/script>');
 // references products only via window.WebBuilderProducts.
 document.write('<script src="js/shop/products.js"><\/script>');
 document.write('<script src="js/shop/cart-data.js"><\/script>');
-document.write('<script src="js/shop/cart-render.js"><\/script>');
+// shop/cart-render.js was split into three files (docs/STRUCTURE_PLAN.md
+// Phase 2): cart-html.js (pure HTML building, no DOM/events), cart-drawer.js
+// (the real slide-in drawer) and cart-sidebar.js (left sidebar config UI).
+// All three read window.WebBuilderCart at top-level parse time, so all
+// three must load after shop/cart-data.js. cart-drawer.js and
+// cart-sidebar.js only reach into window.WebBuilderCartHtml inside
+// function bodies (at runtime), so their order relative to cart-html.js
+// doesn't strictly matter — cart-html.js is listed first by convention
+// (data → html → drawer/sidebar → editor).
+document.write('<script src="js/shop/cart-html.js"><\/script>');
+document.write('<script src="js/shop/cart-drawer.js"><\/script>');
+document.write('<script src="js/shop/cart-sidebar.js"><\/script>');
 document.write('<script src="js/shop/cart-editor.js"><\/script>');
 // canvas/alignment.js must load before canvas/canvas.js and
 // layout/header-footer-render.js: both call window.WebBuilderAlignment at
