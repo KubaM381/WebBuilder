@@ -11,7 +11,7 @@ Hintergrund/Begründung des Splits: siehe `docs/AI_REFACTOR_GUIDE.md`.
 
 - [x] **Phase 1** – `canvas/elements.js`, `canvas/canvas.js`, `layout/header-footer.js`
 - [x] **Phase 2** – `shop/cart-render.js` → `cart-html.js`/`cart-drawer.js`/`cart-sidebar.js`
-- [ ] **Phase 3** – `shop/cart-editor.js`
+- [x] **Phase 3** – `shop/cart-editor.js` → `cart-editor-stage.js`/`cart-editor-drag.js`/`cart-editor-panel.js`/`cart-editor-bindings.js`
 - [ ] **Phase 4** – Feinschliff (`editor/inspector.js` entdichten, optional `shop/cart-data.js`, optional `web.html`-Cart-Panel-Markup auslagern)
 
 ## Zielstruktur `js/`
@@ -52,10 +52,10 @@ js/
 │   ├── cart-drawer.js             [x] Phase 2: echter Slide-in-Drawer
 │   ├── cart-sidebar.js            [x] Phase 2: linke Sidebar-UI (Empfehlungen/
 │   │                              Meilensteine/Segmente/Toggles)
-│   ├── cart-editor-stage.js       [ ] NEU (Phase 3): Bühnen-Aufbau + Auswahl
-│   ├── cart-editor-drag.js        [ ] NEU (Phase 3): Pointer-Drag-Logik
-│   ├── cart-editor-panel.js       [ ] NEU (Phase 3): rechtes Panel-Rendering + Layout-Helfer
-│   └── cart-editor-bindings.js    [ ] NEU (Phase 3): Feld-Bindings des rechten Panels
+│   ├── cart-editor-stage.js       [x] Phase 3: Bühnen-Aufbau + Auswahl + Layout-Datenmodell
+│   ├── cart-editor-drag.js        [x] Phase 3: Pointer-Drag-Logik
+│   ├── cart-editor-panel.js       [x] Phase 3: rechtes Panel-Rendering
+│   └── cart-editor-bindings.js    [x] Phase 3: Feld-Bindings des rechten Panels
 │
 ├── pages/                         (unverändert, reserviert)
 │
@@ -126,3 +126,26 @@ Die Splits in Phase 2 ändern ebenfalls **keine** extern sichtbaren Namen:
 
 `shop/cart-render.js` existiert nicht mehr — sein gesamter Inhalt wurde
 auf `cart-html.js`/`cart-drawer.js`/`cart-sidebar.js` verteilt.
+
+## Öffentliche APIs (unverändert nach Phase 3)
+
+Der Split in Phase 3 ändert ebenfalls **keine** extern sichtbaren Namen —
+`window.WebBuilderCartFocus` bleibt exakt die API, die alle anderen
+Dateien (`shop/cart-drawer.js`, `shop/cart-sidebar.js`,
+`editor/inspector.js`, `preview.js`, `ui/tabs.js`) schon vorher kannten:
+
+- `window.WebBuilderCartFocus` — unverändert nach außen
+  (`enter`, `exit`, `isActive`, `renderStage`, `renderPartPanel`), jetzt
+  zusammengesetzt aus allen vier `cart-editor-*.js`-Dateien via
+  `Object.assign` auf dasselbe Objekt, genau wie
+  `window.WebBuilderHeaderFooterRuntime` in Phase 1. Zusätzlich (additiv,
+  nur für die cross-file-Nutzung zwischen den vier Dateien selbst, nicht
+  für Aufrufer außerhalb von `shop/`) trägt das Objekt jetzt auch
+  `select`, `selectLight`, `getPartLayout`, `setPartLayoutSilent`,
+  `resolveLayoutMap`, `getSelectedLayout`, `setSelectedLayout`,
+  `resetSelectedLayout`, `NON_POSITIONABLE`, `DIVIDER_PREFIX`,
+  `isDividerKey` und `bindFocusStageInteractions`.
+
+`shop/cart-editor.js` existiert nicht mehr — sein gesamter Inhalt wurde
+auf `cart-editor-stage.js`/`cart-editor-drag.js`/`cart-editor-panel.js`/
+`cart-editor-bindings.js` verteilt.
