@@ -12,7 +12,10 @@ Hintergrund/Begründung des Splits: siehe `docs/AI_REFACTOR_GUIDE.md`.
 - [x] **Phase 1** – `canvas/elements.js`, `canvas/canvas.js`, `layout/header-footer.js`
 - [x] **Phase 2** – `shop/cart-render.js` → `cart-html.js`/`cart-drawer.js`/`cart-sidebar.js`
 - [x] **Phase 3** – `shop/cart-editor.js` → `cart-editor-stage.js`/`cart-editor-drag.js`/`cart-editor-panel.js`/`cart-editor-bindings.js`
-- [ ] **Phase 4** – Feinschliff (`editor/inspector.js` entdichten, optional `shop/cart-data.js`, optional `web.html`-Cart-Panel-Markup auslagern)
+- [ ] **Phase 4** – Feinschliff, in drei Teilaufgaben:
+  - [x] **4.1** – `editor/inspector.js` entdichten + `renderSpecial()` → `editor/inspector-special.js`
+  - [ ] **4.2** – optional: `shop/cart-data.js` in mehrere fokussierte Dateien aufteilen
+  - [ ] **4.3** – optional: `#cart-inspector-form`-Markup aus `web.html` nach `shop/cart-editor-markup.js` auslagern
 
 ## Zielstruktur `js/`
 
@@ -36,8 +39,8 @@ js/
 │   └── icon-registry.js           [x] NEU: Icon-Registry (register/get/getAll/addCustom)
 │
 ├── editor/
-│   ├── inspector.js               Rechtes Eigenschaften-Panel für Canvas-Elemente
-│   ├── inspector-special.js       [ ] NEU (Phase 4): "Erweiterte Eigenschaften"-Block
+│   ├── inspector.js               [x] Phase 4.1: entdichtet — Rechtes Eigenschaften-Panel für Canvas-Elemente
+│   ├── inspector-special.js       [x] Phase 4.1: NEU — "Erweiterte Eigenschaften"-Block
 │   └── background.js              [x] NEU: Hintergrund-Editor (Formular + Bindings)
 │
 ├── layout/
@@ -47,7 +50,7 @@ js/
 │
 ├── shop/
 │   ├── products.js                Produkt-CRUD + Produkte-Tab-UI
-│   ├── cart-data.js               Warenkorb-Datenmodell (ggf. Phase 4 weiter aufgeteilt)
+│   ├── cart-data.js               Warenkorb-Datenmodell (Phase 4.2: ggf. weiter aufgeteilt)
 │   ├── cart-html.js               [x] Phase 2: reine HTML-Bau-Funktionen
 │   ├── cart-drawer.js             [x] Phase 2: echter Slide-in-Drawer
 │   ├── cart-sidebar.js            [x] Phase 2: linke Sidebar-UI (Empfehlungen/
@@ -149,3 +152,20 @@ Dateien (`shop/cart-drawer.js`, `shop/cart-sidebar.js`,
 `shop/cart-editor.js` existiert nicht mehr — sein gesamter Inhalt wurde
 auf `cart-editor-stage.js`/`cart-editor-drag.js`/`cart-editor-panel.js`/
 `cart-editor-bindings.js` verteilt.
+
+## Öffentliche APIs (unverändert nach Phase 4.1)
+
+Der Split in Phase 4.1 ändert ebenfalls **keine** extern sichtbaren Namen:
+
+- `window.WebBuilderInspector` — unverändert nach außen (`getSelected`,
+  `select`, `update`, `updateField`, `remove`, `duplicate`), jetzt
+  zusammengesetzt aus `editor/inspector.js` und
+  `editor/inspector-special.js` via `Object.assign` auf dasselbe Objekt,
+  genau wie `window.WebBuilderHeaderFooterRuntime`/
+  `window.WebBuilderCartFocus` in früheren Phasen. Zusätzlich (additiv,
+  nur für die cross-file-Nutzung zwischen den beiden Dateien selbst, nicht
+  für Aufrufer außerhalb von `editor/`) trägt das Objekt jetzt auch
+  `renderAll` und `renderSpecial`.
+
+`editor/inspector.js` enthält keinen dichten Einzeiler-Code mehr (ein
+Statement pro Zeile), passend zum Stil des restlichen Projekts.
