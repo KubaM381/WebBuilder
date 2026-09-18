@@ -1,0 +1,103 @@
+# WebBuilder – Struktur-Zielbild (Datei-Split)
+
+Dieses Dokument zeigt die **Zielstruktur** der `js/`-Dateien nach Abschluss
+aller Refactor-Phasen. Es beschreibt keinen aktuellen IST-Zustand, sondern
+wohin wir schrittweise wollen. Der tatsächliche Fortschritt wird hier durch
+Checkboxen markiert und nach jeder abgeschlossenen Phase aktualisiert.
+
+Hintergrund/Begründung des Splits: siehe `docs/AI_REFACTOR_GUIDE.md`.
+
+## Status-Übersicht
+
+- [x] **Phase 1** – `canvas/elements.js`, `canvas/canvas.js`, `layout/header-footer.js`
+- [ ] **Phase 2** – `shop/cart-render.js`
+- [ ] **Phase 3** – `shop/cart-editor.js`
+- [ ] **Phase 4** – Feinschliff (`editor/inspector.js` entdichten, optional `shop/cart-data.js`, optional `web.html`-Cart-Panel-Markup auslagern)
+
+## Zielstruktur `js/`
+
+```text
+js/
+├── builder.js                    Bootstrap / Ladereihenfolge (nur Orchestrator)
+├── toolbar.js                    Zoom/Undo/Redo/Save-Bindings
+├── export.js                     Statischer HTML-Export
+├── preview.js                    Vorschau-Modus + Klick-Aktions-Laufzeit
+│
+├── core/
+│   ├── state.js                  window.WebBuilderState + Event-System
+│   ├── utils.js                  window.WebBuilderUtils
+│   └── storage.js                Snapshots, Speichern, Undo/Redo
+│
+├── canvas/
+│   ├── canvas.js                 [x] Viewport/Zoom/Rendering, Eigene-Icons-Palette-UI,
+│   │                              Drag&Drop aus der Palette (KEIN Hintergrund-Editor mehr)
+│   ├── alignment.js               Gemeinsamer Drag/Click-Controller + Alignment Guides
+│   ├── elements.js                [x] NUR Element-CRUD (kein Icon-Registry mehr)
+│   └── icon-registry.js           [x] NEU: Icon-Registry (register/get/getAll/addCustom)
+│
+├── editor/
+│   ├── inspector.js               Rechtes Eigenschaften-Panel für Canvas-Elemente
+│   ├── inspector-special.js       [ ] NEU (Phase 4): "Erweiterte Eigenschaften"-Block
+│   └── background.js              [x] NEU: Hintergrund-Editor (Formular + Bindings)
+│
+├── layout/
+│   ├── header-footer-data.js      [x] NEU: Datenmodell (normalize/get/update/add/remove)
+│   ├── header-footer-render.js    [x] NEU: Bar-Rendering + Drag/Click-Interaktion + Auswahl
+│   └── header-footer-inspector.js [x] NEU: Rechtes Panel + linke Sidebar-Liste + render()
+│
+├── shop/
+│   ├── products.js                Produkt-CRUD + Produkte-Tab-UI
+│   ├── cart-data.js               Warenkorb-Datenmodell (ggf. Phase 4 weiter aufgeteilt)
+│   ├── cart-html.js               [ ] NEU (Phase 2): reine HTML-Bau-Funktionen
+│   ├── cart-drawer.js             [ ] NEU (Phase 2): echter Slide-in-Drawer
+│   ├── cart-sidebar.js            [ ] NEU (Phase 2): linke Sidebar-UI (Empfehlungen/
+│   │                              Meilensteine/Segmente/Toggles)
+│   ├── cart-editor-stage.js       [ ] NEU (Phase 3): Bühnen-Aufbau + Auswahl
+│   ├── cart-editor-drag.js        [ ] NEU (Phase 3): Pointer-Drag-Logik
+│   ├── cart-editor-panel.js       [ ] NEU (Phase 3): rechtes Panel-Rendering + Layout-Helfer
+│   └── cart-editor-bindings.js    [ ] NEU (Phase 3): Feld-Bindings des rechten Panels
+│
+├── pages/                         (unverändert, reserviert)
+│
+├── ui/
+│   ├── toast.js
+│   ├── modals.js
+│   ├── shared-markup.js
+│   └── tabs.js
+│
+└── Supabase/                      (unverändert)
+    ├── supabase-config.js
+    ├── supabase-data.js
+    ├── supabase-ui.js
+    └── README.md
+```
+
+## Nicht angefasste Dateien (bewusst)
+
+`state.js`, `utils.js`, `storage.js`, `toast.js`, `modals.js`, `tabs.js`,
+`toolbar.js`, `export.js`, `preview.js`, `products.js`, `alignment.js`,
+`shared-markup.js`, alle drei Supabase-Dateien. Diese sind entweder schon
+klein genug oder haben bereits genau eine Zuständigkeit — ein Split wäre
+hier Aktionismus statt Verbesserung.
+
+## Öffentliche APIs (unverändert nach Phase 1)
+
+Die Splits in Phase 1 ändern **keine** extern sichtbaren Namen:
+
+- `window.WebBuilderElements` — unverändert (nur Icon-Registry entfernt, war
+  vorher schon eine separate Sektion im selben Objekt-Sinn nie Teil davon).
+- `window.WebBuilderIconRegistry` — unverändert, jetzt in eigener Datei.
+- `window.WebBuilderCanvas` — unverändert bis auf die interne, nie extern
+  benutzte Methode `bindBackgroundEditor` (entfällt ersatzlos).
+- `window.WebBuilderCanvas.refreshBackgroundEditor` — bleibt als
+  Kompatibilitäts-Alias erhalten (zeigt jetzt auf `editor/background.js`),
+  damit kein aufrufender Code (auch nicht ggf. noch unbekannter Code wie
+  `cart-preview-bars.js`) angepasst werden musste.
+- `window.WebBuilderBackground` — NEU, `{ bind, refresh }`.
+- `window.WebBuilderHeaderFooter` — unverändert, plus zwei zusätzliche
+  (additive) Methoden `emitChange`, `clampItemsToHeight` für die
+  cross-file-Nutzung durch `header-footer-render.js`.
+- `window.WebBuilderHeaderFooterRuntime` — unverändert
+  (`render`, `renderBars`, `selectItem`, `clearSelection`,
+  `currentSelection`, `itemInnerHtml`), jetzt aus zwei Dateien
+  zusammengesetzt statt einer.
