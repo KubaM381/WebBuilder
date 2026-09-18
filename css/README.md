@@ -16,7 +16,7 @@ plus the `body.preview-mode` overrides.
 | `inspector.css` | Right-hand properties panel, text-format toolbar. |
 | `canvas.css` | Canvas area, zoom controls, header/footer bars (`.builder-bar`), bar-item interaction. |
 | `elements.css` | Element palette (`.draggable-item`) and placed canvas elements (`.placed-element`). |
-| `modals.css` | Toasts, drawer (cart), generic modal, and reusable modal-body layout helpers (`.modal-stack`, `.modal-row`, `.pick-list`, ...) used by `js/Supabase/supabase-ui.js` and `cart.js`. |
+| `modals.css` | Toasts, drawer (cart), generic modal, and reusable modal-body layout helpers (`.modal-stack`, `.modal-row`, `.pick-list`, ...) used by `js/Supabase/supabase-ui.js` and the cart focus editor. |
 | `responsive.css` | Small-screen adjustments (≤1024px). |
 
 ## Rules
@@ -39,8 +39,3 @@ plus the `body.preview-mode` overrides.
    `:root` variable in `base.css`, not copy-pasted as a hex code — even
    for small "one-off" tones like a hover shade or a muted border grey
    (see `--primary-light-hover`, `--border-muted`).
-
-## Known gaps (not yet fixed)
-
-None currently tracked. Resolved items stay in git/chat history instead of
-being marked "done" here.
