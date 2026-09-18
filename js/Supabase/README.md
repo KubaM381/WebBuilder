@@ -1,37 +1,52 @@
-# Supabase-Integration
+# Supabase integration
 
-Alle Supabase-bezogenen Dateien liegen gebündelt in diesem Ordner.
+All Supabase-related files live together in this folder.
 
-## Dateien
-
-| Datei | Verantwortlich für |
+| File | Responsible for |
 |---|---|
-| `supabase-config.js` | Nur die zwei Konstanten `SUPABASE_URL` und `SUPABASE_PUBLISHABLE_KEY`. Enthält **niemals** einen Secret/Service-Role-Key (siehe Kommentar in der Datei + Projektregel 18). |
-| `supabase-data.js` | Datenschicht: Client-Erstellung, Auth (Login/Registrierung/Passwort-Reset/Logout), Projekt- und Seiten-CRUD gegen die Tabellen `projects`/`pages`. Enthält **keine** DOM-/UI-Logik. Exponiert `window.WebBuilderSupabase` sowie ES-Exporte. |
-| `supabase-ui.js` | UI-Schicht: das komplette Cloud-/Konto-Modal (`#btn-cloud` in `web.html`) — Login-Formular, Projektliste, Seitenverwaltung, Passwort-Reset-Dialog. Importiert alle benötigten Funktionen per ES `import` direkt aus `supabase-data.js`. |
+| `supabase-config.js` | Just the two constants `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. **Never** a secret/service-role key (see comment in the file + root `README.md` "Security"). |
+| `supabase-data.js` | Data layer: client creation, auth (login/signup/password reset/logout), project and page CRUD against the `projects`/`pages` tables. No DOM/UI logic. Exposes `window.WebBuilderSupabase` plus ES exports. |
+| `supabase-ui.js` | UI layer: the whole cloud/account modal (`#btn-cloud` in `web.html`) — login form, project list, page management, password-reset dialog. Imports what it needs directly from `supabase-data.js` via ES `import`. |
 
-## Warum ES-`import` statt `window.WebBuilderXxx`?
+## Why ES `import` instead of `window.WebBuilderXxx`?
 
-Im restlichen Projekt kommunizieren Module ausschließlich über `window.WebBuilderXxx` (siehe `js/README.md`). Hier ist das anders, weil alle drei Dateien `type="module"` sind — Modul-Skripte werden vom Browser **deferred** (verzögert, nach dem Parsen) ausgeführt. Ein normaler `<script>`-Tag zwischen zwei Modul-Tags würde daher vor dem Modul laufen, und selbst zwei Modul-Tags laufen nicht zwangsläufig in Dokumentreihenfolge synchron zum `window`-Zustand. Ein `import` garantiert dagegen, dass `supabase-data.js` vollständig ausgewertet ist, bevor `supabase-ui.js` darauf zugreift. `window.WebBuilderSupabase` bleibt trotzdem als öffentliche API bestehen (Konsole, Debugging, mögliche künftige Module).
+Everywhere else in the project, modules talk to each other via
+`window.WebBuilderXxx` (see `js/README.md`). Here it's different because
+all three files are `type="module"` — module scripts are deferred by the
+browser (run after parsing), so a plain `<script>` tag between two module
+tags would run *before* the module, and even two module tags don't
+necessarily run in document order relative to `window` state. An
+`import` guarantees `supabase-data.js` is fully evaluated before
+`supabase-ui.js` reads from it. `window.WebBuilderSupabase` still exists
+as a public API (console, debugging, future modules).
 
-## Abhängigkeiten nach außen
+## External dependencies
 
-- `supabase-data.js` nutzt `window.WebBuilderStorage` (Snapshot erstellen/anwenden), `window.WebBuilderToolbar` (Refresh nach Laden), `window.WebBuilderCanvas` (Hintergrund-Editor-Refresh) und `window.WebBuilderToast` (Feedback).
-- `supabase-ui.js` nutzt `window.WebBuilderModals` (das generische Modal), `window.WebBuilderToast` und `window.WebBuilderUtils.escapeHtml`.
-- Nichts außerhalb dieses Ordners greift auf `supabase-data.js`/`supabase-ui.js` zu — der einzige Berührungspunkt von außen ist der Button `#btn-cloud` in `web.html`, an den sich `supabase-ui.js` selbst hängt.
+- `supabase-data.js` uses `window.WebBuilderStorage` (create/apply a
+  snapshot), `window.WebBuilderToolbar` (refresh after a cloud load),
+  `window.WebBuilderCanvas` (background editor refresh) and
+  `window.WebBuilderToast`.
+- `supabase-ui.js` uses `window.WebBuilderModals`, `window.WebBuilderToast`
+  and `window.WebBuilderUtils.escapeHtml`.
+- Nothing outside this folder touches `supabase-data.js`/`supabase-ui.js`
+  directly — the only outside touch point is the `#btn-cloud` button in
+  `web.html`, which `supabase-ui.js` binds to itself.
 
-## Datenbank-Schema (Kurzfassung)
+## Database schema
 
 ```text
 projects (id, user_id, name, slug, updated_at)
    ↓ 1:n
-pages (id, project_id, name, slug, content [JSON-Snapshot], updated_at)
+pages (id, project_id, name, slug, content [JSON snapshot], updated_at)
 ```
 
-`content` einer Page ist exakt das Ergebnis von `WebBuilderStorage.createSnapshot()` — dieselbe Struktur wie beim lokalen Speichern/Undo-Redo.
+A page's `content` is exactly the result of
+`WebBuilderStorage.createSnapshot()` — the same structure used for local
+save and undo/redo.
 
-## Wann welche Datei lesen?
+## Where to look for what
 
-- **Nur Login/Auth-Verhalten ändern** → `supabase-data.js` reicht.
-- **Nur das Cloud-Modal (Text, Buttons, Layout) ändern** → `supabase-ui.js` reicht.
-- **Neues Datenbankfeld/neue Tabelle** → `supabase-data.js` + Rücksprache wegen RLS/Migration (Projektregel 17).
+- **Only auth behavior changes** → `supabase-data.js` is enough.
+- **Only the cloud modal (text, buttons, layout) changes** →
+  `supabase-ui.js` is enough.
+- **New DB field/table** → `supabase-data.js` + a check on RLS/migration.
