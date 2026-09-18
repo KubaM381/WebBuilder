@@ -4,6 +4,15 @@ Visual drag-and-drop website builder (vanilla JS, no build tool/framework).
 Users place elements via drag & drop, style header/footer, manage products
 and a cart, and save projects locally or to Supabase.
 
+> **Structure refactor in progress.** Some `js/` files are being split into
+> smaller, single-responsibility files in phases, since a few had grown
+> too large to safely edit (especially for an AI working on one change at
+> a time). See `docs/STRUCTURE_PLAN.md` for the target structure and
+> current phase status, and `docs/AI_REFACTOR_GUIDE.md` for the rules any
+> AI session should follow when continuing it. Phase 1 (this file's
+> structure below) is done; later phases (`shop/cart-render.js`,
+> `shop/cart-editor.js`) are still pending.
+
 ## Project structure
 
 ```text
@@ -14,9 +23,13 @@ WebBuilder/
 │                          by the project owner, not a "maybe delete" item)
 ├── README.md              this document
 ├── docs/
-│   └── CART_EDITOR_TASKS.md  active task specification for the current
-│                          cart focus editor round — read this before
-│                          touching js/shop/cart-*.js
+│   ├── CART_EDITOR_TASKS.md  active task specification for the current
+│   │                      cart focus editor round — read this before
+│   │                      touching js/shop/cart-*.js
+│   ├── STRUCTURE_PLAN.md     target file structure for the ongoing
+│   │                      js/-split refactor, with phase status
+│   └── AI_REFACTOR_GUIDE.md  rules for any AI session continuing that
+│                          refactor
 ├── css/
 │   ├── README.md          CSS architecture, see there for details
 │   └── *.css
@@ -28,10 +41,20 @@ WebBuilder/
     ├── export.js            static HTML export
     ├── preview.js            preview mode + click-action runtime
     ├── core/                shared state, utils, storage/history
-    ├── canvas/              canvas rendering, drag/alignment, elements+icons
-    ├── editor/              right-hand inspector panel for canvas elements
-    ├── layout/              header/footer domain
-    ├── shop/                products + cart (data / rendering / focus editor)
+    ├── canvas/              canvas rendering, drag/alignment, elements +
+    │                        icon registry (canvas/icon-registry.js)
+    ├── editor/              right-hand inspector panel for canvas
+    │                        elements + the background editor
+    │                        (editor/background.js)
+    ├── layout/              header/footer domain, split into a data file
+    │                        (header-footer-data.js), a canvas-rendering
+    │                        file (header-footer-render.js) and an
+    │                        inspector/sidebar file
+    │                        (header-footer-inspector.js)
+    ├── shop/                products + cart (data / rendering / focus
+    │                        editor — cart-render.js and cart-editor.js
+    │                        are still single large files, see
+    │                        docs/STRUCTURE_PLAN.md)
     ├── ui/                  cross-domain UI helpers: toast, modals, shared
     │                        inspector markup, sidebar-tab switching
     ├── pages/               reserved for future multi-page client logic
@@ -58,24 +81,28 @@ WebBuilder/
 - **Shared drag/click + alignment guides**: `js/canvas/alignment.js`
   (`window.WebBuilderAlignment`) owns the pointer-event drag controller and
   Canva-style center/edge alignment-guide snapping (`attachInteraction()`),
-  used by `canvas/canvas.js` (canvas elements) and `layout/header-footer.js`
-  (bar items). The cart focus editor (`shop/cart-editor.js`) has its own
-  pointer handling instead — its stage positions parts/components via a CSS
-  transform offset on an unscaled surface, not `attachInteraction()`'s
-  absolute left/top model — but it reuses `alignment.js`'s exported
-  snapping primitives (`collectSnapTargets`/`snapPosition`/guide-layer
-  helpers) so dragging a cart part or component shows the same alignment
-  guides as canvas elements and header/footer bar items.
+  used by `canvas/canvas.js` (canvas elements) and
+  `layout/header-footer-render.js` (bar items). The cart focus editor
+  (`shop/cart-editor.js`) has its own pointer handling instead — its stage
+  positions parts/components via a CSS transform offset on an unscaled
+  surface, not `attachInteraction()`'s absolute left/top model — but it
+  reuses `alignment.js`'s exported snapping primitives
+  (`collectSnapTargets`/`snapPosition`/guide-layer helpers) so dragging a
+  cart part or component shows the same alignment guides as canvas
+  elements and header/footer bar items.
 - **One module per domain**, self-initializing on load
   (`DOMContentLoaded`), exposing its API under `window.WebBuilderXxx`.
-  Details: see `js/README.md`.
+  A domain can be split across multiple files (e.g. `layout/`'s three
+  `header-footer-*.js` files, or `canvas/`'s `elements.js` +
+  `icon-registry.js`) — they still expose exactly one shared
+  `window.WebBuilderXxx` object per domain. Details: see `js/README.md`.
 - **Load order matters**: `js/builder.js` loads all modules in sequence via
   `document.write`. `shop/products.js` **must load before**
   `shop/cart-data.js` (cart-data.js references products only via
   `window.WebBuilderProducts`), `js/canvas/alignment.js` **must load
-  before** `canvas/canvas.js` and `layout/header-footer.js`, and
+  before** `canvas/canvas.js` and `layout/header-footer-render.js`, and
   `js/ui/shared-markup.js` **must load before** `editor/inspector.js`/
-  `layout/header-footer.js` (see `js/README.md`).
+  `layout/header-footer-inspector.js` (see `js/README.md`).
 
 ## Supabase schema
 
@@ -102,19 +129,22 @@ format.
 2. If you're picking up cart-focus-editor work, read
    `docs/CART_EDITOR_TASKS.md` first — it is the current, authoritative
    task list for that area.
-3. No drive-by refactors — if a structural improvement seems useful,
+3. If you're picking up the ongoing file-split refactor, read
+   `docs/STRUCTURE_PLAN.md` (target structure + phase status) and
+   `docs/AI_REFACTOR_GUIDE.md` (rules to follow) first.
+4. No drive-by refactors — if a structural improvement seems useful,
    propose it instead of doing it unasked.
-4. Always add new persistable state fields to `core/storage.js` too
+5. Always add new persistable state fields to `core/storage.js` too
    (`createSnapshot`/`applySnapshot`) — note that nested fields under
    `state.cartConfig`/`state.background`/etc. are already covered since
    those top-level objects are cloned whole; only a genuinely **new
    top-level** `state.*` field needs an explicit addition there.
-5. Keep new comments short (why, not bug history). History belongs in
+6. Keep new comments short (why, not bug history). History belongs in
    commit messages.
-6. Comments and READMEs are written in English; chat with the developer
+7. Comments and READMEs are written in English; chat with the developer
    stays in German. UI copy shown to end users (labels, button text,
    toasts) stays German, matching the existing app.
-7. Before editing any file, make sure you actually have its complete,
+8. Before editing any file, make sure you actually have its complete,
    untruncated current content — if you're unsure, say so instead of
    guessing or reconstructing from memory. A truncated file that gets
    pasted back into the repo as-is causes a silent JS syntax error: the
@@ -125,14 +155,15 @@ format.
 
 ## Known technical debt
 
-- `editor/inspector.js`, `shop/cart-*.js`, `canvas/elements.js`,
-  `preview.js` are densely written (many statements per line) — harder to
-  read than the rest of the project; should be unified to the rest of the
-  codebase's style (multi-line, one statement per line) next time they're
-  touched.
-- `js/editor/background.js` doesn't exist yet — the background editor
-  still lives inside `canvas/canvas.js` (`bindBackgroundEditor()`). Split
-  it out once that area needs real growth (see `js/README.md`).
+- `editor/inspector.js`, `shop/cart-*.js`, `preview.js` are densely
+  written (many statements per line) — harder to read than the rest of
+  the project; should be unified to the rest of the codebase's style
+  (multi-line, one statement per line) next time they're touched (see
+  `docs/STRUCTURE_PLAN.md` Phase 4).
+- `shop/cart-render.js` and `shop/cart-editor.js` still each mix several
+  independent concerns in one file (HTML building + the real drawer +
+  sidebar UI; stage rendering + drag interaction + panel + bindings,
+  respectively). Planned split: see `docs/STRUCTURE_PLAN.md` Phases 2–3.
 - The cart focus editor (`shop/cart-editor.js`) has a small, actively-
   tracked list of open fixes/refinements — see `docs/CART_EDITOR_TASKS.md`
   instead of duplicating that list here.
