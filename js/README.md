@@ -75,13 +75,22 @@ js/
 │   ├── cart-data.js             cart data model: items, config,
 │   │                          recommendations, milestones,
 │   │                          normalizeState() — window.WebBuilderCart
-│   ├── cart-render.js           shared HTML building for drawer + focus
-│   │                          editor (buildCartHtml, buildCartItemHTML,
-│   │                          wrapPart/wrapComponent), drawer bindings,
-│   │                          base toggles — window.WebBuilderCartRuntime
-│   │                          + window.WebBuilderCartConfigRuntime
-│   │                          (candidate for a further split — see
-│   │                          docs/STRUCTURE_PLAN.md Phase 2)
+│   ├── cart-html.js             pure cart HTML building only — no DOM
+│   │                          access, no event binding (buildCartHtml,
+│   │                          buildCartParts, buildCartItemHTML,
+│   │                          wrapLayoutPart/wrapComponent) —
+│   │                          window.WebBuilderCartHtml, also
+│   │                          contributes buildCartHtml/buildCartParts to
+│   │                          window.WebBuilderCartRuntime
+│   ├── cart-drawer.js           the real slide-in cart drawer: rendering
+│   │                          + open/close + all drawer click/change
+│   │                          interactions — contributes render/refresh/
+│   │                          open/close to window.WebBuilderCartRuntime
+│   ├── cart-sidebar.js          left sidebar cart config UI: discount/
+│   │                          recommend/progress toggles, items-list max
+│   │                          height, product segments, recommendation
+│   │                          list editor, milestone list editor —
+│   │                          window.WebBuilderCartConfigRuntime
 │   └── cart-editor.js           cart focus editor: stage, drag
 │                              interactions (reusing canvas/alignment.js's
 │                              snapping primitives, not its shared
@@ -119,7 +128,8 @@ js/
 core/state.js → core/utils.js → ui/toast.js → core/storage.js
 → canvas/elements.js → canvas/icon-registry.js
 → shop/products.js → shop/cart-data.js
-→ shop/cart-render.js → shop/cart-preview-bars.js → shop/cart-editor.js
+→ shop/cart-html.js → shop/cart-drawer.js → shop/cart-sidebar.js
+→ shop/cart-preview-bars.js → shop/cart-editor.js
 → canvas/alignment.js → canvas/canvas.js → editor/background.js
 → ui/shared-markup.js → editor/inspector.js → toolbar.js
 → layout/header-footer-data.js → layout/header-footer-render.js
@@ -146,11 +156,16 @@ Dependencies that matter most (each module reads the ones before it via
 - **`shop/products.js` before `shop/cart-data.js`**, since `cart-data.js`
   references products exclusively via `window.WebBuilderProducts` (no own
   product data).
-- **`shop/cart-data.js` before `shop/cart-render.js`,
-  `shop/cart-preview-bars.js` and `shop/cart-editor.js`** — all three read
-  `window.WebBuilderCart` and/or `window.WebBuilderState` at top-level
-  parse time. `cart-preview-bars.js` is otherwise fully independent of the
-  other `shop/cart-*.js` files.
+- **`shop/cart-data.js` before `shop/cart-html.js`, `shop/cart-drawer.js`,
+  `shop/cart-sidebar.js`, `shop/cart-preview-bars.js` and
+  `shop/cart-editor.js`** — all five read `window.WebBuilderCart` and/or
+  `window.WebBuilderState` at top-level parse time. `cart-preview-bars.js`
+  is otherwise fully independent of the other `shop/cart-*.js` files.
+  `cart-drawer.js` and `cart-sidebar.js` only reach into
+  `window.WebBuilderCartHtml` inside function bodies (at runtime), so
+  their load order relative to `cart-html.js` doesn't strictly matter —
+  `cart-html.js` is listed first by convention (data → html → drawer/
+  sidebar → editor).
 - **`canvas/alignment.js` before `canvas/canvas.js` and
   `layout/header-footer-render.js`** — both call
   `window.WebBuilderAlignment.attachInteraction()`/`toLocalCoords()` for
@@ -399,28 +414,59 @@ text, condition: {type, value}}`) — `pickRecommendation()` is the single
 place deciding which recommendation (if any) to show for a given cart
 state.
 
-### `shop/cart-render.js`
-Builds the shared cart HTML (progress bar, items, recommendation,
-discount, totals) used by both the real drawer (`interactive: false`) and
-the cart focus editor stage (`interactive: true`, see `cart-editor.js`),
-so both stay pixel-identical apart from editing affordances — this
-invariant must be preserved by any change here. Also owns the real
-slide-in drawer and the sidebar's three enable/disable toggles.
-`wrapComponent()`/`wrapPart()` are the two positioning primitives: they
-wrap a top-level cart block / a cart-item sub-part in a
-draggable/selectable span only when `interactive` is true or a non-zero
-offset is already stored, so untouched projects render with zero extra
-markup. Exposes `window.WebBuilderCartRuntime` (`render`, `refresh`,
-`open`, `close`, `buildCartHtml`) and `window.WebBuilderCartConfigRuntime`
-(`render`, `renderRecommendList`, `renderMilestoneList`). This file mixes
-several concerns (pure HTML building, the real drawer, and left-sidebar
-UI) and is a candidate for a further split — see
+### `shop/cart-html.js`
+Pure cart HTML building — no DOM access, no event binding, no history/
+state mutation. Builds the shared cart body (title, dividers, progress
+bar, items, product segments, recommendation, discount, totals incl.
+shipping, checkout button) used identically by both the real drawer
+(`interactive: false`, see `cart-drawer.js`) and the cart focus editor
+stage (`interactive: true`, see `cart-editor.js`), so both stay
+pixel-identical apart from editing affordances — this invariant must be
+preserved by any change here. `wrapComponent()`/`wrapLayoutPart()` are the
+two positioning primitives: they wrap a top-level cart block / a
+cart-item sub-part in a draggable/selectable span only when `interactive`
+is true or a non-zero offset is already stored, so untouched projects
+render with zero extra markup. Exposes `window.WebBuilderCartHtml`
+(`buildCartHtml`, `buildCartParts`, `buildCartItemHTML`,
+`buildRecommendCardContentHtml`, `buildItemsHtml`, `buildTitleHtml`,
+`buildCheckoutHtml`, `wrapLayoutPart`, `wrapComponent`), and also
+contributes `buildCartHtml`/`buildCartParts` onto
+`window.WebBuilderCartRuntime` (the other contributor is
+`shop/cart-drawer.js`, via `Object.assign` onto the same object), since
+`shop/cart-editor.js` calls `window.WebBuilderCartRuntime.buildCartParts()`
+at runtime. Split out of the former `shop/cart-render.js` — see
 `docs/STRUCTURE_PLAN.md` Phase 2.
+
+### `shop/cart-drawer.js`
+The real slide-in cart drawer (`#cart-drawer`/`#cart-items-list`):
+rendering (via `shop/cart-html.js`'s `buildCartHtml()`), open/close, and
+every click/change interaction inside it (discount code, add recommended
+product, quantity/price/remove per item). Contributes `render`, `refresh`,
+`open`, `close` to `window.WebBuilderCartRuntime` (the other contributor
+is `shop/cart-html.js`, via `Object.assign` onto the same object so load
+order between the two doesn't matter). `refresh()` is the single place
+that re-renders both the drawer and — if open — the cart focus editor
+stage; other modules call it via `window.WebBuilderCartRuntime.refresh()`
+rather than duplicating that logic. Split out of the former
+`shop/cart-render.js` — see `docs/STRUCTURE_PLAN.md` Phase 2.
+
+### `shop/cart-sidebar.js`
+The left sidebar's cart config UI (`#panel-cart`): the discount/recommend/
+progress enable toggles, the items-list max-height field, product-segment
+management (create/edit/delete via a picker modal), the recommendation
+list editor, and the milestone list editor. None of this ties to
+selecting a specific on-canvas part, which is why it lives here rather
+than in the right-hand cart editor panel (`shop/cart-editor.js`). Exposes
+`window.WebBuilderCartConfigRuntime` (`render`, `renderRecommendList`,
+`renderMilestoneList`, `renderSegmentList`). Calls
+`window.WebBuilderCartRuntime.refresh()` at runtime after any change here
+instead of re-rendering the drawer itself. Split out of the former
+`shop/cart-render.js` — see `docs/STRUCTURE_PLAN.md` Phase 2.
 
 ### `shop/cart-editor.js`
 The cart focus editor ("Warenkorb-Editor", `state.cartFocusMode`): a
 dedicated editing stage mounted into `.canvas-container`, showing the full
-cart body (via `cart-render.js`'s `buildCartHtml()`) centered over the
+cart body (via `shop/cart-html.js`'s `buildCartHtml()`) centered over the
 canvas. Every top-level block (progress bar, discount field,
 recommendation, checkout button, totals) is individually
 selectable/draggable via `cartConfig.componentLayout`; individual
