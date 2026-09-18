@@ -1,21 +1,19 @@
 // WebBuilder shared markup builder
-// Single source for HTML that web.html otherwise duplicated verbatim
-// between the normal element inspector (#prop-*) and the header/footer
-// bar-item inspector (#bar-prop-*) — see root README.md "Known technical
-// debt" (now resolved by this module).
+// Single source for HTML that web.html/cart-editor-markup.js otherwise
+// duplicate verbatim: the click-action select (normal element inspector
+// vs. bar-item inspector), the text-format toolbar (same two panels),
+// and the "rounded/square/pill" shape select used identically by three
+// fields inside #cart-inspector-form.
 //
-// This module ONLY builds/injects static markup. It intentionally does
-// NOT bind any click/change events — event binding stays exactly where it
-// was (inspector.js for #prop-*, header-footer.js for #bar-prop-*), still
-// referencing the very same element ids as before. That keeps this change
-// purely a markup de-duplication with no behavioral risk to either panel.
+// This module ONLY builds/injects static markup. It does NOT bind any
+// click/change events — event binding stays where it was (inspector.js,
+// header-footer.js, cart-editor-bindings.js).
 //
-// Load-order requirement: this file must load BEFORE inspector.js and
-// header-footer.js (see js/README.md "Load order") so the options/toolbar
-// buttons already exist in the DOM by the time those modules read
-// `.value` or attach id-based listeners to them.
+// Load-order requirement: this file must load AFTER
+// js/shop/cart-editor-markup.js (which creates the empty shape <select>s
+// this file fills) and BEFORE editor/inspector.js and
+// layout/header-footer-inspector.js (see js/README.md "Load order").
 (() => {
-  // Identical in both panels (verified against web.html before extracting).
   const ACTION_TYPE_OPTIONS = [
     ["none", "Keine Aktion"],
     ["scroll-top", "Nach ganz oben scrollen ⬆️"],
@@ -37,6 +35,16 @@
     ["'Comic Sans MS', cursive", "Verspielt"]
   ];
 
+  // Used by cart-comp-checkout-shape/cart-comp-discount-shape/
+  // cart-comp-recommend-shape (exact duplicates in #cart-inspector-form).
+  // Other shape-like selects (cart-item-shape, cid-quantity-shape,
+  // cid-remove-shape) use different option sets/orders and stay inline.
+  const SHAPE_OPTIONS = [
+    ["rounded", "Abgerundet"],
+    ["square", "Eckig"],
+    ["pill", "Rund (Pille)"]
+  ];
+
   function optionsHtml(list) {
     return list.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
   }
@@ -49,11 +57,14 @@
     return optionsHtml(FONT_FAMILY_OPTIONS);
   }
 
+  function buildShapeOptionsHtml() {
+    return optionsHtml(SHAPE_OPTIONS);
+  }
+
   // idPrefix distinguishes the two toolbar instances ("" for normal
   // elements -> ttb-bold/ttb-italic/..., "bar-" for bar items ->
   // bar-ttb-bold/bar-ttb-italic/...). colorId/fontFamilyId are passed
-  // explicitly since those two never followed the "ttb-" naming scheme
-  // (prop-color / bar-prop-color, prop-font-family / bar-prop-font-family).
+  // explicitly since those two never followed the "ttb-" naming scheme.
   function buildTextToolbarHtml({ idPrefix = "", colorId, fontFamilyId, defaultColor = "#000000" }) {
     return `<button type="button" class="ttb-btn" id="${idPrefix}ttb-bold" title="Fett"><b>F</b></button>
       <button type="button" class="ttb-btn" id="${idPrefix}ttb-italic" title="Kursiv"><i>K</i></button>
@@ -67,20 +78,20 @@
       <select id="${fontFamilyId}" title="Schriftart">${buildFontFamilyOptionsHtml()}</select>`;
   }
 
-  // Idempotent (dataset flag) so a re-run (e.g. accidental double include)
-  // can't wipe out a panel that was already populated and is mid-edit.
-  function populate() {
-    const propActionType = document.getElementById("prop-action-type");
-    if (propActionType && !propActionType.dataset.webBuilderMarkupBound) {
-      propActionType.innerHTML = buildActionTypeOptionsHtml();
-      propActionType.dataset.webBuilderMarkupBound = "true";
+  function fillSelect(id, html) {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.webBuilderMarkupBound) {
+      el.innerHTML = html;
+      el.dataset.webBuilderMarkupBound = "true";
     }
+  }
 
-    const barActionType = document.getElementById("bar-prop-action-type");
-    if (barActionType && !barActionType.dataset.webBuilderMarkupBound) {
-      barActionType.innerHTML = buildActionTypeOptionsHtml();
-      barActionType.dataset.webBuilderMarkupBound = "true";
-    }
+  // Idempotent (dataset flag) so a re-run can't wipe out a panel that was
+  // already populated and is mid-edit.
+  function populate() {
+    fillSelect("prop-action-type", buildActionTypeOptionsHtml());
+    fillSelect("bar-prop-action-type", buildActionTypeOptionsHtml());
+    ["cart-comp-checkout-shape", "cart-comp-discount-shape", "cart-comp-recommend-shape"].forEach(id => fillSelect(id, buildShapeOptionsHtml()));
 
     const propToolbar = document.getElementById("prop-text-toolbar");
     if (propToolbar && !propToolbar.dataset.webBuilderMarkupBound) {
@@ -99,10 +110,6 @@
     }
   }
 
-  // Same readyState-guard pattern as modals.js/preview.js: at the time
-  // builder.js's document.write'd scripts run, the document is still
-  // "loading" (parser hasn't reached </html> yet), so this normally waits
-  // for DOMContentLoaded — but works either way.
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", populate, { once: true });
   } else {
@@ -112,6 +119,7 @@
   window.WebBuilderSharedMarkup = {
     buildActionTypeOptionsHtml,
     buildFontFamilyOptionsHtml,
+    buildShapeOptionsHtml,
     buildTextToolbarHtml,
     populate
   };
