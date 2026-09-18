@@ -12,10 +12,28 @@ Hintergrund/Begründung des Splits: siehe `docs/AI_REFACTOR_GUIDE.md`.
 - [x] **Phase 1** – `canvas/elements.js`, `canvas/canvas.js`, `layout/header-footer.js`
 - [x] **Phase 2** – `shop/cart-render.js` → `cart-html.js`/`cart-drawer.js`/`cart-sidebar.js`
 - [x] **Phase 3** – `shop/cart-editor.js` → `cart-editor-stage.js`/`cart-editor-drag.js`/`cart-editor-panel.js`/`cart-editor-bindings.js`
-- [ ] **Phase 4** – Feinschliff, in drei Teilaufgaben:
-  - [x] **4.1** – `editor/inspector.js` entdichten + `renderSpecial()` → `editor/inspector-special.js`
-  - [ ] **4.2** – optional: `shop/cart-data.js` in mehrere fokussierte Dateien aufteilen
-  - [ ] **4.3** – optional: `#cart-inspector-form`-Markup aus `web.html` nach `shop/cart-editor-markup.js` auslagern
+- [x] **Phase 4** – Feinschliff, in drei Teilaufgaben:
+  - [x] **4.1** – `editor/inspector.js` entdichtet + `renderSpecial()` → `editor/inspector-special.js`
+  - [x] **4.2** – geprüft, bewusst NICHT durchgeführt (siehe `docs/AI_REFACTOR_GUIDE.md`)
+  - [x] **4.3** – geprüft, bewusst NICHT durchgeführt (Begründung unten)
+
+Phase 4 gilt damit als abgeschlossen — beide optionalen Teilaufgaben wurden
+bewusst zurückgestellt, kein weiterer Split ist derzeit vorgesehen.
+
+## Entscheidung 4.3: `#cart-inspector-form`-Markup NICHT ausgelagert
+
+Geprüft, aber nicht durchgeführt. Anders als bei `js/ui/shared-markup.js`
+(dort echte Duplikation zwischen `#prop-*` und `#bar-prop-*`) kommt
+`#cart-inspector-form` in `web.html` nur **einmal** vor — es gibt nichts zu
+deduplizieren. Ein Verschieben nach `shop/cart-editor-markup.js` würde
+lediglich Bytes von `.html` nach `.js` verlagern und dabei zusätzliche
+Indirektion erzeugen (Markup und Container wären auf zwei Dateien verteilt,
+ohne dass eine zweite Stelle davon profitiert). Das widerspricht dem Ziel
+des Refactors (kleinere, in einem Rutsch verständliche Einheiten) statt es
+zu fördern. `web.html` bleibt daher unverändert; das Formular ist lang, aber
+eine einzige, klar abgegrenzte Zuständigkeit (statisches Markup für ein
+Panel), kein Vermischen mehrerer Zuständigkeiten wie bei den ursprünglich
+gesplitteten Dateien.
 
 ## Zielstruktur `js/`
 
@@ -50,7 +68,10 @@ js/
 │
 ├── shop/
 │   ├── products.js                Produkt-CRUD + Produkte-Tab-UI
-│   ├── cart-data.js               Warenkorb-Datenmodell (Phase 4.2: ggf. weiter aufgeteilt)
+│   ├── cart-items.js              [x] Artikel-CRUD, Preise, Mengen, Summen
+│   ├── cart-recommendations.js    [x] Empfehlungs-Regeln + pickRecommendation()
+│   ├── cart-milestones.js         [x] Meilensteine, Produkt-Segmente, Trennlinien
+│   ├── cart-config.js             [x] getConfig/setConfig, Währung, Rabattcode, normalizeState()
 │   ├── cart-html.js               [x] Phase 2: reine HTML-Bau-Funktionen
 │   ├── cart-drawer.js             [x] Phase 2: echter Slide-in-Drawer
 │   ├── cart-sidebar.js            [x] Phase 2: linke Sidebar-UI (Empfehlungen/
@@ -82,6 +103,10 @@ js/
 `shared-markup.js`, alle drei Supabase-Dateien. Diese sind entweder schon
 klein genug oder haben bereits genau eine Zuständigkeit — ein Split wäre
 hier Aktionismus statt Verbesserung.
+
+`web.html`s `#cart-inspector-form`-Block bleibt ebenfalls bewusst
+unangetastet (Teilaufgabe 4.3, siehe Begründung oben) — kein Fall von
+Duplikation, ein Split würde nur Indirektion hinzufügen.
 
 ## Öffentliche APIs (unverändert nach Phase 1)
 
@@ -169,3 +194,10 @@ Der Split in Phase 4.1 ändert ebenfalls **keine** extern sichtbaren Namen:
 
 `editor/inspector.js` enthält keinen dichten Einzeiler-Code mehr (ein
 Statement pro Zeile), passend zum Stil des restlichen Projekts.
+
+## Phase 4.2 / 4.3
+
+Beide wurden geprüft und **bewusst nicht durchgeführt** — kein Code hat sich
+dadurch geändert, keine öffentlichen APIs betroffen. Begründungen: siehe
+`docs/AI_REFACTOR_GUIDE.md` (4.2) und den Abschnitt "Entscheidung 4.3" oben
+in diesem Dokument.
