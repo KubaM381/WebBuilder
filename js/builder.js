@@ -57,6 +57,10 @@ document.write('<script src="js/editor/background.js"><\/script>');
 // DOMContentLoaded.
 document.write('<script src="js/ui/shared-markup.js"><\/script>');
 document.write('<script src="js/editor/inspector.js"><\/script>');
+// editor/inspector-special.js contributes to the same
+// window.WebBuilderInspector object and only calls into inspector.js at
+// runtime, so this order is a convention, not a parse-time requirement.
+document.write('<script src="js/editor/inspector-special.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 // layout/header-footer-data.js must load before -render.js and
 // -inspector.js: both read window.WebBuilderHeaderFooter at top-level
