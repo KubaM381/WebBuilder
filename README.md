@@ -14,8 +14,9 @@ and a cart, and save projects locally or to Supabase.
 > Phase 2 (`shop/cart-render.js` → `cart-html.js`/`cart-drawer.js`/
 > `cart-sidebar.js`) and Phase 3 (`shop/cart-editor.js` →
 > `cart-editor-stage.js`/`cart-editor-drag.js`/`cart-editor-panel.js`/
-> `cart-editor-bindings.js`) are done; Phase 4 (feinschliff) is still
-> pending.
+> `cart-editor-bindings.js`) are done; Phase 4 (feinschliff) is split into
+> three sub-tasks, of which the first (`editor/inspector.js` split) is
+> done — see `docs/STRUCTURE_PLAN.md` for the remaining two.
 
 ## Project structure
 
@@ -49,7 +50,10 @@ WebBuilder/
     ├── canvas/              canvas rendering, drag/alignment, elements +
     │                        icon registry (canvas/icon-registry.js)
     ├── editor/              right-hand inspector panel for canvas
-    │                        elements + the background editor
+    │                        elements, split into the core panel
+    │                        (inspector.js) and its "Erweiterte
+    │                        Eigenschaften" block (inspector-special.js),
+    │                        plus the background editor
     │                        (editor/background.js)
     ├── layout/              header/footer domain, split into a data file
     │                        (header-footer-data.js), a canvas-rendering
@@ -107,9 +111,10 @@ WebBuilder/
   A domain can be split across multiple files (e.g. `layout/`'s three
   `header-footer-*.js` files, `shop/`'s `cart-data.js`/`cart-html.js`/
   `cart-drawer.js`/`cart-sidebar.js`, the four `shop/cart-editor-*.js`
-  files, or `canvas/`'s `elements.js` + `icon-registry.js`) — they still
-  expose exactly one shared `window.WebBuilderXxx` object per domain.
-  Details: see `js/README.md`.
+  files, `editor/`'s `inspector.js` + `inspector-special.js`, or
+  `canvas/`'s `elements.js` + `icon-registry.js`) — they still expose
+  exactly one shared `window.WebBuilderXxx` object per domain. Details:
+  see `js/README.md`.
 - **Load order matters**: `js/builder.js` loads all modules in sequence via
   `document.write`. `shop/products.js` **must load before**
   `shop/cart-data.js` (cart-data.js references products only via
@@ -172,11 +177,10 @@ format.
 
 ## Known technical debt
 
-- `editor/inspector.js` and `preview.js` are densely written (many
-  statements per line) — harder to read than the rest of the project;
-  should be unified to the rest of the codebase's style (multi-line, one
-  statement per line) next time they're touched (see
-  `docs/STRUCTURE_PLAN.md` Phase 4).
+- `preview.js` is densely written (many statements per line) — harder to
+  read than the rest of the project; should be unified to the rest of the
+  codebase's style (multi-line, one statement per line) next time it's
+  touched.
 - The cart focus editor (`shop/cart-editor-*.js`) has a small, actively-
   tracked list of open fixes/refinements — see `docs/CART_EDITOR_TASKS.md`
   instead of duplicating that list here.
