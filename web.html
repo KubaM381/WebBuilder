@@ -5,13 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Visual Web Page Builder</title>
-
-  <!-- Zentrale Builder-CSS -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-  <!-- Top Toolbar: Speichern / Cloud / Rückgängig / Export / Vorschau -->
   <header class="app-header">
     <div class="brand">🚀 WebBuilder <span>Pro</span></div>
     <div class="toolbar-actions">
@@ -25,7 +22,7 @@
   </header>
 
   <div class="app-body">
-    <!-- LINKE SPALTE: alle Bearbeitungsoptionen, in Tabs organisiert -->
+    <!-- Sidebar-Tab-Inhalte werden von js/ui/sidebar-panels-markup.js injiziert. -->
     <aside class="sidebar palette-panel">
       <h3>Editor</h3>
       <div class="sidebar-tabs">
@@ -35,244 +32,13 @@
         <button class="sidebar-tab" data-tab="products" type="button">📦 Produkte</button>
       </div>
 
-      <!-- ==================== TAB: ELEMENTE ==================== -->
-      <div class="sidebar-panel" id="panel-elements">
-        <p class="help-text">Ziehe Bausteine auf die Zeichenfläche.</p>
-
-        <div class="section-title">Standard Elemente</div>
-        <div class="palette-grid">
-          <div class="draggable-item" draggable="true" data-type="headline"><span class="item-icon">🔤</span><span>Überschrift</span></div>
-          <div class="draggable-item" draggable="true" data-type="text"><span class="item-icon">📝</span><span>Textfeld</span></div>
-          <div class="draggable-item" draggable="true" data-type="button"><span class="item-icon">🔘</span><span>Button</span></div>
-          <div class="draggable-item" draggable="true" data-type="box"><span class="item-icon">📦</span><span>Container Box</span></div>
-          <div class="draggable-item" draggable="true" data-type="image"><span class="item-icon">🖼️</span><span>Bild</span></div>
-        </div>
-
-        <div class="section-title">Test-Objekte</div>
-        <div class="palette-grid">
-          <div class="draggable-item" draggable="true" data-type="shape" data-shape="rectangle"><span class="item-icon">▭</span><span>Rechteck</span></div>
-          <div class="draggable-item" draggable="true" data-type="shape" data-shape="circle"><span class="item-icon">⚪</span><span>Kreis</span></div>
-          <div class="draggable-item" draggable="true" data-type="shape" data-shape="triangle"><span class="item-icon">▲</span><span>Dreieck</span></div>
-        </div>
-        <p class="help-text">Test-Objekt auf die Fläche ziehen und rechts im Inspector Form, Farbe &amp; Stil wählen.</p>
-
-        <div class="section-title">Icons &amp; Symbole</div>
-        <div class="palette-grid">
-          <div class="draggable-item" draggable="true" data-type="icon" data-icon="cart"><span class="item-icon">🛒</span><span>Warenkorb</span></div>
-          <div class="draggable-item" draggable="true" data-type="icon" data-icon="settings"><span class="item-icon">⚙️</span><span>Einstellungen</span></div>
-          <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-up"><span class="item-icon">⬆️</span><span>Pfeil Oben</span></div>
-          <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-down"><span class="item-icon">⬇️</span><span>Pfeil Unten</span></div>
-          <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-left"><span class="item-icon">⬅️</span><span>Pfeil Links</span></div>
-          <div class="draggable-item" draggable="true" data-type="icon" data-icon="arrow-right"><span class="item-icon">➡️</span><span>Pfeil Rechts</span></div>
-        </div>
-
-        <div class="section-title">Eigene Icons</div>
-        <div class="sidebar-subsection">
-          <p class="help-text" style="margin-bottom:8px;">Füge ein eigenes Icon per Bilddatei hinzu. Eigene Icons gelten nur für die aktuelle Sitzung und werden nicht im Projekt gespeichert.</p>
-          <div class="form-group">
-            <label for="custom-icon-name">Name</label>
-            <input type="text" id="custom-icon-name" placeholder="z. B. haken">
-          </div>
-          <div class="form-group">
-            <label>Bilddatei</label>
-            <div class="file-input-wrapper">
-              <button type="button" class="file-input-btn">📁 Datei wählen</button>
-              <input type="file" id="custom-icon-file" accept="image/*">
-            </div>
-          </div>
-          <button type="button" id="btn-add-custom-icon" class="btn btn-secondary" style="width:100%;">+ Icon hinzufügen</button>
-          <div id="custom-icon-palette" class="palette-grid" style="margin-top:10px;"></div>
-        </div>
-
-        <div class="section-title">Hintergrund der Seite</div>
-        <div class="sidebar-subsection sidebar-bg-controls">
-          <div class="form-group">
-            <label for="bg-type">Typ</label>
-            <select id="bg-type">
-              <option value="solid">Einfarbig</option>
-              <option value="gradient">Farbverlauf</option>
-              <option value="image">Hintergrundbild</option>
-            </select>
-          </div>
-
-          <div id="bg-solid-group" class="form-group">
-            <label for="bg-color-input">Farbe</label>
-            <input type="color" id="bg-color-input" value="#ffffff" title="Hintergrundfarbe wählen">
-          </div>
-
-          <div id="bg-gradient-group" class="hidden form-group">
-            <label>Farbverlauf</label>
-            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-              <input type="color" id="bg-grad-1" value="#4f46e5" title="Farbe 1">
-              <input type="color" id="bg-grad-2" value="#06b6d4" title="Farbe 2">
-              <select id="bg-grad-dir">
-                <option value="to right">➔ Rechts</option>
-                <option value="to bottom">⬇️ Unten</option>
-                <option value="135deg">↘️ Diagonal</option>
-              </select>
-            </div>
-          </div>
-
-          <div id="bg-image-group" class="hidden form-group">
-            <label for="bg-image-url">Bild</label>
-            <input type="text" id="bg-image-url" placeholder="Bild URL eingeben...">
-            <div class="file-input-wrapper" style="margin-top:6px;">
-              <button type="button" class="file-input-btn">📁 Datei wählen</button>
-              <input type="file" id="bg-image-file" accept="image/*">
-            </div>
-          </div>
-        </div>
-
-        <div class="section-title">Seitengröße</div>
-        <div class="sidebar-subsection">
-          <p class="help-text" style="margin-bottom:8px;">Verlängere die Zeichenfläche nach unten, wenn du mehr Platz brauchst. Der Knopf ist auch direkt unter der Fläche verfügbar.</p>
-          <button type="button" id="btn-extend-canvas-side" class="btn btn-secondary" style="width:100%;">⬇️ Seite verlängern (+300px)</button>
-          <button type="button" id="btn-shrink-canvas-side" class="btn btn-secondary" style="width:100%; margin-top:6px;">⬆️ Seite verkürzen (-300px)</button>
-        </div>
-
-        <div class="section-title">Danger Zone</div>
-        <button type="button" id="btn-clear" class="btn btn-danger-outline" style="width:100%;">🗑️ Canvas leeren</button>
-      </div>
-
-      <!-- ==================== TAB: KOPF/FUSSZEILE ==================== -->
-      <div class="sidebar-panel hidden" id="panel-headerfooter">
-        <div class="section-title">Kopfzeile</div>
-        <div class="sidebar-subsection">
-          <label class="checkbox-row"><input type="checkbox" id="header-toggle"> Header anzeigen</label>
-          <label class="checkbox-row"><input type="checkbox" id="header-sticky-toggle"> Header fixiert (sticky)</label>
-
-          <div class="form-group">
-            <label for="header-height-input">Höhe (px) — auch direkt am Header ziehbar</label>
-            <input type="number" id="header-height-input" value="64" min="40" max="400">
-          </div>
-
-          <div class="form-group">
-            <label for="header-bg-type">Hintergrund-Typ</label>
-            <select id="header-bg-type">
-              <option value="solid">Einfarbig</option>
-              <option value="image">Bild</option>
-            </select>
-          </div>
-          <div id="header-bg-solid-group" class="form-group">
-            <label for="header-bg-input">Hintergrundfarbe</label>
-            <input type="color" id="header-bg-input" value="#111827">
-          </div>
-          <div id="header-bg-image-group" class="hidden form-group">
-            <label for="header-bg-image-url">Bild</label>
-            <input type="text" id="header-bg-image-url" placeholder="Bild URL eingeben...">
-            <div class="file-input-wrapper" style="margin-top:6px;">
-              <button type="button" class="file-input-btn">📁 Datei wählen</button>
-              <input type="file" id="header-bg-image-file" accept="image/*">
-            </div>
-          </div>
-
-          <div class="mini-btn-row">
-            <button type="button" id="btn-add-header-text" class="btn btn-secondary btn-sm">+ Text</button>
-            <button type="button" id="btn-add-header-icon" class="btn btn-secondary btn-sm">+ Icon</button>
-          </div>
-          <p class="help-text" style="margin:4px 0 8px;">Klicke auf ein Element in der Liste oder direkt auf der Fläche, um Text, Format, Farbe und Klick-Aktion rechts im Eigenschaften-Bereich einzustellen.</p>
-          <div id="header-items-list" class="items-list"></div>
-        </div>
-
-        <div class="section-title">Fußzeile</div>
-        <div class="sidebar-subsection">
-          <label class="checkbox-row"><input type="checkbox" id="footer-toggle"> Footer anzeigen</label>
-          <div class="form-group">
-            <label for="footer-height-input">Höhe (px) — auch direkt am Footer ziehbar</label>
-            <input type="number" id="footer-height-input" value="70" min="40" max="400">
-          </div>
-
-          <div class="form-group">
-            <label for="footer-bg-type">Hintergrund-Typ</label>
-            <select id="footer-bg-type">
-              <option value="solid">Einfarbig</option>
-              <option value="image">Bild</option>
-            </select>
-          </div>
-          <div id="footer-bg-solid-group" class="form-group">
-            <label for="footer-bg-input">Hintergrundfarbe</label>
-            <input type="color" id="footer-bg-input" value="#111827">
-          </div>
-          <div id="footer-bg-image-group" class="hidden form-group">
-            <label for="footer-bg-image-url">Bild</label>
-            <input type="text" id="footer-bg-image-url" placeholder="Bild URL eingeben...">
-            <div class="file-input-wrapper" style="margin-top:6px;">
-              <button type="button" class="file-input-btn">📁 Datei wählen</button>
-              <input type="file" id="footer-bg-image-file" accept="image/*">
-            </div>
-          </div>
-
-          <div class="mini-btn-row">
-            <button type="button" id="btn-add-footer-text" class="btn btn-secondary btn-sm">+ Text</button>
-            <button type="button" id="btn-add-footer-icon" class="btn btn-secondary btn-sm">+ Icon</button>
-          </div>
-          <div id="footer-items-list" class="items-list"></div>
-        </div>
-      </div>
-
-      <!-- ==================== TAB: WARENKORB ==================== -->
-      <!-- Sidebar enthält bewusst nur noch Ein-/Ausschalter plus den
-           Sprung-Button zur Artikel-Darstellung. Farben, Formen, Labels,
-           Positionen und die Empfehlungs-/Meilenstein-Listen werden jetzt
-           ausschließlich im Warenkorb-Editor selbst bearbeitet (rechtes
-           Panel #cart-inspector-form, siehe unten) — dort klickt man das
-           jeweilige Element (Artikel, Fortschrittsbalken, Rabattfeld,
-           Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Trennlinie oder
-           Hintergrund) direkt an. -->
-      <div class="sidebar-panel hidden" id="panel-cart">
-        <button type="button" id="btn-cart-focus-editor" class="btn btn-primary" style="width:100%; margin-bottom:14px;">🎯 Warenkorb-Editor öffnen</button>
-
-        <div class="section-title">Warenkorb-Grundeinstellungen</div>
-        <div class="sidebar-subsection">
-          <button type="button" id="btn-open-cart" class="btn btn-secondary" style="width:100%;">🛒 Vorschau öffnen</button>
-        </div>
-
-        <div class="section-title">Artikel-Darstellung</div>
-        <div class="sidebar-subsection">
-          <p class="help-text" style="margin-bottom:8px;">Form, Hintergrund und Größe der Artikel im Warenkorb. Öffnet den Editor und wählt die Artikel-Darstellung — dort lässt sie sich auch direkt an der Ecke ziehen, um sie größer/kleiner zu machen.</p>
-          <button type="button" id="btn-select-item-representation" class="btn btn-secondary" style="width:100%;">🖼️ Artikel-Darstellung bearbeiten</button>
-        </div>
-
-        <div class="section-title">Artikelliste</div>
-        <div class="sidebar-subsection">
-          <p class="help-text" style="margin-bottom:8px;">Wird die Liste sehr lang, kann sie auf eine feste Höhe begrenzt werden — sie bekommt dann ihren eigenen Scrollbalken, während Rabattfeld, Empfehlung und Kosten-Übersicht immer sichtbar bleiben.</p>
-          <div class="form-group">
-            <label for="cart-items-max-height">Maximale Höhe (px, leer = kein Limit)</label>
-            <input type="number" id="cart-items-max-height" min="80" step="10" placeholder="kein Limit">
-          </div>
-        </div>
-
-        <div class="section-title">Produkt-Segmente</div>
-        <div class="sidebar-subsection">
-          <p class="help-text" style="margin-bottom:8px;">Gruppiere bestimmte Produkte im Warenkorb zu einem Segment (z. B. „Zubehör“) und trenne sie optional mit einer Linie von den übrigen Artikeln ab.</p>
-          <div id="cart-segment-list" class="items-list"></div>
-          <button type="button" id="btn-add-segment" class="btn btn-secondary" style="width:100%;">+ Segment erstellen</button>
-        </div>
-
-        <hr class="divider">
-        <label class="checkbox-row"><input type="checkbox" id="cart-discount-toggle"> Rabattcode-Feld aktivieren</label>
-        <p class="help-text" style="margin:-6px 0 0;">Farbe, Form &amp; Position im Warenkorb-Editor anpassbar — dort auf das Rabattfeld klicken.</p>
-
-        <hr class="divider">
-        <label class="checkbox-row"><input type="checkbox" id="cart-recommend-toggle"> Produktempfehlungen</label>
-        <p class="help-text" style="margin:-6px 0 0;">Empfehlungen verwalten &amp; Position anpassen im Warenkorb-Editor — dort auf die Empfehlung klicken.</p>
-
-        <hr class="divider">
-        <label class="checkbox-row"><input type="checkbox" id="cart-progress-toggle"> Fortschrittsbalken</label>
-        <p class="help-text" style="margin:-6px 0 0;">Farbe &amp; Meilensteine verwalten &amp; Position anpassen im Warenkorb-Editor — dort auf den Fortschrittsbalken klicken. Versandkosten &amp; Freibetrag-Ziel stehen dort in der Kosten-Übersicht.</p>
-      </div>
-
-      <!-- ==================== TAB: PRODUKTE ==================== -->
-      <div class="sidebar-panel hidden" id="panel-products">
-        <div class="section-title">Produkte verwalten</div>
-        <p class="help-text">Lege hier deine Produkte mit Name, Preis, Icon &amp; Beschreibung an. Im Element-Inspector wählst du dann bei der Aktion „In den Warenkorb legen“ eines dieser Produkte aus.</p>
-        <button type="button" id="btn-add-product" class="btn btn-primary" style="width:100%; margin-bottom:12px;">+ Neues Produkt</button>
-        <div id="product-list"></div>
-      </div>
+      <div class="sidebar-panel" id="panel-elements"></div>
+      <div class="sidebar-panel hidden" id="panel-headerfooter"></div>
+      <div class="sidebar-panel hidden" id="panel-cart"></div>
+      <div class="sidebar-panel hidden" id="panel-products"></div>
     </aside>
 
     <main class="canvas-container">
-      <!-- Zoom-Steuerung oben rechts auf der Arbeitsfläche -->
       <div class="zoom-controls">
         <button id="zoom-out" title="Verkleinern">−</button>
         <span id="zoom-level">85%</span>
@@ -286,17 +52,14 @@
           <button id="btn-extend-canvas" class="btn btn-secondary btn-pill" title="Zeichenfläche nach unten erweitern">⬇️ Seite verlängern</button>
         </div>
       </div>
-      <!-- Cart editor stage (js/shop/cart-editor.js renderFocusStage())
-           wird hier zur Laufzeit eingehängt — außerhalb von
-           #canvas-column, damit Zoom keinen Einfluss darauf hat. -->
+      <!-- js/shop/cart-editor-stage.js hängt hier zur Laufzeit die Warenkorb-Editor-Bühne ein. -->
     </main>
 
-    <!-- RECHTE SPALTE: Bearbeitungsmöglichkeiten für das ausgewählte Element -->
     <aside class="inspector">
       <h3>Eigenschaften &amp; Logik</h3>
       <div id="no-selection" class="empty-inspector"><p>Wähle ein Element auf der Zeichenfläche aus, um Text, Aussehen und Klick-Aktionen zu konfigurieren.</p></div>
 
-      <!-- Bearbeitung eines normalen Canvas-Elements -->
+      <!-- Normales Canvas-Element -->
       <div id="inspector-form" class="inspector-form hidden">
         <div class="form-group"><label for="prop-id">Element ID</label><input type="text" id="prop-id" readonly></div>
         <div class="form-group" id="group-text"><label for="prop-text">Text / Inhalt</label><input type="text" id="prop-text" placeholder="Beschriftung eingeben..."></div>
@@ -306,10 +69,8 @@
         </div>
         <div class="form-group" id="group-size"><label for="prop-size">Größe / Breite (px)</label><input type="number" id="prop-size" min="12" max="800" value="24"></div>
 
-        <!-- Kombinierte Textformat-Leiste: Fett, Kursiv, Unterstrichen, Farbe, Schriftart, Ausrichtung -->
         <div class="form-group" id="group-color">
           <label>Textformat</label>
-          <!-- Inhalt wird von js/ui/shared-markup.js injiziert (gemeinsam mit #bar-item-text-toolbar) -->
           <div class="text-toolbar" id="prop-text-toolbar"></div>
         </div>
 
@@ -318,7 +79,6 @@
         <p class="help-text">Wähle eine Aktion aus, die beim Anklicken des Elements ausgeführt werden soll:</p>
         <div class="form-group">
           <label for="prop-action-type">Aktion beim Klick</label>
-          <!-- Options werden von js/ui/shared-markup.js injiziert (gemeinsam mit #bar-prop-action-type) -->
           <select id="prop-action-type"></select>
         </div>
         <div class="form-group hidden" id="group-action-url"><label for="prop-action-url">Ziel-URL / Link</label><input type="url" id="prop-action-url" placeholder="https://beispiel.de"></div>
@@ -332,10 +92,10 @@
           <button id="btn-duplicate-element" class="btn btn-secondary" style="flex:1;">📄 Duplizieren</button>
           <button id="btn-delete-element" class="btn btn-danger-outline" style="flex:1;">Element löschen</button>
         </div>
-        <!-- builder.js hängt hier #inspector-extended an -->
+        <!-- js/editor/inspector-special.js hängt hier #inspector-special-runtime an -->
       </div>
 
-      <!-- Bearbeitung eines Kopf-/Fußzeilen-Elements (eigenständiges Panel) -->
+      <!-- Kopf-/Fußzeilen-Element -->
       <div id="bar-inspector-form" class="inspector-form hidden">
         <p class="help-text" style="margin-bottom:12px;">📐 Kopf-/Fußzeilen-Element</p>
         <div class="form-group" id="bar-item-text-group">
@@ -353,7 +113,6 @@
         </div>
         <div class="form-group">
           <label>Textformat</label>
-          <!-- Inhalt wird von js/ui/shared-markup.js injiziert (gemeinsam mit #prop-text-toolbar) -->
           <div class="text-toolbar" id="bar-item-text-toolbar"></div>
         </div>
 
@@ -361,7 +120,6 @@
         <h4>⚡ Verbindungsfunktion &amp; Logik</h4>
         <div class="form-group">
           <label for="bar-prop-action-type">Aktion beim Klick</label>
-          <!-- Options werden von js/ui/shared-markup.js injiziert (gemeinsam mit #prop-action-type) -->
           <select id="bar-prop-action-type"></select>
         </div>
         <div class="form-group hidden" id="bar-group-action-url"><label>Ziel-URL / Link</label><input type="url" id="bar-prop-action-url" placeholder="https://beispiel.de"></div>
@@ -385,276 +143,13 @@
         <div class="form-actions" style="margin-top:20px;"><button id="btn-delete-bar-item" class="btn btn-danger-outline">Element löschen</button></div>
       </div>
 
-      <!-- Warenkorb-Editor: Bearbeitung einzelner Bereiche (Artikel-Teile,
-           Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button,
-           Kosten-Übersicht inkl. Versand, Trennlinien, Hintergrund,
-           Artikel-Darstellung, Warenkorb-Titel), siehe
-           js/shop/cart-editor.js enterFocusMode()/renderFocusPartPanel(). -->
-      <div id="cart-inspector-form" class="inspector-form hidden">
-        <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-        <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Trennlinie oder Hintergrund), um ihn hier anzupassen.</p>
-
-        <div id="cart-part-editor" class="hidden">
-          <div class="form-group"><label id="cart-part-label">Element</label></div>
-
-          <!-- Warenkorb-Titel — frei platzierbare Komponente wie jede
-               andere (kein eigener Kopfbalken mehr), siehe
-               js/shop/cart-render.js buildTitleHtml(). Freitext mit
-               optionalem {anzahl}-Platzhalter für die live aktualisierte
-               Artikelanzahl. -->
-          <div id="cart-comp-title-fields" class="hidden">
-            <div class="form-group">
-              <label for="cart-comp-title-label">Titel</label>
-              <input type="text" id="cart-comp-title-label" placeholder="Dein Warenkorb ({anzahl})">
-            </div>
-            <p class="help-text">Verwende <code>{anzahl}</code> als Platzhalter für die aktuelle Artikelanzahl — er kann an beliebiger Stelle im Text stehen, z. B. „{anzahl} Produkte“.</p>
-          </div>
-
-          <!-- Zur-Kasse-Button. T4: lässt sich im Editor frei auf der
-               ganzen Karte positionieren, nicht mehr nur innerhalb einer
-               Fußleiste (die es nicht mehr gibt). -->
-          <div id="cart-comp-checkout-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-checkout-label">Beschriftung</label><input type="text" id="cart-comp-checkout-label"></div>
-            <div class="form-group"><label for="cart-comp-checkout-color">Farbe</label><input type="color" id="cart-comp-checkout-color"></div>
-            <div class="form-group"><label for="cart-comp-checkout-shape">Form</label>
-              <select id="cart-comp-checkout-shape">
-                <option value="rounded">Abgerundet</option>
-                <option value="square">Eckig</option>
-                <option value="pill">Rund (Pille)</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Rabattfeld. Enthält zusätzlich den meilenstein-getriebenen
-               Extra-Rabatt: Prozentsatz
-               (cartConfig.milestoneDiscountPercent) und ein optionales
-               Rabatt-Ziel (cartConfig.milestoneDiscountThreshold), das
-               bidirektional mit einem Meilenstein „Extra-Rabatt“ im
-               Fortschrittsbalken-Panel synchron gehalten wird — exakt
-               dasselbe Muster wie das Freibetrag-Ziel bei den
-               Versand-Feldern (siehe js/shop/cart-data.js
-               syncDiscountMilestone() und js/shop/cart-render.js
-               renderMilestoneList()). Die Einheit im Label
-               "Rabatt ab Warenkorbwert" ist ein <span>, den
-               js/shop/cart-editor.js renderFocusPartPanel() mit dem
-               Symbol der aktuell gewählten Währung befüllt (siehe
-               #cart-comp-currency im Kosten-Übersicht-Panel). -->
-          <div id="cart-comp-discount-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-discount-color">Farbe</label><input type="color" id="cart-comp-discount-color"></div>
-            <div class="form-group"><label for="cart-comp-discount-shape">Form</label>
-              <select id="cart-comp-discount-shape">
-                <option value="rounded">Abgerundet</option>
-                <option value="square">Eckig</option>
-                <option value="pill">Rund (Pille)</option>
-              </select>
-            </div>
-            <hr class="divider modal-divider-tight">
-            <div class="form-group"><label for="cart-comp-discount-percent">Extra-Rabatt bei Meilenstein (%)</label><input type="number" id="cart-comp-discount-percent" min="0" max="100" step="1" placeholder="10"></div>
-            <div class="form-group"><label for="cart-comp-discount-threshold">Rabatt ab Warenkorbwert (<span id="cart-discount-threshold-currency">€</span>)</label><input type="number" id="cart-comp-discount-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
-            <p class="help-text">Der Extra-Rabatt gilt, sobald entweder ein Meilenstein „Extra-Rabatt“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert. Er kommt zusätzlich zu einem eingelösten Rabattcode obendrauf.</p>
-          </div>
-
-          <!-- Hintergrund -->
-          <div id="cart-comp-background-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-bg-color">Hintergrundfarbe</label><input type="color" id="cart-comp-bg-color"></div>
-          </div>
-
-          <!-- Kosten-Übersicht (Zwischensumme/Rabatt/Versand/Gesamt) —
-               Labels und Währung editierbar. Der Meilenstein-Rabatt
-               bleibt Teil des Rabattfeld-Panels (component:discount).
-               Siehe js/shop/cart-data.js normalizeState() für die
-               Default-Werte. Die Versandkosten-Felder sind zur besseren
-               Übersicht als eigene, optisch abgesetzte "Subcard"
-               dargestellt (.inspector-subcard, siehe css/inspector.css).
-               Die Einheiten in "Versandkosten (€)" und
-               "Kostenlos ab Warenkorbwert (€)" sind <span>s, die
-               js/shop/cart-editor.js renderFocusPartPanel() mit dem
-               Symbol der links ausgewählten Währung befüllt. -->
-          <div id="cart-comp-totals-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-currency">Währung</label>
-              <select id="cart-comp-currency">
-                <option value="eur">€ Euro</option>
-                <option value="usd">$ US-Dollar</option>
-                <option value="gbp">£ Britisches Pfund</option>
-              </select>
-            </div>
-            <div class="form-group"><label for="cart-comp-subtotal-label">Label „Zwischensumme“</label><input type="text" id="cart-comp-subtotal-label" placeholder="Zwischensumme"></div>
-            <div class="form-group"><label for="cart-comp-discount-label">Label „Rabatt“</label><input type="text" id="cart-comp-discount-label" placeholder="Rabatt"></div>
-            <div class="form-group"><label for="cart-comp-total-label">Label „Gesamt“</label><input type="text" id="cart-comp-total-label" placeholder="Gesamt"></div>
-
-            <!-- Versand als eigenständiger, klar abgegrenzter Block. Das
-                 Freibetrag-Feld synchronisiert sich bidirektional mit
-                 einem "Kostenloser Versand"-Meilenstein im
-                 Fortschrittsbalken-Panel, falls einer existiert
-                 (js/shop/cart-data.js syncFreeShippingMilestone(),
-                 js/shop/cart-render.js renderMilestoneList()). Ist kein
-                 Meilenstein vorhanden, gilt das Freibetrag-Ziel trotzdem
-                 eigenständig. -->
-            <div class="inspector-subcard">
-              <div class="inspector-subcard-title">🚚 Versand</div>
-              <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
-              <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (<span id="cart-shipping-cost-currency">€</span>)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
-              <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
-              <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (<span id="cart-shipping-free-threshold-currency">€</span>)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
-              <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist. Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
-            </div>
-          </div>
-
-          <!-- T6: Panel einer einzelnen Trennlinie
-               (component:divider:<id>). Keine Stil-Optionen, nur Position
-               (automatisch über #cart-comp-position-fields) und
-               Entfernen. -->
-          <div id="cart-comp-divider-fields" class="hidden">
-            <p class="help-text">Diese Trennlinie lässt sich überall im Warenkorb frei platzieren — zieh sie einfach an die gewünschte Stelle oder gib unten eine Position ein.</p>
-            <button type="button" id="btn-remove-divider" class="btn btn-danger-outline" style="width:100%;">🗑️ Trennlinie entfernen</button>
-          </div>
-
-          <!-- Fortschrittsbalken: Farbe + Position (unten) + Meilenstein-Liste hier -->
-          <div id="cart-comp-progress-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-progress-color">Balkenfarbe</label><input type="color" id="cart-comp-progress-color"></div>
-            <div class="form-group"><label for="cart-comp-progress-complete-text">Text bei „alle Ziele erreicht“</label><input type="text" id="cart-comp-progress-complete-text" placeholder="✓ Alle Ziele freigeschaltet"></div>
-            <p class="help-text" style="margin-top:-6px;">Wird angezeigt, sobald der höchste Meilenstein erreicht ist und dieser selbst kein eigenes „Text bei Erreichen“ gesetzt hat (siehe unten in der Meilenstein-Liste).</p>
-            <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel in der Kosten-Übersicht synchron, ein Meilenstein „Extra-Rabatt“ entsprechend mit dem Rabatt-Ziel im Rabattfeld-Panel:</p>
-            <div class="mini-btn-row"><button type="button" id="btn-add-milestone" class="btn btn-secondary btn-sm" style="width:100%;">+ Meilenstein</button></div>
-            <div id="cart-milestone-list" class="items-list"></div>
-          </div>
-
-          <!-- Empfehlung: Form/Farbe des "+"-Buttons + Position (unten) +
-               Empfehlungs-Liste hier. Icon/Name/Preis/Plus der
-               Empfehlungskarte sind zusätzlich einzeln direkt im Editor
-               anklickbar/verschiebbar (siehe js/shop/cart-editor.js). -->
-          <div id="cart-comp-recommend-fields" class="hidden">
-            <div class="form-group"><label for="cart-comp-recommend-shape">Form der Empfehlungskarte</label>
-              <select id="cart-comp-recommend-shape">
-                <option value="rounded">Abgerundet</option>
-                <option value="square">Eckig</option>
-                <option value="pill">Rund (Pille)</option>
-              </select>
-            </div>
-            <div class="form-group"><label for="cart-comp-recommend-add-color">Farbe „+“-Button</label><input type="color" id="cart-comp-recommend-add-color"></div>
-            <p class="help-text">Empfehlungen (angezeigt wird die erste passende):</p>
-            <div class="mini-btn-row"><button type="button" id="btn-add-recommendation" class="btn btn-secondary btn-sm" style="width:100%;">+ Empfehlung aus Produkten</button></div>
-            <div id="cart-recommend-list" class="items-list"></div>
-          </div>
-
-          <!-- Artikel-Darstellung (component:itemRepresentation) — nur
-               Form/Hintergrund/Größe/Beschreibung-Toggle/Trennlinie-Toggle.
-               Menge, Preis und Entfernen-Button haben eigene Panels weiter
-               unten (#cart-comp-qty-fields/-price-fields/-remove-fields),
-               sichtbar wenn genau dieser Artikel-Teil angeklickt wurde. -->
-          <div id="cart-comp-item-fields" class="hidden">
-            <div class="form-group"><label for="cart-item-shape">Form</label>
-              <select id="cart-item-shape">
-                <option value="transparent">Durchsichtig</option>
-                <option value="square">Eckig</option>
-                <option value="rounded">Abgerundet</option>
-                <option value="pill">Rund</option>
-              </select>
-            </div>
-            <div class="form-group"><label for="cart-item-bg-color">Hintergrundfarbe</label><input type="color" id="cart-item-bg-color"></div>
-            <div class="form-group"><label for="cart-item-width">Breite (px, leer = automatisch)</label><input type="number" id="cart-item-width" min="120" step="1" placeholder="automatisch"></div>
-            <div class="form-group"><label for="cart-item-height">Mindesthöhe (px, leer = automatisch)</label><input type="number" id="cart-item-height" min="30" step="1" placeholder="automatisch"></div>
-            <p class="help-text">Tipp: Im Editor kannst du die Artikel-Box auch direkt an der Ecke unten rechts ziehen, um die Größe anzupassen.</p>
-            <hr class="divider modal-divider-tight">
-            <label class="checkbox-row"><input type="checkbox" id="cid-show-description"> Produktbeschreibung anzeigen</label>
-            <!-- Nur sinnvoll/sichtbar bei durchsichtiger Form, siehe
-                 renderFocusPartPanel() in js/shop/cart-editor.js (togglet
-                 die "hidden"-Klasse abhängig von cartConfig.itemShape). -->
-            <label class="checkbox-row hidden" id="cart-item-divider-group"><input type="checkbox" id="cid-show-item-dividers"> Trennlinie zwischen Produkten anzeigen (nur bei „Durchsichtig“)</label>
-          </div>
-
-          <!-- Mengenanzeige (Artikel-Teil "qty") -->
-          <div id="cart-comp-qty-fields" class="hidden">
-            <div class="form-group"><label>Mengenauswahl</label>
-              <select id="cid-quantity-style">
-                <option value="stepper">Einzelblöcke (− 1 +)</option>
-                <option value="group">Gruppe (zusammenhängend)</option>
-                <option value="dropdown">Dropdown-Liste</option>
-                <option value="static">Nur Anzeige (nicht änderbar)</option>
-              </select>
-            </div>
-            <div class="form-group"><label for="cid-quantity-shape">Form der Mengenauswahl (bei „Gruppe“)</label>
-              <select id="cid-quantity-shape">
-                <option value="square">Eckig</option>
-                <option value="rounded">Abgerundet</option>
-                <option value="pill">Rund (Pille)</option>
-              </select>
-            </div>
-            <div class="form-group"><label for="cid-quantity-color">Farbe der +/- Buttons</label>
-              <select id="cid-quantity-color">
-                <option value="green">Grün</option>
-                <option value="red">Rot</option>
-                <option value="black">Schwarz</option>
-                <option value="gray">Grau</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Preis (Artikel-Teil "price") -->
-          <div id="cart-comp-price-fields" class="hidden">
-            <div class="form-group"><label>Preisanzeige</label>
-              <select id="cid-price-style">
-                <option value="simple">Einfach</option>
-                <option value="strikethrough">Mit durchgestrichenem Originalpreis</option>
-                <option value="perUnit">Einzelpreis + Summe</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Entfernen-Button (Artikel-Teil "remove") -->
-          <div id="cart-comp-remove-fields" class="hidden">
-            <div class="form-group"><label>Entfernen-Symbol</label>
-              <select id="cid-remove-style">
-                <option value="x">✕ Kreuz</option>
-                <option value="trash">🗑️ Papierkorb</option>
-                <option value="text">Text „Entfernen“</option>
-              </select>
-            </div>
-            <div class="form-group"><label>Entfernen-Button Form</label>
-              <select id="cid-remove-shape">
-                <option value="circle">Rund</option>
-                <option value="square">Eckig</option>
-                <option value="text">Ohne Rahmen</option>
-              </select>
-            </div>
-            <div class="form-group"><label>Farbe Entfernen-Button</label><input type="color" id="cart-remove-color"></div>
-          </div>
-
-          <!-- Position (X/Y) — gilt für Artikel-Teile, Fortschrittsbalken,
-               Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht,
-               Warenkorb-Titel und Trennlinien. Nicht für Hintergrund und
-               Artikel-Darstellung (dafür ist eine feste Position nicht
-               sinnvoll). -->
-          <div id="cart-comp-position-fields">
-            <div class="form-group">
-              <label for="cart-part-x">Position X (px)</label>
-              <input type="number" id="cart-part-x" step="1">
-            </div>
-            <div class="form-group">
-              <label for="cart-part-y">Position Y (px)</label>
-              <input type="number" id="cart-part-y" step="1">
-            </div>
-            <button type="button" id="cart-part-reset" class="btn btn-secondary" style="width:100%;">↺ Position zurücksetzen</button>
-          </div>
-        </div>
-
-        <!-- T6: Trennlinien sind frei platzierbare Komponenten und
-             gehören deshalb nicht mehr in ein einzelnes Bereichs-Panel —
-             der Knopf steht unabhängig von der aktuellen Auswahl zur
-             Verfügung. Die neue Linie erscheint oben im Warenkorb und
-             wird sofort ausgewählt, damit sie direkt an ihren Platz
-             gezogen werden kann. -->
-        <hr class="divider">
-        <button type="button" id="btn-add-divider" class="btn btn-secondary" style="width:100%;">+ Trennlinie hinzufügen</button>
-
-        <hr class="divider">
-        <button type="button" id="btn-cart-focus-exit" class="btn btn-danger-outline" style="width:100%;">✖ Warenkorb-Editor schließen</button>
-      </div>
+      <!-- Warenkorb-Editor-Panel — Markup wird von js/shop/cart-editor-markup.js injiziert -->
+      <div id="cart-inspector-form" class="inspector-form hidden"></div>
     </aside>
   </div>
 
   <div id="toast-container"></div>
-    <div id="cart-drawer-backdrop" class="drawer-backdrop"></div>
+  <div id="cart-drawer-backdrop" class="drawer-backdrop"></div>
   <aside id="cart-drawer" class="drawer">
     <button id="close-cart-btn" class="close-btn drawer-close-floating" title="Schließen">&times;</button>
     <div class="drawer-body" id="cart-items-list"></div>
