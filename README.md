@@ -9,10 +9,13 @@ and a cart, and save projects locally or to Supabase.
 > too large to safely edit (especially for an AI working on one change at
 > a time). See `docs/STRUCTURE_PLAN.md` for the target structure and
 > current phase status, and `docs/AI_REFACTOR_GUIDE.md` for the rules any
-> AI session should follow when continuing it. Phase 1 (canvas/elements.js,
-> canvas/canvas.js, layout/header-footer.js) and Phase 2
-> (`shop/cart-render.js` → `cart-html.js`/`cart-drawer.js`/`cart-sidebar.js`)
-> are done; Phase 3 (`shop/cart-editor.js`) is still pending.
+> AI session should follow when continuing it. Phase 1
+> (`canvas/elements.js`, `canvas/canvas.js`, `layout/header-footer.js`),
+> Phase 2 (`shop/cart-render.js` → `cart-html.js`/`cart-drawer.js`/
+> `cart-sidebar.js`) and Phase 3 (`shop/cart-editor.js` →
+> `cart-editor-stage.js`/`cart-editor-drag.js`/`cart-editor-panel.js`/
+> `cart-editor-bindings.js`) are done; Phase 4 (feinschliff) is still
+> pending.
 
 ## Project structure
 
@@ -26,7 +29,8 @@ WebBuilder/
 ├── docs/
 │   ├── CART_EDITOR_TASKS.md  active task specification for the current
 │   │                      cart focus editor round — read this before
-│   │                      touching js/shop/cart-editor.js
+│   │                      touching any of the js/shop/cart-editor-*.js
+│   │                      files
 │   ├── STRUCTURE_PLAN.md     target file structure for the ongoing
 │   │                      js/-split refactor, with phase status
 │   └── AI_REFACTOR_GUIDE.md  rules for any AI session continuing that
@@ -56,9 +60,13 @@ WebBuilder/
     │                        (cart-data.js), pure HTML building
     │                        (cart-html.js), the real drawer
     │                        (cart-drawer.js), left-sidebar config UI
-    │                        (cart-sidebar.js) and the focus editor
-    │                        (cart-editor.js — still a single large file,
-    │                        Phase 3 pending, see docs/STRUCTURE_PLAN.md)
+    │                        (cart-sidebar.js) and the focus editor, split
+    │                        into stage/selection (cart-editor-stage.js),
+    │                        pointer-drag interaction
+    │                        (cart-editor-drag.js), right-hand panel
+    │                        rendering (cart-editor-panel.js) and that
+    │                        panel's field bindings
+    │                        (cart-editor-bindings.js)
     ├── ui/                  cross-domain UI helpers: toast, modals, shared
     │                        inspector markup, sidebar-tab switching
     ├── pages/               reserved for future multi-page client logic
@@ -87,10 +95,10 @@ WebBuilder/
   Canva-style center/edge alignment-guide snapping (`attachInteraction()`),
   used by `canvas/canvas.js` (canvas elements) and
   `layout/header-footer-render.js` (bar items). The cart focus editor
-  (`shop/cart-editor.js`) has its own pointer handling instead — its stage
-  positions parts/components via a CSS transform offset on an unscaled
-  surface, not `attachInteraction()`'s absolute left/top model — but it
-  reuses `alignment.js`'s exported snapping primitives
+  (`shop/cart-editor-drag.js`) has its own pointer handling instead — its
+  stage positions parts/components via a CSS transform offset on an
+  unscaled surface, not `attachInteraction()`'s absolute left/top model —
+  but it reuses `alignment.js`'s exported snapping primitives
   (`collectSnapTargets`/`snapPosition`/guide-layer helpers) so dragging a
   cart part or component shows the same alignment guides as canvas
   elements and header/footer bar items.
@@ -98,18 +106,20 @@ WebBuilder/
   (`DOMContentLoaded`), exposing its API under `window.WebBuilderXxx`.
   A domain can be split across multiple files (e.g. `layout/`'s three
   `header-footer-*.js` files, `shop/`'s `cart-data.js`/`cart-html.js`/
-  `cart-drawer.js`/`cart-sidebar.js`, or `canvas/`'s `elements.js` +
-  `icon-registry.js`) — they still expose exactly one shared
-  `window.WebBuilderXxx` object per domain. Details: see `js/README.md`.
+  `cart-drawer.js`/`cart-sidebar.js`, the four `shop/cart-editor-*.js`
+  files, or `canvas/`'s `elements.js` + `icon-registry.js`) — they still
+  expose exactly one shared `window.WebBuilderXxx` object per domain.
+  Details: see `js/README.md`.
 - **Load order matters**: `js/builder.js` loads all modules in sequence via
   `document.write`. `shop/products.js` **must load before**
   `shop/cart-data.js` (cart-data.js references products only via
   `window.WebBuilderProducts`), `shop/cart-data.js` **must load before**
-  `shop/cart-html.js`/`cart-drawer.js`/`cart-sidebar.js`, `js/canvas/alignment.js`
-  **must load before** `canvas/canvas.js` and
-  `layout/header-footer-render.js`, and `js/ui/shared-markup.js` **must
-  load before** `editor/inspector.js`/`layout/header-footer-inspector.js`
-  (see `js/README.md`).
+  `shop/cart-html.js`/`cart-drawer.js`/`cart-sidebar.js`/the four
+  `cart-editor-*.js` files, `js/canvas/alignment.js` **must load before**
+  `canvas/canvas.js` and `layout/header-footer-render.js`, and
+  `js/ui/shared-markup.js` **must load before**
+  `editor/inspector.js`/`layout/header-footer-inspector.js` (see
+  `js/README.md`).
 
 ## Supabase schema
 
@@ -162,15 +172,12 @@ format.
 
 ## Known technical debt
 
-- `editor/inspector.js`, `shop/cart-editor.js`, `preview.js` are densely
-  written (many statements per line) — harder to read than the rest of
-  the project; should be unified to the rest of the codebase's style
-  (multi-line, one statement per line) next time they're touched (see
+- `editor/inspector.js` and `preview.js` are densely written (many
+  statements per line) — harder to read than the rest of the project;
+  should be unified to the rest of the codebase's style (multi-line, one
+  statement per line) next time they're touched (see
   `docs/STRUCTURE_PLAN.md` Phase 4).
-- `shop/cart-editor.js` still mixes several independent concerns in one
-  file (stage rendering + drag interaction + panel rendering + field
-  bindings). Planned split: see `docs/STRUCTURE_PLAN.md` Phase 3.
-- The cart focus editor (`shop/cart-editor.js`) has a small, actively-
+- The cart focus editor (`shop/cart-editor-*.js`) has a small, actively-
   tracked list of open fixes/refinements — see `docs/CART_EDITOR_TASKS.md`
   instead of duplicating that list here.
 
