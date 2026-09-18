@@ -30,7 +30,18 @@ document.write('<script src="js/shop/cart-data.js"><\/script>');
 document.write('<script src="js/shop/cart-html.js"><\/script>');
 document.write('<script src="js/shop/cart-drawer.js"><\/script>');
 document.write('<script src="js/shop/cart-sidebar.js"><\/script>');
-document.write('<script src="js/shop/cart-editor.js"><\/script>');
+// shop/cart-editor.js was split into four files (docs/STRUCTURE_PLAN.md
+// Phase 3): cart-editor-stage.js (focus-mode lifecycle, stage DOM,
+// selection, the shared layout data model), cart-editor-drag.js
+// (pointer-drag interaction), cart-editor-panel.js (right-hand panel
+// rendering) and cart-editor-bindings.js (that panel's field bindings).
+// All four contribute to window.WebBuilderCartFocus and only call each
+// other at runtime through it, so this order is a convention (stage
+// before drag/panel/bindings), not a hard parse-time requirement.
+document.write('<script src="js/shop/cart-editor-stage.js"><\/script>');
+document.write('<script src="js/shop/cart-editor-drag.js"><\/script>');
+document.write('<script src="js/shop/cart-editor-panel.js"><\/script>');
+document.write('<script src="js/shop/cart-editor-bindings.js"><\/script>');
 // canvas/alignment.js must load before canvas/canvas.js and
 // layout/header-footer-render.js: both call window.WebBuilderAlignment at
 // runtime for drag/click interaction + alignment-guide snapping.
@@ -80,8 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
   window.WebBuilderCartRuntime?.render?.();
   window.WebBuilderProductsRuntime?.render?.();
   window.WebBuilderCartConfigRuntime?.render?.();
-  window.WebBuilderCartPreviewBars?.normalizeState?.();
-  window.WebBuilderCartPreviewBars?.render?.();
   window.WebBuilderPreview?.bindToggle?.();
 
 });
