@@ -9,6 +9,11 @@ document.write('<script src="js/core/utils.js"><\/script>');
 document.write('<script src="js/ui/toast.js"><\/script>');
 document.write('<script src="js/core/storage.js"><\/script>');
 document.write('<script src="js/canvas/elements.js"><\/script>');
+// canvas/icon-registry.js has no hard load-order requirement of its own
+// (every read of window.WebBuilderIconRegistry happens at runtime, inside
+// a function body, never at top-level parse time) — kept right after
+// elements.js since both hold canvas-element-related data.
+document.write('<script src="js/canvas/icon-registry.js"><\/script>');
 // shop/products.js must load before shop/cart-data.js — cart-data.js
 // references products only via window.WebBuilderProducts.
 document.write('<script src="js/shop/products.js"><\/script>');
@@ -16,18 +21,30 @@ document.write('<script src="js/shop/cart-data.js"><\/script>');
 document.write('<script src="js/shop/cart-render.js"><\/script>');
 document.write('<script src="js/shop/cart-editor.js"><\/script>');
 // canvas/alignment.js must load before canvas/canvas.js and
-// layout/header-footer.js: both call window.WebBuilderAlignment at
+// layout/header-footer-render.js: both call window.WebBuilderAlignment at
 // runtime for drag/click interaction + alignment-guide snapping.
 document.write('<script src="js/canvas/alignment.js"><\/script>');
 document.write('<script src="js/canvas/canvas.js"><\/script>');
+// editor/background.js calls window.WebBuilderCanvas.setBackground() at
+// runtime (inside its commit() handler) — must load after canvas/canvas.js.
+document.write('<script src="js/editor/background.js"><\/script>');
 // ui/shared-markup.js must load before editor/inspector.js and
-// layout/header-footer.js: it fills the action-type <select> options and
-// the text-format toolbar buttons (shared markup for #prop-*/#bar-prop-*)
-// that those two modules read/bind right after DOMContentLoaded.
+// layout/header-footer-inspector.js: it fills the action-type <select>
+// options and the text-format toolbar buttons (shared markup for
+// #prop-*/#bar-prop-*) that those two modules read/bind right after
+// DOMContentLoaded.
 document.write('<script src="js/ui/shared-markup.js"><\/script>');
 document.write('<script src="js/editor/inspector.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
-document.write('<script src="js/layout/header-footer.js"><\/script>');
+// layout/header-footer-data.js must load before -render.js and
+// -inspector.js: both read window.WebBuilderHeaderFooter at top-level
+// parse time. -render.js is listed before -inspector.js by convention
+// (rendering is the more "foundational" half of this domain), though
+// neither actually requires the other at parse time — both reach into
+// window.WebBuilderHeaderFooterRuntime only inside function bodies.
+document.write('<script src="js/layout/header-footer-data.js"><\/script>');
+document.write('<script src="js/layout/header-footer-render.js"><\/script>');
+document.write('<script src="js/layout/header-footer-inspector.js"><\/script>');
 document.write('<script src="js/export.js"><\/script>');
 document.write('<script src="js/ui/modals.js"><\/script>');
 document.write('<script src="js/preview.js"><\/script>');
