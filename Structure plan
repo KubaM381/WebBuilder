@@ -10,7 +10,7 @@ Hintergrund/Begründung des Splits: siehe `docs/AI_REFACTOR_GUIDE.md`.
 ## Status-Übersicht
 
 - [x] **Phase 1** – `canvas/elements.js`, `canvas/canvas.js`, `layout/header-footer.js`
-- [ ] **Phase 2** – `shop/cart-render.js`
+- [x] **Phase 2** – `shop/cart-render.js` → `cart-html.js`/`cart-drawer.js`/`cart-sidebar.js`
 - [ ] **Phase 3** – `shop/cart-editor.js`
 - [ ] **Phase 4** – Feinschliff (`editor/inspector.js` entdichten, optional `shop/cart-data.js`, optional `web.html`-Cart-Panel-Markup auslagern)
 
@@ -48,9 +48,9 @@ js/
 ├── shop/
 │   ├── products.js                Produkt-CRUD + Produkte-Tab-UI
 │   ├── cart-data.js               Warenkorb-Datenmodell (ggf. Phase 4 weiter aufgeteilt)
-│   ├── cart-html.js               [ ] NEU (Phase 2): reine HTML-Bau-Funktionen
-│   ├── cart-drawer.js             [ ] NEU (Phase 2): echter Slide-in-Drawer
-│   ├── cart-sidebar.js            [ ] NEU (Phase 2): linke Sidebar-UI (Empfehlungen/
+│   ├── cart-html.js               [x] Phase 2: reine HTML-Bau-Funktionen
+│   ├── cart-drawer.js             [x] Phase 2: echter Slide-in-Drawer
+│   ├── cart-sidebar.js            [x] Phase 2: linke Sidebar-UI (Empfehlungen/
 │   │                              Meilensteine/Segmente/Toggles)
 │   ├── cart-editor-stage.js       [ ] NEU (Phase 3): Bühnen-Aufbau + Auswahl
 │   ├── cart-editor-drag.js        [ ] NEU (Phase 3): Pointer-Drag-Logik
@@ -101,3 +101,28 @@ Die Splits in Phase 1 ändern **keine** extern sichtbaren Namen:
   (`render`, `renderBars`, `selectItem`, `clearSelection`,
   `currentSelection`, `itemInnerHtml`), jetzt aus zwei Dateien
   zusammengesetzt statt einer.
+
+## Öffentliche APIs (unverändert nach Phase 2)
+
+Die Splits in Phase 2 ändern ebenfalls **keine** extern sichtbaren Namen:
+
+- `window.WebBuilderCartRuntime` — unverändert
+  (`render`, `refresh`, `open`, `close`, `buildCartHtml`, `buildCartParts`),
+  jetzt zusammengesetzt aus `shop/cart-html.js` (`buildCartHtml`/
+  `buildCartParts`) und `shop/cart-drawer.js` (`render`/`refresh`/`open`/
+  `close`) via `Object.assign` auf dasselbe Objekt — Ladereihenfolge
+  zwischen den beiden Dateien spielt dadurch keine Rolle.
+- `window.WebBuilderCartConfigRuntime` — unverändert
+  (`render`, `renderRecommendList`, `renderMilestoneList`,
+  `renderSegmentList`), jetzt vollständig in `shop/cart-sidebar.js`
+  definiert statt in `shop/cart-render.js`.
+- `window.WebBuilderCartHtml` — NEU, reine HTML-Bau-Funktionen
+  (`buildCartHtml`, `buildCartParts`, `buildCartItemHTML`,
+  `buildRecommendCardContentHtml`, `buildItemsHtml`, `buildTitleHtml`,
+  `buildCheckoutHtml`, `wrapLayoutPart`, `wrapComponent`) — vorher nur
+  intern in `shop/cart-render.js`, jetzt auch von außen ansprechbar,
+  falls künftig ein weiteres Modul reine Cart-HTML-Bausteine braucht,
+  ohne Drawer/Sidebar mitzuladen.
+
+`shop/cart-render.js` existiert nicht mehr — sein gesamter Inhalt wurde
+auf `cart-html.js`/`cart-drawer.js`/`cart-sidebar.js` verteilt.
