@@ -6,6 +6,12 @@ document.write('<script src="js/core/state.js"><\/script>');
 document.write('<script src="js/core/utils.js"><\/script>');
 document.write('<script src="js/ui/toast.js"><\/script>');
 document.write('<script src="js/core/storage.js"><\/script>');
+// Static markup injection. sidebar-panels-markup.js must load before
+// layout/header-footer-inspector.js (synchronous bind()); cart-editor-
+// markup.js must load before ui/shared-markup.js (fills its shape
+// selects) — see each file's own header comment.
+document.write('<script src="js/ui/sidebar-panels-markup.js"><\/script>');
+document.write('<script src="js/shop/cart-editor-markup.js"><\/script>');
 document.write('<script src="js/canvas/elements.js"><\/script>');
 document.write('<script src="js/canvas/icon-registry.js"><\/script>');
 // Must load before the cart-*.js files below — they read
@@ -31,8 +37,9 @@ document.write('<script src="js/canvas/alignment.js"><\/script>');
 document.write('<script src="js/canvas/canvas.js"><\/script>');
 // Calls window.WebBuilderCanvas.setBackground() at runtime.
 document.write('<script src="js/editor/background.js"><\/script>');
-// Injects the #prop-*/#bar-prop-* markup that inspector.js and
-// header-footer-inspector.js read right after DOMContentLoaded.
+// Injects the #prop-*/#bar-prop-*/cart-comp-*-shape markup that
+// inspector.js, header-footer-inspector.js and cart-editor-panel.js
+// read right after DOMContentLoaded.
 document.write('<script src="js/ui/shared-markup.js"><\/script>');
 document.write('<script src="js/editor/inspector.js"><\/script>');
 document.write('<script src="js/editor/inspector-special.js"><\/script>');
