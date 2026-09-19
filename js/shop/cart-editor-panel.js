@@ -34,6 +34,8 @@
     const positionFields = document.getElementById("cart-comp-position-fields");
     positionFields?.classList.toggle("hidden", !!focus().NON_POSITIONABLE?.has(sel));
 
+    const config = cart.getConfig();
+
     const labels = {
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
@@ -41,9 +43,19 @@
       "component:totals": "Kosten-Übersicht", "component:title": "Warenkorb-Titel"
     };
     const labelEl = document.getElementById("cart-part-label");
-    if (labelEl) labelEl.textContent = focus().isDividerKey?.(sel) ? "Trennlinie" : (labels[sel] || sel);
-
-    const config = cart.getConfig();
+    if (labelEl) {
+      let label;
+      if (focus().isDividerKey?.(sel)) {
+        label = "Trennlinie";
+      } else if (focus().isSegmentKey?.(sel)) {
+        const segmentId = sel.slice(focus().SEGMENT_PREFIX.length);
+        const segment = (config.segments || []).find(s => s.id === segmentId);
+        label = segment ? `Segment: ${segment.name}` : "Segment";
+      } else {
+        label = labels[sel] || sel;
+      }
+      labelEl.textContent = label;
+    }
 
     // Labels that would otherwise show a hardcoded "€" follow the
     // currently selected currency (cartConfig.currency, see
