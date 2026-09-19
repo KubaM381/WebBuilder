@@ -232,10 +232,6 @@
       window.WebBuilderCartFocus?.renderPartPanel?.();
       refreshCartViews();
     }, true);
-    document.getElementById("cid-item-divider-mode")?.addEventListener("change", e => {
-      window.WebBuilderHistory?.arm(); cart.setItemDisplay({ itemDividerMode: e.target.value === "all" ? "all" : "last" }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
 
     document.addEventListener("keydown", e => { if (e.key === "Escape" && state.cartFocusMode) focus().exit?.(); });
   }
