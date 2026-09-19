@@ -181,18 +181,6 @@
           </div>
           <div class="form-group"><label>Farbe Entfernen-Button</label><input type="color" id="cart-remove-color"></div>
         </div>
-
-        <div id="cart-comp-position-fields">
-          <div class="form-group">
-            <label for="cart-part-x">Position X (px)</label>
-            <input type="number" id="cart-part-x" step="1">
-          </div>
-          <div class="form-group">
-            <label for="cart-part-y">Position Y (px)</label>
-            <input type="number" id="cart-part-y" step="1">
-          </div>
-          <button type="button" id="cart-part-reset" class="btn btn-secondary" style="width:100%;">↺ Position zurücksetzen</button>
-        </div>
       </div>
 
       <hr class="divider">
