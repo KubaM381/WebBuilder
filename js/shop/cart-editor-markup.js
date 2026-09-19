@@ -14,7 +14,7 @@
   function markup() {
     return `
       <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-      <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht oder Trennlinie), um ihn hier anzupassen.</p>
+      <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Produktliste, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht oder Trennlinie), um ihn hier anzupassen.</p>
 
       <div id="cart-part-editor" class="hidden">
         <div class="form-group"><label id="cart-part-label">Element</label></div>
@@ -25,6 +25,21 @@
             <input type="text" id="cart-comp-title-label" placeholder="Dein Warenkorb ({anzahl})">
           </div>
           <p class="help-text">Verwende <code>{anzahl}</code> als Platzhalter für die aktuelle Artikelanzahl — er kann an beliebiger Stelle im Text stehen, z. B. „{anzahl} Produkte“.</p>
+        </div>
+
+        <div id="cart-comp-items-fields" class="hidden">
+          <p class="help-text">Diese Einstellungen gelten für jedes einzelne Produkt im Warenkorb. Die gesamte Produktliste lässt sich zusätzlich wie jede andere Komponente frei verschieben — dazu einfach auf eine freie Stelle im Produktbereich klicken und ziehen.</p>
+          <div class="form-group"><label for="cart-comp-items-shape">Form</label>
+            <select id="cart-comp-items-shape">
+              <option value="rounded">Abgerundet</option>
+              <option value="square">Eckig</option>
+              <option value="pill">Rund (Pille)</option>
+              <option value="transparent">Transparent</option>
+            </select>
+          </div>
+          <div class="form-group"><label for="cart-comp-items-bg-color">Hintergrundfarbe</label><input type="color" id="cart-comp-items-bg-color"></div>
+          <div class="form-group"><label for="cart-comp-items-width">Breite (px)</label><input type="number" id="cart-comp-items-width" min="0" step="1" placeholder="automatisch"></div>
+          <div class="form-group"><label for="cart-comp-items-min-height">Mindesthöhe (px)</label><input type="number" id="cart-comp-items-min-height" min="0" step="1" placeholder="automatisch"></div>
         </div>
 
         <div id="cart-comp-checkout-fields" class="hidden">
@@ -93,7 +108,7 @@
           <div class="form-group"><label for="cart-comp-progress-color">Balkenfarbe</label><input type="color" id="cart-comp-progress-color"></div>
           <div class="form-group"><label for="cart-comp-progress-complete-text">Text bei „alle Ziele erreicht“</label><input type="text" id="cart-comp-progress-complete-text" placeholder="✓ Alle Ziele freigeschaltet"></div>
           <p class="help-text" style="margin-top:-6px;">Wird angezeigt, sobald der höchste Meilenstein erreicht ist und dieser selbst kein eigenes „Text bei Erreichen“ gesetzt hat (siehe unten in der Meilenstein-Liste).</p>
-          <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel in der Kosten-Übersicht synchron, ein Meilenstein „Extra-Rabatt“ entsprechend mit dem Rabatt-Ziel im Rabatt-Bereich der Kosten-Übersicht:</p>
+          <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dies der zuletzt erreichte Meilenstein ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel in der Kosten-Übersicht synchron, ein Meilenstein „Extra-Rabatt“ entsprechend mit dem Rabatt-Ziel im Rabatt-Bereich der Kosten-Übersicht:</p>
           <div class="mini-btn-row"><button type="button" id="btn-add-milestone" class="btn btn-secondary btn-sm" style="width:100%;">+ Meilenstein</button></div>
           <div id="cart-milestone-list" class="items-list"></div>
         </div>
