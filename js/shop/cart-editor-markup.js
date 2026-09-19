@@ -14,7 +14,7 @@
   function markup() {
     return `
       <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-      <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Trennlinie oder Hintergrund), um ihn hier anzupassen.</p>
+      <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Trennlinie, Segment oder Hintergrund), um ihn hier anzupassen.</p>
 
       <div id="cart-part-editor" class="hidden">
         <div class="form-group"><label id="cart-part-label">Element</label></div>
@@ -85,7 +85,7 @@
         </div>
 
         <div id="cart-comp-divider-fields" class="hidden">
-          <p class="help-text">Diese Trennlinie lässt sich überall im Warenkorb frei platzieren — zieh sie einfach an die gewünschte Stelle oder gib unten eine Position ein.</p>
+          <p class="help-text">Diese Trennlinie lässt sich überall im Warenkorb frei platzieren — zieh sie einfach an die gewünschte Stelle.</p>
           <button type="button" id="btn-remove-divider" class="btn btn-danger-outline" style="width:100%;">🗑️ Trennlinie entfernen</button>
         </div>
 
@@ -118,7 +118,7 @@
             </select>
           </div>
           <div class="hidden" id="cart-item-divider-group">
-            <label class="checkbox-row"><input type="checkbox" id="cid-show-item-dividers"> Trennlinien zwischen Produkten</label>
+            <label class="checkbox-row"><input type="checkbox" id="cid-show-item-dividers"> Trennlinie zwischen Produkten</label>
           </div>
           <div class="form-group"><label for="cart-item-bg-color">Hintergrundfarbe</label><input type="color" id="cart-item-bg-color"></div>
           <div class="form-group"><label for="cart-item-width">Breite (px, leer = automatisch)</label><input type="number" id="cart-item-width" min="120" step="1" placeholder="automatisch"></div>
