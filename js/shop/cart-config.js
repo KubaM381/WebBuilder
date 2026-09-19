@@ -70,6 +70,49 @@
     }
   }
 
+  // Simple scalar defaults applied to a saved (or brand-new) cartConfig
+  // whenever the field is still unset. `null` is a legitimate default for
+  // some fields (e.g. itemWidth/itemMinHeight/itemsListMaxHeight — "no
+  // override configured") and is kept as such, not treated as "missing".
+  // Dotted paths reach one level into an already-guaranteed-to-exist
+  // nested object (itemDisplay). Anything that isn't a plain "still
+  // missing -> default" scalar — object/array existence guards, the
+  // cartTitleLabel placeholder migration, delegated normalizeXxx() calls
+  // — is NOT in this table and is applied separately in normalizeState()
+  // below.
+  const CONFIG_DEFAULTS = {
+    "itemDisplay.quantityGroupShape": "rounded",
+    "itemDisplay.quantityButtonColor": "black",
+    "itemDisplay.showItemDividers": false,
+    discountButtonColor: "#4f46e5",
+    discountButtonShape: "rounded",
+    itemBackgroundColor: "",
+    cardBackgroundColor: "",
+    itemWidth: null,
+    itemMinHeight: null,
+    subtotalLabel: "Zwischensumme",
+    discountLabel: "Rabatt",
+    shippingLabel: "Versand",
+    shippingCost: 4.95,
+    shippingFreeText: "Kostenlos",
+    totalLabel: "Gesamt",
+    freeProductLabel: "🎁 Gratis-Produkt",
+    freeProductValueText: "freigeschaltet",
+    recommendShape: "rounded",
+    recommendAddButtonColor: "#4f46e5",
+    itemsListMaxHeight: null
+  };
+
+  function applyConfigDefaults(config, defaults) {
+    Object.entries(defaults).forEach(([path, value]) => {
+      const keys = path.split(".");
+      const lastKey = keys.pop();
+      let target = config;
+      keys.forEach(key => { target = target[key]; });
+      if (target[lastKey] == null) target[lastKey] = value;
+    });
+  }
+
   function normalizeState() {
     const wc = window.WebBuilderCart;
     window.WebBuilderProducts?.normalizeState?.();
@@ -81,22 +124,13 @@
 
     if (!config.itemDisplay || typeof config.itemDisplay !== "object") config.itemDisplay = {};
     if (!config.itemDisplay.layout || typeof config.itemDisplay.layout !== "object") config.itemDisplay.layout = {};
-    if (config.itemDisplay.quantityGroupShape == null) config.itemDisplay.quantityGroupShape = "rounded";
-    if (config.itemDisplay.quantityButtonColor == null) config.itemDisplay.quantityButtonColor = "black";
-    if (config.itemDisplay.showItemDividers == null) config.itemDisplay.showItemDividers = false;
-
-    if (config.discountButtonColor == null) config.discountButtonColor = "#4f46e5";
-    if (config.discountButtonShape == null) config.discountButtonShape = "rounded";
-
     if (!config.componentLayout || typeof config.componentLayout !== "object") config.componentLayout = {};
-    if (config.itemBackgroundColor == null) config.itemBackgroundColor = "";
-    if (config.cardBackgroundColor == null) config.cardBackgroundColor = "";
     // No longer its own component — title/checkout flow like any other
     // component in the cart body (see cart-html.js). Drop a value loaded
     // from an older project instead of keeping it as a dead field.
     delete config.footerBackgroundColor;
-    if (config.itemWidth === undefined) config.itemWidth = null;
-    if (config.itemMinHeight === undefined) config.itemMinHeight = null;
+
+    applyConfigDefaults(config, CONFIG_DEFAULTS);
 
     // {anzahl} can sit anywhere in the title text (see cart-html.js
     // buildTitleHtml()). A title saved before this placeholder existed is
@@ -107,23 +141,10 @@
       config.cartTitleLabel = `${config.cartTitleLabel} (${TITLE_COUNT_PLACEHOLDER})`;
     }
 
-    if (config.subtotalLabel == null) config.subtotalLabel = "Zwischensumme";
-    if (config.discountLabel == null) config.discountLabel = "Rabatt";
-    if (config.shippingLabel == null) config.shippingLabel = "Versand";
-    if (config.shippingCost == null) config.shippingCost = 4.95;
-    if (config.shippingFreeText == null) config.shippingFreeText = "Kostenlos";
-    if (config.totalLabel == null) config.totalLabel = "Gesamt";
-    if (config.freeProductLabel == null) config.freeProductLabel = "🎁 Gratis-Produkt";
-    if (config.freeProductValueText == null) config.freeProductValueText = "freigeschaltet";
-
     wc.normalizeDividersState(config);
 
-    if (config.recommendShape == null) config.recommendShape = "rounded";
-    if (config.recommendAddButtonColor == null) config.recommendAddButtonColor = "#4f46e5";
     if (!config.recommendDisplay || typeof config.recommendDisplay !== "object") config.recommendDisplay = {};
     if (!config.recommendDisplay.layout || typeof config.recommendDisplay.layout !== "object") config.recommendDisplay.layout = {};
-
-    if (config.itemsListMaxHeight === undefined) config.itemsListMaxHeight = null;
 
     config.segments = wc.normalizeSegments(config.segments);
 
