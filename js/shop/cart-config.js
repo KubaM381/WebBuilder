@@ -80,6 +80,10 @@
   const CONFIG_DEFAULTS = {
     "itemDisplay.quantityGroupShape": "rounded",
     "itemDisplay.quantityButtonColor": "black",
+    itemShape: "rounded",
+    itemBackgroundColor: "",
+    itemWidth: null,
+    itemMinHeight: null,
     discountButtonColor: "#4f46e5",
     discountButtonShape: "rounded",
     cardBackgroundColor: "",
