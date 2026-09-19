@@ -130,14 +130,22 @@
       refreshCartViews();
     }, true);
 
-    // Dividers are an arbitrarily repeatable component. A new divider
-    // starts at the top of the cart body and is selected immediately so
-    // it can be dragged into place.
+    // Dividers are an arbitrarily repeatable component. A new divider is
+    // placed at the very bottom of the whole cart body — the stage must
+    // be rendered once first so the divider exists in the DOM at its
+    // natural (top-of-body) position before the bottom offset can be
+    // measured against it — then selected immediately so it's obvious
+    // where it landed.
     document.getElementById("btn-add-divider")?.addEventListener("click", e => {
       e.preventDefault(); e.stopImmediatePropagation();
       if (!state.cartFocusMode) focus().enter?.();
       const divider = cart.addDivider();
-      if (divider) focus().select?.(`${focus().DIVIDER_PREFIX}${divider.id}`);
+      if (!divider) return;
+      const fullKey = `${focus().DIVIDER_PREFIX}${divider.id}`;
+      focus().renderStage?.();
+      const bottomOffset = focus().computeBottomOffset?.(fullKey);
+      if (bottomOffset != null) focus().setComponentLayoutByKey?.(`divider:${divider.id}`, 0, bottomOffset);
+      focus().select?.(fullKey);
     }, true);
     document.getElementById("btn-remove-divider")?.addEventListener("click", e => {
       e.preventDefault(); e.stopImmediatePropagation();
