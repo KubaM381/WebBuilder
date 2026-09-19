@@ -146,32 +146,37 @@
   // don't belong to a segment follow at the end in their original order.
   // Each non-empty segment is wrapped in a plain <div data-segment-id="...">
   // (no styling of its own) and optionally followed by a static divider
-  // line (segment.showDivider). Separate from cartConfig.dividers (the
-  // freely draggable, user-placed lines from wrapComponent()) — a segment
-  // divider is static and always sits right after its segment's items.
+  // line (segment.showDivider). Separate from cartConfig.itemDisplay's
+  // showItemDividers below — a segment divider is static and always sits
+  // right after its segment's items, while showItemDividers renders a
+  // single divider once, after the last product in the whole list.
   function buildItemsHtml(items, isDemo, interactive, config) {
     if (!items.length) return '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
     const showItemDividers = config.itemShape === "transparent" && !!(config.itemDisplay || {}).showItemDividers;
     function renderRun(runItems) {
-      return runItems.map((item, idx) => (showItemDividers && idx > 0 ? '<div class="cart-item-divider"></div>' : "") + buildCartItemHTML(item, isDemo, interactive)).join("");
+      return runItems.map(item => buildCartItemHTML(item, isDemo, interactive)).join("");
     }
     const segments = Array.isArray(config.segments) ? config.segments.filter(s => (s.productIds || []).length) : [];
-    if (!segments.length) return renderRun(items);
-
-    const remaining = items.slice();
-    let html = "";
-    segments.forEach(segment => {
-      const ids = new Set(segment.productIds);
-      const groupItems = remaining.filter(item => item.productId && ids.has(item.productId));
-      if (!groupItems.length) return;
-      groupItems.forEach(item => {
-        const idx = remaining.indexOf(item);
-        if (idx > -1) remaining.splice(idx, 1);
+    let html;
+    if (!segments.length) {
+      html = renderRun(items);
+    } else {
+      const remaining = items.slice();
+      html = "";
+      segments.forEach(segment => {
+        const ids = new Set(segment.productIds);
+        const groupItems = remaining.filter(item => item.productId && ids.has(item.productId));
+        if (!groupItems.length) return;
+        groupItems.forEach(item => {
+          const idx = remaining.indexOf(item);
+          if (idx > -1) remaining.splice(idx, 1);
+        });
+        html += `<div class="cart-segment" data-segment-id="${esc(segment.id)}">${renderRun(groupItems)}</div>`;
+        if (segment.showDivider) html += '<div class="cart-item-divider"></div>';
       });
-      html += `<div class="cart-segment" data-segment-id="${esc(segment.id)}">${renderRun(groupItems)}</div>`;
-      if (segment.showDivider) html += '<div class="cart-item-divider"></div>';
-    });
-    html += renderRun(remaining);
+      html += renderRun(remaining);
+    }
+    if (showItemDividers) html += '<div class="cart-item-divider"></div>';
     return html;
   }
 
