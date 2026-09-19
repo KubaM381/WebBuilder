@@ -108,6 +108,10 @@
       dividerGroup?.classList.toggle("hidden", config.itemShape !== "transparent");
       const dividerCb = document.getElementById("cid-show-item-dividers");
       if (dividerCb) dividerCb.checked = !!config.itemDisplay.showItemDividers;
+      const dividerModeGroup = document.getElementById("cart-item-divider-mode-group");
+      dividerModeGroup?.classList.toggle("hidden", config.itemShape !== "transparent" || !config.itemDisplay.showItemDividers);
+      const dividerModeSel = document.getElementById("cid-item-divider-mode");
+      if (dividerModeSel) dividerModeSel.value = config.itemDisplay.itemDividerMode || "last";
     } else if (sel === "component:totals") {
       document.getElementById("cart-comp-totals-fields")?.classList.remove("hidden");
       const currencySelect = document.getElementById("cart-comp-currency");
