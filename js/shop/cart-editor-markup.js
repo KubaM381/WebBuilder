@@ -6,7 +6,7 @@
 // per getElementById ansprechen wie zuvor in web.html).
 //
 // Ladereihenfolge: MUSS vor js/ui/shared-markup.js laden — dieses füllt
-// die drei hier absichtlich leeren Shape-Selects (Abgerundet/Eckig/
+// die hier absichtlich leeren Shape-Selects (Abgerundet/Eckig/
 // Rund (Pille)) per shared-markup.js's buildShapeOptionsHtml(), was nur
 // funktioniert, wenn die <select>-Elemente zu dem Zeitpunkt schon im DOM
 // stehen.
@@ -14,7 +14,7 @@
   function markup() {
     return `
       <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-      <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht, Trennlinie, Segment oder Hintergrund), um ihn hier anzupassen.</p>
+      <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht oder Trennlinie), um ihn hier anzupassen.</p>
 
       <div id="cart-part-editor" class="hidden">
         <div class="form-group"><label id="cart-part-label">Element</label></div>
@@ -106,26 +106,6 @@
           <p class="help-text">Empfehlungen (angezeigt wird die erste passende):</p>
           <div class="mini-btn-row"><button type="button" id="btn-add-recommendation" class="btn btn-secondary btn-sm" style="width:100%;">+ Empfehlung aus Produkten</button></div>
           <div id="cart-recommend-list" class="items-list"></div>
-        </div>
-
-        <div id="cart-comp-item-fields" class="hidden">
-          <div class="form-group"><label for="cart-item-shape">Form</label>
-            <select id="cart-item-shape">
-              <option value="transparent">Durchsichtig</option>
-              <option value="square">Eckig</option>
-              <option value="rounded">Abgerundet</option>
-              <option value="pill">Rund</option>
-            </select>
-          </div>
-          <div class="hidden" id="cart-item-divider-group">
-            <label class="checkbox-row"><input type="checkbox" id="cid-show-item-dividers"> Trennlinie zwischen Produkten</label>
-          </div>
-          <div class="form-group"><label for="cart-item-bg-color">Hintergrundfarbe</label><input type="color" id="cart-item-bg-color"></div>
-          <div class="form-group"><label for="cart-item-width">Breite (px, leer = automatisch)</label><input type="number" id="cart-item-width" min="120" step="1" placeholder="automatisch"></div>
-          <div class="form-group"><label for="cart-item-height">Mindesthöhe (px, leer = automatisch)</label><input type="number" id="cart-item-height" min="30" step="1" placeholder="automatisch"></div>
-          <p class="help-text">Tipp: Im Editor kannst du die Artikel-Box auch direkt an der Ecke unten rechts ziehen, um die Größe anzupassen.</p>
-          <hr class="divider modal-divider-tight">
-          <label class="checkbox-row"><input type="checkbox" id="cid-show-description"> Produktbeschreibung anzeigen</label>
         </div>
 
         <div id="cart-comp-qty-fields" class="hidden">
