@@ -118,14 +118,15 @@
    zur Kosten-Übersicht darüber, die vorher durch das Padding des
    Fußbalkens kam. */
 .cart-checkout-button { margin-top: 6px; }
-/* T6: frei platzierbare Trennlinie (cartConfig.dividers). Der Wrapper
-   ist absichtlich deutlich höher als die 1px-Linie und über die volle
-   Breite klickbar — dieselbe Idee wie .bar-resize-handle in
-   css/canvas.css: sichtbar dünn, aber bequem zu treffen. Die Linie
-   selbst steht linksbündig und ist kürzer als die volle Breite (kein
-   margin: auto), damit sie als Gliederung wirkt statt als Rahmen. */
-.cart-divider { display: flex; align-items: center; padding: 8px 0; }
-.cart-divider-line { display: block; width: 55%; border-top: 1px solid var(--border-color); }
+/* Aufgabe D: konfigurierbare Trennlinie unter dem letzten Produkt bei
+   durchsichtiger Artikel-Form (cartConfig.itemShape === "transparent" &&
+   itemDisplay.showItemDividers). Wird in buildItemsHtml() (js/shop/
+   cart-item-html.js) einmalig nach dem letzten Artikel der Liste
+   eingefügt, nicht zwischen jedem Artikel.
+   T9.4: bewusst schmaler als die volle Artikelbreite (statt 100%) und
+   zentriert, damit sie als dezente Abtrennung wirkt statt wie eine
+   durchgehende Linie über die ganze Breite. */
+.cart-item-divider { border-top: 1px solid var(--border-color); margin: 4px auto; width: 70%; }
 /* Bounded "products box" (cartConfig.itemsListMaxHeight, see
    js/shop/cart-render.js buildCartParts()): groups the item rows so they
    can be given a fixed max-height with their own internal scrollbar,
@@ -134,7 +135,7 @@
    list. The box itself carries no visible chrome ("unsichtbar") — no
    rule needed here beyond the max-height/overflow set inline per
    project. The divider right after it is the one visible separation
-   from the rest of the cart body, always shown regardless of whether a
+   from the rest of the cart, always shown regardless of whether a
    max-height is set. */
 .cart-items-box-divider { border-top: 1px solid var(--border-color); margin: 6px 0 14px; }
 /* Product segments (js/shop/cart-render.js buildItemsHtml()) — a plain
@@ -279,17 +280,6 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    dashed outline, so item bounds stay visible while editing (see
    .cart-item-transparent above for the "no lines" real-preview state). */
 .cart-focus-stage .cart-item.cart-item-transparent { border: 1px dashed var(--border-muted); }
-
-/* Aufgabe D: konfigurierbare Trennlinie zwischen Warenkorb-Artikeln bei
-   durchsichtiger Artikel-Form (cartConfig.itemShape === "transparent" &&
-   itemDisplay.showItemDividers). Wird in buildCartHtml() (js/shop/
-   cart-render.js) zwischen jedem Artikel eingefügt, nicht vor dem
-   ersten/nach dem letzten.
-   T9.4: bewusst schmaler als die volle Artikelbreite (statt wie zuvor
-   100%) und zentriert, damit sie als dezente Abtrennung zwischen den
-   Produkten wirkt statt wie eine durchgehende Linie über die ganze
-   Breite. */
-.cart-item-divider { border-top: 1px solid var(--border-color); margin: 4px auto; width: 70%; }
 
 /* Task 5: "Gruppe"-Variante der Mengenauswahl — ein zusammenhängender
    Container statt zweier separater Buttons (siehe .cart-qty-stepper
