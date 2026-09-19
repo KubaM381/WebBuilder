@@ -116,6 +116,35 @@
     }
   }
 
+  // Generic version of setSelectedLayout() for a component key that is
+  // not (yet) the current selection — used right after creating a new
+  // divider, before it has been selected, so it can be placed at the
+  // bottom immediately (see cart-editor-bindings.js "btn-add-divider").
+  function setComponentLayoutByKey(key, x, y, recordHistory = true) {
+    if (recordHistory) window.WebBuilderHistory?.arm();
+    state.cartConfig.componentLayout[key] = { x: Math.round(x) || 0, y: Math.round(y) || 0 };
+    if (recordHistory) window.WebBuilderHistory?.commit();
+    notify("cart", "component-layout", state.cartConfig.componentLayout);
+  }
+
+  // Measures the already-rendered stage to find how far down (in px) the
+  // component identified by `fullKey` (a "component:<key>" selection key)
+  // would have to move to sit below every other visible cart block —
+  // used so a freshly added divider lands at the bottom of the cart
+  // instead of at its natural flow position right under the title.
+  // Returns null if the stage or the component isn't in the DOM yet
+  // (caller should renderStage() first).
+  function computeBottomOffset(fullKey) {
+    const key = fullKey.startsWith("component:") ? fullKey.slice("component:".length) : fullKey;
+    const stage = document.getElementById("cart-focus-stage");
+    const bodyEl = stage?.querySelector(".cart-focus-body");
+    const compEl = stage?.querySelector(`[data-cart-component="${CSS.escape(key)}"]`);
+    if (!bodyEl || !compEl) return null;
+    const bodyRect = bodyEl.getBoundingClientRect();
+    const compRect = compEl.getBoundingClientRect();
+    return Math.max(0, Math.round(bodyRect.bottom - compRect.top));
+  }
+
   // "background" (the whole card background) is selectable/editable but
   // never position-draggable — it has no sensible free position.
   // Dividers ("component:divider:<id>") ARE positionable, like
@@ -231,6 +260,8 @@
     getSelectedLayout,
     setSelectedLayout,
     resetSelectedLayout,
+    setComponentLayoutByKey,
+    computeBottomOffset,
     NON_POSITIONABLE,
     DIVIDER_PREFIX,
     isDividerKey
