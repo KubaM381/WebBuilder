@@ -24,6 +24,27 @@
       refreshCartViews();
     }, true);
 
+    document.getElementById("cart-comp-items-shape")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ itemShape: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-items-bg-color")?.addEventListener("input", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ itemBackgroundColor: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-items-width")?.addEventListener("change", e => {
+      const raw = e.target.value;
+      const v = raw === "" ? null : Math.max(0, Number(raw) || 0);
+      window.WebBuilderHistory?.arm(); cart.setConfig({ itemWidth: v }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+    document.getElementById("cart-comp-items-min-height")?.addEventListener("change", e => {
+      const raw = e.target.value;
+      const v = raw === "" ? null : Math.max(0, Number(raw) || 0);
+      window.WebBuilderHistory?.arm(); cart.setConfig({ itemMinHeight: v }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
     document.getElementById("cart-comp-checkout-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setButtonLabel(e.target.value, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
