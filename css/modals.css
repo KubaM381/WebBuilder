@@ -28,8 +28,11 @@
    Warenkorb-Editor nach rechts gezogene Teil (transform-Offset, siehe
    js/shop/cart-render.js wrapLayoutPart()) eine horizontale Scrollleiste
    erzeugt hat. Inhalt, der über den Rand hinausragt, wird jetzt
-   beschnitten statt scrollbar. */
-.drawer-body { padding: 20px; flex: 1; overflow-y: auto; overflow-x: hidden; }
+   beschnitten statt scrollbar.
+   padding-bottom (statt nur padding) — gibt dem Warenkorb-Körper unten
+   mehr Luft, damit der Zur-Kasse-Button nicht direkt am Drawer-Rand
+   klebt (analog zum vergrößerten .cart-focus-card unten). */
+.drawer-body { padding: 20px 20px 40px; flex: 1; overflow-y: auto; overflow-x: hidden; }
 /* Warenkorb-Titel — fließt wie jede andere Komponente ganz normal im
    Warenkorb-Körper mit (kein eigener Kopfbalken mehr), siehe
    js/shop/cart-render.js buildTitleHtml(). */
@@ -114,10 +117,10 @@
 .cart-total-final { font-weight: 700; font-size: 1rem; margin-top: 8px; }
 /* Zur-Kasse-Button — fließt wie jede andere Komponente ganz normal im
    Warenkorb-Körper mit (kein eigener Fußbalken mehr), siehe
-   js/shop/cart-render.js buildCheckoutHtml(). margin-top gibt etwas Luft
-   zur Kosten-Übersicht darüber, die vorher durch das Padding des
-   Fußbalkens kam. */
-.cart-checkout-button { margin-top: 6px; }
+   js/shop/cart-render.js buildCheckoutHtml(). Größerer margin-top gibt
+   mehr Luft zur Kosten-Übersicht darüber, passend zum vergrößerten
+   Editor-/Drawer-Innenraum (siehe .cart-focus-card/.drawer-body oben). */
+.cart-checkout-button { margin-top: 18px; }
 /* Aufgabe D: konfigurierbare Trennlinie unter dem letzten Produkt bei
    durchsichtiger Artikel-Form (cartConfig.itemShape === "transparent" &&
    itemDisplay.showItemDividers). Wird in buildItemsHtml() (js/shop/
@@ -193,12 +196,12 @@ body.cart-focus-active .cart-item-part:active,
 body.cart-focus-active .cart-item-part:active * { cursor: grabbing; }
 
 /* Top-level draggable blocks (title / progress bar / discount field /
-   recommendation card / checkout button / totals) — same wrapping pattern
-   as .cart-item-part above, one level up. display:block so wrapping a
-   block element (e.g. .cart-progress) doesn't change its flex-item
-   behavior inside .cart-focus-body. Every top-level component is
-   draggable now — there is no more non-draggable header/footer bar, so
-   the generic grab cursor below applies uniformly. */
+   recommendation card / checkout button / totals / segments) — same
+   wrapping pattern as .cart-item-part above, one level up. display:block
+   so wrapping a block element (e.g. .cart-progress) doesn't change its
+   flex-item behavior inside .cart-focus-body. Every top-level component
+   is draggable now — there is no more non-draggable header/footer bar,
+   so the generic grab cursor below applies uniformly. */
 .cart-component-wrap { display: block; touch-action: none; }
 /* Same reasoning as .cart-item-part above — every nested control (the
    discount "Anwenden" button, the recommend "+" button, ...) also gets
@@ -230,10 +233,11 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    pixel-identical apart from editing affordances" invariant of
    js/shop/cart-render.js intact: a pixel offset dragged into place here
    lands in exactly the same spot in the real drawer.
-   min-height gives the editor more usable vertical room ("weiter nach
-   unten ausgebaut") — the card starts out as tall as a realistic
-   multi-item cart, and .cart-focus-body (flex: 1) absorbs the extra
-   space. The card still grows further with its own content.
+   min-height gives the editor more usable vertical room — raised further
+   (was 640px) so there is comfortably more drag space below the checkout
+   button for components that get moved further down, without the card
+   feeling cramped once a realistic, fully-configured cart is shown. The
+   card still grows further with its own content beyond this.
    Title and checkout button are no longer separate fixed header/footer
    bars — they flow inside .cart-focus-body like every other component
    (see js/shop/cart-render.js buildTitleHtml()/buildCheckoutHtml()), so
@@ -244,7 +248,7 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    canvas during normal editing. Nothing in here causes horizontal
    scrolling either (see also the body.preview-mode /
    body.cart-focus-active overflow-x guards in css/styles.css). */
-.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: var(--cart-width); max-width: 100%; min-height: 640px; display: flex; flex-direction: column; }
+.cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: var(--cart-width); max-width: 100%; min-height: 900px; display: flex; flex-direction: column; }
 /* Plain block flow, WITHOUT its own overflow-y:auto — no internal scroll
    region inside the card at all. Content (title, progress bar, items,
    recommendation, discount, totals, checkout button) just flows in
@@ -252,7 +256,8 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    scrolling once the card no longer fits the visible area (see
    .cart-focus-card comment above). flex: 1 lets this area soak up the
    card's min-height, which is what gives components room to be dragged
-   further down.
+   further down. Bottom padding larger than the sides so the checkout
+   button (last in flow) never sits flush against the card edge.
    The sub-divs built by js/shop/cart-editor.js renderFocusStage()
    (.cart-focus-fixed-top/-scroll/-fixed-bottom) are kept only as markup
    hooks for part/component selection, not as separate scroll/flex
@@ -262,7 +267,7 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
    für die frei platzierbaren Trennlinien und den Titel, die als direkte
    Kinder dieses Bereichs gerendert werden (siehe js/shop/cart-editor.js
    renderFocusStage(), snapContainer = compEl.parentElement). */
-.cart-focus-body { display: block; flex: 1; padding: 20px; position: relative; }
+.cart-focus-body { display: block; flex: 1; padding: 20px 20px 40px; position: relative; }
 /* position: relative auf -fixed-top/-fixed-bottom, damit die
    Ausrichtungslinien-Schicht (siehe canvas/alignment.js createGuideLayer(),
    genutzt von js/shop/cart-editor.js beim Verschieben der Top-Level-
