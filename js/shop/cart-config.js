@@ -71,25 +71,18 @@
   }
 
   // Simple scalar defaults applied to a saved (or brand-new) cartConfig
-  // whenever the field is still unset. `null` is a legitimate default for
-  // some fields (e.g. itemWidth/itemMinHeight/itemsListMaxHeight — "no
-  // override configured") and is kept as such, not treated as "missing".
-  // Dotted paths reach one level into an already-guaranteed-to-exist
-  // nested object (itemDisplay). Anything that isn't a plain "still
-  // missing -> default" scalar — object/array existence guards, the
-  // cartTitleLabel placeholder migration, delegated normalizeXxx() calls
-  // — is NOT in this table and is applied separately in normalizeState()
-  // below.
+  // whenever the field is still unset. Dotted paths reach one level into
+  // an already-guaranteed-to-exist nested object (itemDisplay). Anything
+  // that isn't a plain "still missing -> default" scalar — object/array
+  // existence guards, the cartTitleLabel placeholder migration, delegated
+  // normalizeXxx() calls — is NOT in this table and is applied separately
+  // in normalizeState() below.
   const CONFIG_DEFAULTS = {
     "itemDisplay.quantityGroupShape": "rounded",
     "itemDisplay.quantityButtonColor": "black",
-    "itemDisplay.showItemDividers": false,
     discountButtonColor: "#4f46e5",
     discountButtonShape: "rounded",
-    itemBackgroundColor: "",
     cardBackgroundColor: "",
-    itemWidth: null,
-    itemMinHeight: null,
     subtotalLabel: "Zwischensumme",
     discountLabel: "Rabatt",
     shippingLabel: "Versand",
@@ -99,8 +92,7 @@
     freeProductLabel: "🎁 Gratis-Produkt",
     freeProductValueText: "freigeschaltet",
     recommendShape: "rounded",
-    recommendAddButtonColor: "#4f46e5",
-    itemsListMaxHeight: null
+    recommendAddButtonColor: "#4f46e5"
   };
 
   function applyConfigDefaults(config, defaults) {
@@ -146,8 +138,6 @@
 
     if (!config.recommendDisplay || typeof config.recommendDisplay !== "object") config.recommendDisplay = {};
     if (!config.recommendDisplay.layout || typeof config.recommendDisplay.layout !== "object") config.recommendDisplay.layout = {};
-
-    config.segments = wc.normalizeSegments(config.segments);
 
     if (!config.currency || typeof config.currency !== "object") {
       config.currency = Object.assign({}, CURRENCY_PRESETS.eur);
