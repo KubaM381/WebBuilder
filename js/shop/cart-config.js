@@ -84,7 +84,6 @@
     "itemDisplay.quantityGroupShape": "rounded",
     "itemDisplay.quantityButtonColor": "black",
     "itemDisplay.showItemDividers": false,
-    "itemDisplay.itemDividerMode": "last",
     discountButtonColor: "#4f46e5",
     discountButtonShape: "rounded",
     itemBackgroundColor: "",
@@ -126,6 +125,7 @@
     if (!config.itemDisplay || typeof config.itemDisplay !== "object") config.itemDisplay = {};
     if (!config.itemDisplay.layout || typeof config.itemDisplay.layout !== "object") config.itemDisplay.layout = {};
     if (!config.componentLayout || typeof config.componentLayout !== "object") config.componentLayout = {};
+    delete config.itemDisplay.itemDividerMode;
     // No longer its own component — title/checkout flow like any other
     // component in the cart body (see cart-html.js). Drop a value loaded
     // from an older project instead of keeping it as a dead field.
