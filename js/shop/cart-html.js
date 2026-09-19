@@ -2,19 +2,16 @@
 // WebBuilder cart HTML building — pure functions only, no DOM access, no
 // event binding, no history/state mutation. Owns the shared positioning
 // primitives (wrapLayoutPart/wrapComponent) and the cart-body assembly
-// (title, dividers, progress bar, items, recommendation, discount,
-// totals incl. shipping, checkout) used identically by the real drawer
+// (title, progress bar, items, recommendation, discount, totals incl.
+// shipping, checkout) used identically by the real drawer
 // (shop/cart-drawer.js, interactive=false) and the cart focus editor
 // stage (shop/cart-editor-stage.js, interactive=true) — both must stay
 // pixel-identical apart from editing affordances, so any change here
 // affects both. Rendering of a single cart item / recommend card lives
-// in shop/cart-item-html.js — no parse-time load-order requirement
-// between the two files, each reaches the other only through
-// window.WebBuilderCartHtml at runtime (buildCartParts() below calls
-// buildItemsHtml()/buildRecommendCardContentHtml() this way). Cart
-// data/CRUD lives in shop/cart-data.js (window.WebBuilderCart) — this
-// file only reads it. Must load after shop/cart-data.js (reads
-// window.WebBuilderCart at top-level parse time).
+// in shop/cart-item-html.js. Cart data/CRUD lives in shop/cart-data.js
+// (window.WebBuilderCart) — this file only reads it. Must load after
+// shop/cart-data.js (reads window.WebBuilderCart at top-level parse
+// time).
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCartHtml: WebBuilderState is not available."); return; }
@@ -30,10 +27,7 @@
   // price/add, keyed in cartConfig.recommendDisplay.layout — see
   // shop/cart-item-html.js buildRecommendCardContentHtml()). `dataKey` is
   // what's written into data-cart-part / compared against
-  // state.cartFocusSelectedPart — recommend parts use a "recommend:"
-  // prefix so shop/cart-editor-stage.js can tell the two families of
-  // parts apart from the key alone (see its resolveLayoutMap()), without
-  // inspecting DOM ancestry.
+  // state.cartFocusSelectedPart.
   function wrapLayoutPart(innerHtml, layoutKey, layoutMap, dataKey, interactive, showFrame) {
     const off = layoutMap[layoutKey] || { x: 0, y: 0 };
     const hasOffset = !!(off.x || off.y);
@@ -44,13 +38,11 @@
     return `<span class="cart-item-part${frameClass}${selectedClass}"${partAttr} style="transform:translate(${off.x || 0}px, ${off.y || 0}px);">${innerHtml}</span>`;
   }
 
-  // Wraps a top-level cart block (title / divider / progress bar /
-  // discount field / recommendation card / items list / totals /
-  // checkout button) in a positionable, selectable wrapper — same "only
-  // wrap when needed" rule as wrapLayoutPart() above: outside the editor
+  // Wraps a top-level cart block (title / progress bar / discount field /
+  // recommendation card / items list / totals / checkout button) in a
+  // positionable, selectable wrapper — outside the editor
   // (interactive=false), a block without a custom offset renders exactly
-  // as before (no extra DOM), so projects that never touch the cart
-  // editor see zero markup change.
+  // as before (no extra DOM).
   function wrapComponent(innerHtml, componentKey, interactive) {
     const layout = (cart.getConfig().componentLayout || {})[componentKey] || { x: 0, y: 0 };
     const hasOffset = !!(layout.x || layout.y);
@@ -60,12 +52,18 @@
     return `<div class="cart-component-wrap${selectedClass}"${compAttr} style="transform:translate(${layout.x || 0}px, ${layout.y || 0}px);">${innerHtml}</div>`;
   }
 
+  // A fixed divider directly below a component — no longer freely
+  // positioned or individually selectable, just an on/off switch stored
+  // per category in cartConfig.dividerAfter (see cart-milestones.js).
+  function dividerFragment(show) {
+    return show ? '<div class="cart-divider"><span class="cart-divider-line"></span></div>' : "";
+  }
+
   // Warenkorb-Titel — a normal, freely positionable component
   // (cartConfig.componentLayout.title), not a fixed header bar. `count`
   // is the summed quantity of the items actually being shown (the real
   // cart's items, or the single synthetic demo item while empty — see
-  // shop/cart-editor-stage.js renderFocusStage()), so it renders
-  // identically for both the real drawer and the editor's demo preview.
+  // shop/cart-editor-stage.js renderFocusStage()).
   //
   // cartTitleLabel is free-form text with an optional {anzahl} placeholder
   // (cart-data.js TITLE_COUNT_PLACEHOLDER) for the live count.
@@ -88,18 +86,21 @@
   }
 
   // Builds the shared cart body split into its logical blocks (title /
-  // dividers / progress / items / recommendation / discount / totals —
-  // shipping is a plain row inside totals — / checkout button) instead of
-  // a single concatenated string. buildCartHtml() below just joins them
-  // in order for the real drawer — the split itself exists so the cart
-  // focus editor stage (shop/cart-editor-stage.js renderFocusStage())
-  // can place the item block in its own region while the other blocks
-  // stay where they are, without duplicating any of this HTML-building
-  // logic.
+  // progress / items / recommendation / discount / totals — shipping is
+  // a plain row inside totals — / checkout button) instead of a single
+  // concatenated string. buildCartHtml() below just joins them in order
+  // for the real drawer — the split itself exists so the cart focus
+  // editor stage (shop/cart-editor-stage.js renderFocusStage()) can place
+  // the item block in its own region while the other blocks stay where
+  // they are, without duplicating any of this HTML-building logic. A
+  // component's optional divider (cartConfig.dividerAfter) is appended
+  // directly onto that component's own part string, so it always renders
+  // immediately below it wherever that part ends up.
   function buildCartParts(items, opts = {}) {
     const interactive = !!opts.interactive;
     const isDemo = !!opts.isDemo;
     const config = cart.getConfig() || {};
+    const dividerAfter = config.dividerAfter || {};
     const milestones = Array.isArray(config.milestones) ? [...config.milestones].sort((a, b) => Number(a.amount) - Number(b.amount)) : [];
     const subtotal = items.reduce((s, i) => s + cart.getEffectivePrice(i) * (Number(i.qty) || 0), 0);
     // Summed quantity of the items actually being shown — works
@@ -108,17 +109,6 @@
     const count = items.reduce((s, i) => s + (Number(i.qty) || 0), 0);
 
     const titlePart = buildTitleHtml(count, interactive);
-
-    // Freely placeable divider lines (cartConfig.dividers). Each one is
-    // its own component ("divider:<id>") with its own componentLayout
-    // offset, so it can be dragged anywhere inside the cart body. Their
-    // natural flow position is the top of the body; the stored offset
-    // moves them from there — a newly created divider gets an initial
-    // offset that puts it at the bottom instead (see
-    // cart-editor-bindings.js's "btn-add-divider" handler).
-    const dividersPart = (Array.isArray(config.dividers) ? config.dividers : [])
-      .map(divider => wrapComponent(`<div class="cart-divider"><span class="cart-divider-line"></span></div>`, `divider:${divider.id}`, interactive))
-      .join("");
 
     let progressPart = "";
     if (config.progressEnabled && milestones.length) {
@@ -143,26 +133,24 @@
         return `<div class="cart-progress-mark ${isReached ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%;${colorStyle}" title="${esc(m.label)}"></div>`;
       }).join("");
       const progressHtml = `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%; background-color:${barColor};"></div>${marksHtml}</div>${rewardsHtml}<p class="cart-progress-msg">${progressMsg}</p></div>`;
-      progressPart = wrapComponent(progressHtml, "progress", interactive);
+      progressPart = wrapComponent(progressHtml, "progress", interactive) + dividerFragment(dividerAfter.progress);
     }
 
     // The item list sits in a box whose height is user-configurable
     // (cartConfig.itemsBoxHeight, dragged via the resize handle in the
     // cart editor — see cart-editor-drag.js) so that adding/removing
     // items never changes the box's own flow height — otherwise every
-    // component positioned below it (progress bar, recommendation,
-    // discount field, totals, checkout button) would visibly shift
-    // up/down each time the cart's item count changes.
+    // component positioned below it would visibly shift up/down each
+    // time the cart's item count changes. The box only scrolls while its
+    // content actually overflows that height (see cart-drawer.js /
+    // cart-editor-stage.js syncItemsBoxScroll()).
     const itemsInner = window.WebBuilderCartHtml.buildItemsHtml(items, isDemo, interactive);
     const boxHeight = cart.clampItemsBoxHeight(config.itemsBoxHeight);
     // Resize handle only rendered in the cart editor — the real
     // drawer/preview always just uses the configured height.
     const resizeHandleHtml = interactive ? `<div class="cart-items-resize-handle" title="Höhe ziehen (min. 3, max. 8 Produkte)"></div>` : "";
     const itemsBoxHtml = `<div class="cart-items-box" style="height:${boxHeight}px;">${itemsInner}${resizeHandleHtml}</div><div class="cart-items-box-divider"></div>`;
-    // Wrapped as a normal component ("items") so the whole product list
-    // is selectable and freely movable in the cart editor, exactly like
-    // title/progress/discount/recommend/totals/checkout.
-    const itemsPart = wrapComponent(itemsBoxHtml, "items", interactive);
+    const itemsPart = wrapComponent(itemsBoxHtml, "items", interactive) + dividerFragment(dividerAfter.items);
 
     let recommendPart = "";
     if (config.recommendEnabled) {
@@ -176,6 +164,7 @@
         const dummyHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(cart.defaultRecommendationText())}</p><div class="cart-recommend-card ${recShapeClass}"><span class="cart-recommend-icon">➕</span><span class="cart-recommend-name">Noch keine passende Empfehlung konfiguriert</span></div></div>`;
         recommendPart = wrapComponent(dummyHtml, "recommend", interactive);
       }
+      if (recommendPart) recommendPart += dividerFragment(dividerAfter.recommend);
     }
 
     let discountPart = "";
@@ -183,7 +172,7 @@
       const discColor = config.discountButtonColor || "#4f46e5";
       const discRadius = config.discountButtonShape === "pill" ? "999px" : (config.discountButtonShape === "square" ? "0px" : "6px");
       const discountHtml = `<div class="cart-discount"><input type="text" class="cart-discount-input" placeholder="Rabattcode (Demo: DEMO10)"${interactive ? " readonly" : ""}><button type="button" class="cart-discount-apply-btn" style="background-color:${discColor}; border-radius:${discRadius};">Anwenden</button>${state.appliedDiscountLabel ? `<p class="cart-discount-msg ok">${esc(state.appliedDiscountLabel)}</p>` : ""}</div>`;
-      discountPart = wrapComponent(discountHtml, "discount", interactive);
+      discountPart = wrapComponent(discountHtml, "discount", interactive) + dividerFragment(dividerAfter.discount);
     }
 
     const reached = milestones.filter(m => subtotal >= Number(m.amount || 0));
@@ -195,8 +184,9 @@
     const extra = milestoneDiscountActive ? (Number.isFinite(configuredDiscountPercent) ? configuredDiscountPercent : 10) : 0;
     const discountPercent = Number(state.appliedDiscountPercent || 0) + extra;
     const discountAmount = subtotal * discountPercent / 100;
+    const shippingEnabled = !!config.shippingEnabled;
     const shippingCost = Number(config.shippingCost);
-    const shipping = config.progressEnabled ? (free ? 0 : (Number.isFinite(shippingCost) ? shippingCost : 4.95)) : 0;
+    const shipping = shippingEnabled ? (free ? 0 : (Number.isFinite(shippingCost) ? shippingCost : 4.95)) : 0;
     const total = Math.max(0, subtotal - discountAmount) + shipping;
 
     const subtotalLabel = esc(config.subtotalLabel || "Zwischensumme");
@@ -205,20 +195,26 @@
     const shippingFreeText = esc(config.shippingFreeText || "Kostenlos");
     const totalLabel = esc(config.totalLabel || "Gesamt");
 
-    const shippingRowHtml = config.progressEnabled
-      ? `<div class="cart-total-row"><span>${shippingLabel}</span><span>${shipping === 0 ? shippingFreeText : eur(shipping)}</span></div>`
-      : "";
+    const hasDiscountRow = discountAmount > 0;
+    const hasShippingRow = shippingEnabled;
+    const hasFreeProductRow = reached.some(m => m.action === "free-product");
+    // If nothing modifies the subtotal, "Zwischensumme" and "Gesamt"
+    // would just be the same number twice — show only "Gesamt" then.
+    const showSubtotalRow = hasDiscountRow || hasShippingRow || hasFreeProductRow;
 
-    let totalsHtml = `<div class="cart-totals"><div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
-    if (discountAmount > 0) totalsHtml += `<div class="cart-total-row"><span>${discountLabel}</span><span>−${eur(discountAmount)}</span></div>`;
-    totalsHtml += shippingRowHtml;
-    if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>${esc(config.freeProductLabel || "🎁 Gratis-Produkt")}</span><span>${esc(config.freeProductValueText || "freigeschaltet")}</span></div>`;
+    let totalsHtml = `<div class="cart-totals">`;
+    if (showSubtotalRow) {
+      totalsHtml += `<div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
+      if (hasDiscountRow) totalsHtml += `<div class="cart-total-row"><span>${discountLabel}</span><span>−${eur(discountAmount)}</span></div>`;
+      if (hasShippingRow) totalsHtml += `<div class="cart-total-row"><span>${shippingLabel}</span><span>${shipping === 0 ? shippingFreeText : eur(shipping)}</span></div>`;
+      if (hasFreeProductRow) totalsHtml += `<div class="cart-total-row"><span>${esc(config.freeProductLabel || "🎁 Gratis-Produkt")}</span><span>${esc(config.freeProductValueText || "freigeschaltet")}</span></div>`;
+    }
     totalsHtml += `<div class="cart-total-row cart-total-final"><span>${totalLabel}</span><span>${eur(total)}</span></div></div>`;
-    const totalsPart = wrapComponent(totalsHtml, "totals", interactive);
+    const totalsPart = wrapComponent(totalsHtml, "totals", interactive) + dividerFragment(dividerAfter.totals);
 
-    const checkoutPart = buildCheckoutHtml(interactive);
+    const checkoutPart = buildCheckoutHtml(interactive) + dividerFragment(dividerAfter.checkout);
 
-    return { title: titlePart, dividers: dividersPart, progress: progressPart, items: itemsPart, recommend: recommendPart, discount: discountPart, totals: totalsPart, checkout: checkoutPart };
+    return { title: titlePart, progress: progressPart, items: itemsPart, recommend: recommendPart, discount: discountPart, totals: totalsPart, checkout: checkoutPart };
   }
 
   // Builds the shared cart body as one concatenated string, in the same
@@ -227,7 +223,7 @@
   // stage uses buildCartParts() directly instead (see above).
   function buildCartHtml(items, opts = {}) {
     const parts = buildCartParts(items, opts);
-    return parts.title + parts.dividers + parts.progress + parts.items + parts.recommend + parts.discount + parts.totals + parts.checkout;
+    return parts.title + parts.progress + parts.items + parts.recommend + parts.discount + parts.totals + parts.checkout;
   }
 
   window.WebBuilderCartHtml = Object.assign(window.WebBuilderCartHtml || {}, {
