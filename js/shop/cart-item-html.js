@@ -24,8 +24,7 @@
 
   // Thin wrapper around cart-html.js's wrapLayoutPart, resolved at call
   // time so load order between the two files' own top-level IIFEs never
-  // matters (only the actual buildXxx calls below need it, and those all
-  // happen after every cart-*.js file has finished loading).
+  // matters.
   function wrapLayoutPart(innerHtml, layoutKey, layoutMap, dataKey, interactive, showFrame) {
     return window.WebBuilderCartHtml.wrapLayoutPart(innerHtml, layoutKey, layoutMap, dataKey, interactive, showFrame);
   }
@@ -47,24 +46,18 @@
     return `${iconHtml}${nameHtml}${priceHtml}${addHtml}`;
   }
 
-  // Builds one cart-row's HTML, based on cartConfig.itemShape/itemDisplay.
-  // `interactive` is only true inside the cart editor stage: it adds
-  // click/drag affordances and (on a transparent item shape) a dashed
-  // frame around each sub-part. The per-part pixel offset
-  // (cartConfig.itemDisplay.layout) itself is applied unconditionally, so
-  // positioning changes made in the editor also show up in the real
-  // drawer/preview, not just on stage. Same for the whole-article
-  // background/width/height overrides (cartConfig.itemBackgroundColor/
-  // itemWidth/itemMinHeight, "Artikel-Darstellung") below.
+  // Builds one cart-row's HTML, based on cartConfig.itemDisplay. The
+  // per-part pixel offset (cartConfig.itemDisplay.layout) is applied
+  // unconditionally, so positioning changes made in the editor also show
+  // up in the real drawer/preview, not just on stage.
   function buildCartItemHTML(item, isDemo, interactive = false) {
     const config = cart.getConfig() || {};
     const disp = config.itemDisplay || {};
     const layout = disp.layout || {};
     const idAttr = isDemo ? "" : ` data-cart-id="${esc(item.id)}"`;
-    const transparent = config.itemShape === "transparent";
 
     function wrapPart(innerHtml, partKey) {
-      return wrapLayoutPart(innerHtml, partKey, layout, partKey, interactive, transparent);
+      return wrapLayoutPart(innerHtml, partKey, layout, partKey, interactive, false);
     }
 
     let removeInner = "✕";
@@ -101,9 +94,6 @@
     } else if (disp.priceStyle === "perUnit") {
       priceHtml = `<span>${eur(effective)} / Stk · Summe ${eur(effective * (Number(item.qty) || 1))}</span>`;
     } else if (isDemo || interactive) {
-      // The cart editor never renders the price as an editable <input>,
-      // only informationally as a <span> — same as the demo item shown
-      // on an empty cart.
       priceHtml = `<span>${hasDiscount ? `<s class="cart-item-price-strike">${eur(item.price)}</s> ` : ""}${eur(effective)}</span>`;
     } else {
       priceHtml = `<input type="number" class="cart-item-price-input" data-cart-id="${esc(item.id)}" value="${Number(item.price || 0).toFixed(2)}" step="0.01" />`;
@@ -112,83 +102,22 @@
 
     const titleHtml = wrapPart(`<span class="cart-item-title">${item.icon ? esc(item.icon) + " " : ""}${esc(item.name)}</span>`, "icon");
     const descHtml = disp.showDescription && item.description ? wrapPart(`<div class="cart-item-desc">${esc(item.description)}</div>`, "description") : "";
-    const shapeClass = "cart-item-" + (config.itemShape || "rounded");
 
-    // "Artikel-Darstellung": custom background/size, applied everywhere
-    // (drawer + editor). Empty/null (the default) means "use the shape
-    // class's own look", so untouched projects render byte-identical to
-    // before.
-    let itemStyle = "";
-    if (config.itemBackgroundColor) itemStyle += `background-color:${config.itemBackgroundColor};`;
-    if (config.itemWidth) itemStyle += `width:${Number(config.itemWidth)}px;`;
-    if (config.itemMinHeight) itemStyle += `min-height:${Number(config.itemMinHeight)}px;`;
-    const styleAttr = itemStyle ? ` style="${itemStyle}"` : "";
-
-    // Selecting "Artikel-Darstellung" (component:itemRepresentation) shows
-    // a resize handle directly on the article in the editor stage — same
-    // interaction style as header-footer's bar resize handle.
-    const itemRepSelected = interactive && state.cartFocusSelectedPart === "component:itemRepresentation";
-    const itemRepSelectedClass = itemRepSelected ? " cart-component-selected" : "";
-    const resizeHandle = itemRepSelected ? `<span class="cart-item-resize-handle" title="Größe ziehen"></span>` : "";
-
-    return `<div class="cart-item ${shapeClass}${itemRepSelectedClass}"${idAttr}${styleAttr}>
+    return `<div class="cart-item cart-item-rounded"${idAttr}>
       ${titleHtml}
       ${qtyHtml}
       ${priceHtml}
       ${removeBtn}
       ${descHtml}
-      ${resizeHandle}
     </div>`;
   }
 
-  // Groups the cart's item rows by configured segment (cartConfig.segments,
-  // see shop/cart-data.js), in segment-config order, then any items that
-  // don't belong to a segment follow at the end in their original order.
-  // Each non-empty segment is wrapped via cart-html.js's wrapComponent()
-  // under the key "segment:<id>" so it is selectable/draggable in the
-  // cart focus editor exactly like any other top-level component (title,
-  // progress bar, ...) — outside the editor (interactive=false) with no
-  // stored offset this still renders as plain markup, no extra DOM. The
-  // optional divider (segment.showDivider) sits inside that same wrapper
-  // so it moves together with its segment. Unrelated to
-  // itemDisplay.showItemDividers below. itemDisplay.showItemDividers is a
-  // single on/off toggle (transparent item shape only): when enabled, a
-  // divider is rendered after EVERY product in each run (segment group or
-  // the trailing unsegmented run) — there is no "only after the last one"
-  // variant.
-  function buildItemsHtml(items, isDemo, interactive, config) {
+  // Alle Artikel werden ohne Gruppierung nacheinander gerendert — sie
+  // sitzen gemeinsam in einer einzigen, fest hohen Box mit eigenem
+  // Scrollbalken (siehe shop/cart-html.js buildCartParts()).
+  function buildItemsHtml(items, isDemo, interactive) {
     if (!items.length) return '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
-    const disp = config.itemDisplay || {};
-    const dividersEnabled = config.itemShape === "transparent" && !!disp.showItemDividers;
-
-    function renderRun(runItems) {
-      return runItems.map(item => {
-        const html = buildCartItemHTML(item, isDemo, interactive);
-        return dividersEnabled ? html + '<div class="cart-item-divider"></div>' : html;
-      }).join("");
-    }
-
-    const segments = Array.isArray(config.segments) ? config.segments.filter(s => (s.productIds || []).length) : [];
-    let html;
-    if (!segments.length) {
-      html = renderRun(items);
-    } else {
-      const remaining = items.slice();
-      html = "";
-      segments.forEach(segment => {
-        const ids = new Set(segment.productIds);
-        const groupItems = remaining.filter(item => item.productId && ids.has(item.productId));
-        if (!groupItems.length) return;
-        groupItems.forEach(item => {
-          const idx = remaining.indexOf(item);
-          if (idx > -1) remaining.splice(idx, 1);
-        });
-        const segmentInner = `<div class="cart-segment" data-segment-id="${esc(segment.id)}">${renderRun(groupItems)}</div>${segment.showDivider ? '<div class="cart-item-divider"></div>' : ""}`;
-        html += window.WebBuilderCartHtml.wrapComponent(segmentInner, `segment:${segment.id}`, interactive);
-      });
-      html += renderRun(remaining);
-    }
-    return html;
+    return items.map(item => buildCartItemHTML(item, isDemo, interactive)).join("");
   }
 
   window.WebBuilderCartHtml = Object.assign(window.WebBuilderCartHtml || {}, {
