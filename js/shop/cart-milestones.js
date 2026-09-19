@@ -1,7 +1,10 @@
 // js/shop/cart-milestones.js
-// Cart progress-bar milestones and freely placeable dividers — grouped
-// together since both are repeatable, user-managed lists under
-// cartConfig with the same add/remove shape. Contributes to
+// Cart progress-bar milestones, and the fixed per-category "divider
+// after this component" switches. Grouped together since both live
+// under cartConfig and are managed the same lightweight way. Unlike
+// milestones, dividers are no longer a repeatable, freely positioned
+// list — exactly one optional divider can sit right below each of a
+// fixed set of components (see DIVIDER_CATEGORIES). Contributes to
 // window.WebBuilderCart.
 (() => {
   const state = window.WebBuilderState;
@@ -60,48 +63,46 @@
   }
 
   // ------------------------------------------------------------------
-  // Dividers
+  // Divider-after switches
   // ------------------------------------------------------------------
 
-  function normalizeDivider(entry = {}) {
-    return { id: (entry && entry.id) || `div_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` };
-  }
+  // "Warenkorb-Titel" (title) and "Hintergrund" (background) are
+  // deliberately excluded — a divider directly under the title never
+  // made sense, and the background isn't a positioned block.
+  const DIVIDER_CATEGORIES = ["items", "checkout", "discount", "recommend", "totals", "progress"];
 
-  // Normalizes cartConfig.dividers and migrates the old single
-  // "totalsDividerEnabled" flag (pre-repeatable-dividers) into a real
-  // divider entry, carrying over its stored position.
-  function normalizeDividersState(config) {
-    config.dividers = window.WebBuilderUtils.normalizeInPlace(Array.isArray(config.dividers) ? config.dividers : [], normalizeDivider);
-    if (config.totalsDividerEnabled) {
-      const migrated = normalizeDivider({});
-      config.dividers.push(migrated);
-      const oldLayout = config.componentLayout.totalsDivider;
-      if (oldLayout) config.componentLayout[`divider:${migrated.id}`] = oldLayout;
-    }
+  // Ensures cartConfig.dividerAfter only ever contains the fixed set of
+  // known boolean switches, and cleans up every trace of the old
+  // freely-placeable divider model (dividers array + their
+  // componentLayout entries + the pre-repeatable single flag).
+  function normalizeDividerAfterConfig(config) {
+    const source = config.dividerAfter && typeof config.dividerAfter === "object" ? config.dividerAfter : {};
+    const next = {};
+    DIVIDER_CATEGORIES.forEach(key => { next[key] = !!source[key]; });
+    config.dividerAfter = next;
+
+    delete config.dividers;
     delete config.totalsDividerEnabled;
-    delete config.componentLayout.totalsDivider;
+    if (config.componentLayout) {
+      Object.keys(config.componentLayout).forEach(key => {
+        if (key.startsWith("divider:")) delete config.componentLayout[key];
+      });
+      delete config.componentLayout.totalsDivider;
+    }
   }
 
-  function addDivider() {
-    window.WebBuilderHistory?.arm();
-    if (!Array.isArray(state.cartConfig.dividers)) state.cartConfig.dividers = [];
-    const divider = normalizeDivider({});
-    state.cartConfig.dividers.push(divider);
-    window.WebBuilderHistory?.commit();
-    notify("cart", "dividers", state.cartConfig.dividers);
-    return divider;
-  }
-
-  function removeDivider(dividerId) {
-    window.WebBuilderHistory?.arm();
-    state.cartConfig.dividers = (state.cartConfig.dividers || []).filter(d => d.id !== dividerId);
-    delete state.cartConfig.componentLayout[`divider:${dividerId}`];
-    window.WebBuilderHistory?.commit();
-    notify("cart", "dividers", state.cartConfig.dividers);
+  function setDividerAfter(key, value, recordHistory = true) {
+    if (!DIVIDER_CATEGORIES.includes(key)) return false;
+    if (recordHistory) window.WebBuilderHistory?.arm();
+    if (!state.cartConfig.dividerAfter || typeof state.cartConfig.dividerAfter !== "object") state.cartConfig.dividerAfter = {};
+    state.cartConfig.dividerAfter[key] = !!value;
+    if (recordHistory) window.WebBuilderHistory?.commit();
+    notify("cart", "dividerAfter", state.cartConfig.dividerAfter);
+    return true;
   }
 
   window.WebBuilderCart = Object.assign(window.WebBuilderCart || {}, {
     normalizeMilestonesConfig, addMilestone, removeMilestone, syncFreeShippingMilestone, syncDiscountMilestone,
-    normalizeDivider, normalizeDividersState, addDivider, removeDivider
+    DIVIDER_CATEGORIES, normalizeDividerAfterConfig, setDividerAfter
   });
 })();
