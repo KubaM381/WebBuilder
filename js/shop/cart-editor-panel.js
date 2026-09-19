@@ -16,7 +16,7 @@
   const focus = () => window.WebBuilderCartFocus || {};
 
   const PART_FIELD_BLOCK_IDS = [
-    "cart-comp-title-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields",
+    "cart-comp-title-fields", "cart-comp-items-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
     "cart-comp-totals-fields", "cart-comp-divider-fields"
@@ -38,7 +38,7 @@
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund",
-      "component:totals": "Kosten-Übersicht", "component:title": "Warenkorb-Titel"
+      "component:totals": "Kosten-Übersicht", "component:title": "Warenkorb-Titel", "component:items": "Produkte"
     };
     const labelEl = document.getElementById("cart-part-label");
     if (labelEl) {
@@ -61,6 +61,16 @@
       document.getElementById("cart-comp-title-fields")?.classList.remove("hidden");
       const titleInput = document.getElementById("cart-comp-title-label");
       if (titleInput && document.activeElement !== titleInput) titleInput.value = config.cartTitleLabel || `Dein Warenkorb (${cart.TITLE_COUNT_PLACEHOLDER})`;
+    } else if (sel === "component:items") {
+      document.getElementById("cart-comp-items-fields")?.classList.remove("hidden");
+      const shapeSel = document.getElementById("cart-comp-items-shape");
+      if (shapeSel) shapeSel.value = config.itemShape || "rounded";
+      const bgColorInput = document.getElementById("cart-comp-items-bg-color");
+      if (bgColorInput) bgColorInput.value = config.itemBackgroundColor || "#ffffff";
+      const widthInput = document.getElementById("cart-comp-items-width");
+      if (widthInput && document.activeElement !== widthInput) widthInput.value = config.itemWidth != null ? config.itemWidth : "";
+      const minHeightInput = document.getElementById("cart-comp-items-min-height");
+      if (minHeightInput && document.activeElement !== minHeightInput) minHeightInput.value = config.itemMinHeight != null ? config.itemMinHeight : "";
     } else if (sel === "component:checkout") {
       document.getElementById("cart-comp-checkout-fields")?.classList.remove("hidden");
       const labelInput = document.getElementById("cart-comp-checkout-label");
