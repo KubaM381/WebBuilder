@@ -20,34 +20,18 @@ window.WebBuilderState = window.WebBuilderState || {
   cartItems: [],
   cartButtonLabel: "Zur Kasse gehen",
   cartConfig: {
-    itemShape: "rounded",
-    // "Artikel-Darstellung" (cart editor): custom background/size for the
-    // article box. Empty string / null = no override, use the shape
-    // class's own default look (unchanged behavior for existing/new
-    // projects until someone explicitly customizes this).
-    itemBackgroundColor: "",
-    itemWidth: null,
-    itemMinHeight: null,
-    // Background color of the cart card itself (real drawer AND the cart
-    // editor's preview card) — same "empty = default" convention.
     cardBackgroundColor: "",
     removeButtonColor: "#ef4444",
     buttonColor: "#4f46e5",
     buttonShape: "rounded",
     discountEnabled: false,
-    // Discount-code button style — independent from the checkout button
-    // style above.
     discountButtonColor: "#4f46e5",
     discountButtonShape: "rounded",
     recommendEnabled: false,
     recommendations: [],
     progressEnabled: false,
-    // Fill color of the progress bar track (cart editor: component:progress).
     progressBarColor: "#10b981",
     milestones: [],
-    // Cart editor: free-form pixel offset per top-level cart block, keyed
-    // by "progress" | "discount" | "recommend" | "checkout" | "totals".
-    // Same mechanism as itemDisplay.layout below, one level up.
     componentLayout: {},
     itemDisplay: {
       removeStyle: "x",
@@ -55,10 +39,6 @@ window.WebBuilderState = window.WebBuilderState || {
       quantityStyle: "stepper",
       priceStyle: "simple",
       showDescription: false,
-      // Free-form pixel offset per cart-item sub-part, keyed by "icon" |
-      // "qty" | "price" | "remove" | "description". Set via the cart
-      // focus editor (js/shop/cart-editor.js). Applied everywhere the
-      // item is rendered (drawer + focus stage), not just in the editor.
       layout: {}
     }
   },
