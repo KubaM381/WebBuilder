@@ -16,7 +16,7 @@
   const focus = () => window.WebBuilderCartFocus || {};
 
   const PART_FIELD_BLOCK_IDS = [
-    "cart-comp-title-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields", "cart-comp-item-fields",
+    "cart-comp-title-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
     "cart-comp-totals-fields", "cart-comp-divider-fields"
@@ -37,21 +37,12 @@
     const labels = {
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
-      "component:recommend": "Empfehlung", "component:background": "Hintergrund", "component:itemRepresentation": "Artikel-Darstellung",
+      "component:recommend": "Empfehlung", "component:background": "Hintergrund",
       "component:totals": "Kosten-Übersicht", "component:title": "Warenkorb-Titel"
     };
     const labelEl = document.getElementById("cart-part-label");
     if (labelEl) {
-      let label;
-      if (focus().isDividerKey?.(sel)) {
-        label = "Trennlinie";
-      } else if (focus().isSegmentKey?.(sel)) {
-        const segmentId = sel.slice(focus().SEGMENT_PREFIX.length);
-        const segment = (config.segments || []).find(s => s.id === segmentId);
-        label = segment ? `Segment: ${segment.name}` : "Segment";
-      } else {
-        label = labels[sel] || sel;
-      }
+      const label = focus().isDividerKey?.(sel) ? "Trennlinie" : (labels[sel] || sel);
       labelEl.textContent = label;
     }
 
@@ -67,8 +58,6 @@
     if (shippingFreeThresholdCurrencyEl) shippingFreeThresholdCurrencyEl.textContent = currencySymbol;
 
     if (sel === "component:title") {
-      // The cart title is a plain, freely placeable component with an
-      // optional {anzahl} placeholder for the live item count.
       document.getElementById("cart-comp-title-fields")?.classList.remove("hidden");
       const titleInput = document.getElementById("cart-comp-title-label");
       if (titleInput && document.activeElement !== titleInput) titleInput.value = config.cartTitleLabel || `Dein Warenkorb (${cart.TITLE_COUNT_PLACEHOLDER})`;
@@ -81,10 +70,6 @@
       const shapeSel = document.getElementById("cart-comp-checkout-shape");
       if (shapeSel) shapeSel.value = config.buttonShape || "rounded";
     } else if (sel === "component:discount") {
-      // Only the discount-field's own visual styling (button color/shape)
-      // lives here — the milestone percent/threshold settings sit with
-      // the other Kosten-Übersicht fields (component:totals below), the
-      // same place "Versand"'s free-shipping threshold lives.
       document.getElementById("cart-comp-discount-fields")?.classList.remove("hidden");
       const colorInput = document.getElementById("cart-comp-discount-color");
       if (colorInput) colorInput.value = config.discountButtonColor || "#4f46e5";
@@ -104,20 +89,6 @@
       document.getElementById("cart-comp-background-fields")?.classList.remove("hidden");
       const colorInput = document.getElementById("cart-comp-bg-color");
       if (colorInput) colorInput.value = config.cardBackgroundColor || "#ffffff";
-    } else if (sel === "component:itemRepresentation") {
-      document.getElementById("cart-comp-item-fields")?.classList.remove("hidden");
-      const shapeSel = document.getElementById("cart-item-shape");
-      if (shapeSel) shapeSel.value = config.itemShape || "rounded";
-      const bgInput = document.getElementById("cart-item-bg-color");
-      if (bgInput) bgInput.value = config.itemBackgroundColor || "#f3f4f6";
-      const wInput = document.getElementById("cart-item-width"), hInput = document.getElementById("cart-item-height");
-      if (wInput && document.activeElement !== wInput) wInput.value = config.itemWidth || "";
-      if (hInput && document.activeElement !== hInput) hInput.value = config.itemMinHeight || "";
-      const sd = document.getElementById("cid-show-description"); if (sd) sd.checked = !!config.itemDisplay.showDescription;
-      const dividerGroup = document.getElementById("cart-item-divider-group");
-      dividerGroup?.classList.toggle("hidden", config.itemShape !== "transparent");
-      const dividerCb = document.getElementById("cid-show-item-dividers");
-      if (dividerCb) dividerCb.checked = !!config.itemDisplay.showItemDividers;
     } else if (sel === "component:totals") {
       document.getElementById("cart-comp-totals-fields")?.classList.remove("hidden");
       const currencySelect = document.getElementById("cart-comp-currency");
@@ -134,8 +105,6 @@
       const totalLabelInput = document.getElementById("cart-comp-total-label");
       if (totalLabelInput && document.activeElement !== totalLabelInput) totalLabelInput.value = config.totalLabel || "Gesamt";
 
-      // Rabatt-Subcard (Label + Meilenstein-Prozentsatz + Ziel-Warenkorbwert)
-      // — dieselbe Feld-Vollständigkeit wie die Versand-Subcard unten.
       const discountInput = document.getElementById("cart-comp-discount-label");
       if (discountInput && document.activeElement !== discountInput) discountInput.value = config.discountLabel || "Rabatt";
       const percentInput = document.getElementById("cart-comp-discount-percent");
@@ -152,7 +121,6 @@
         const freeProductValueInput = document.getElementById("cart-comp-free-product-value");
         if (freeProductValueInput && document.activeElement !== freeProductValueInput) freeProductValueInput.value = config.freeProductValueText || "freigeschaltet";
       }
-      // Shipping is part of the Kosten-Übersicht block, not its own component.
       const shippingLabelInput = document.getElementById("cart-comp-shipping-label");
       if (shippingLabelInput && document.activeElement !== shippingLabelInput) shippingLabelInput.value = config.shippingLabel || "Versand";
       const shippingCostInput = document.getElementById("cart-comp-shipping-cost");
