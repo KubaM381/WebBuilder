@@ -29,23 +29,6 @@
       refreshCartViews();
     }, true);
 
-    document.getElementById("cart-part-x")?.addEventListener("change", e => {
-      if (!state.cartFocusSelectedPart) return;
-      const layout = focus().getSelectedLayout?.() || { x: 0, y: 0 };
-      focus().setSelectedLayout?.(Number(e.target.value) || 0, layout.y);
-      focus().renderStage?.();
-    }, true);
-    document.getElementById("cart-part-y")?.addEventListener("change", e => {
-      if (!state.cartFocusSelectedPart) return;
-      const layout = focus().getSelectedLayout?.() || { x: 0, y: 0 };
-      focus().setSelectedLayout?.(layout.x, Number(e.target.value) || 0);
-      focus().renderStage?.();
-    }, true);
-    document.getElementById("cart-part-reset")?.addEventListener("click", e => {
-      e.preventDefault(); e.stopImmediatePropagation();
-      if (state.cartFocusSelectedPart) { focus().resetSelectedLayout?.(); focus().renderStage?.(); focus().renderPartPanel?.(); }
-    }, true);
-
     document.getElementById("cart-comp-checkout-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setButtonLabel(e.target.value, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
