@@ -151,21 +151,20 @@
   // stored offset this still renders as plain markup, no extra DOM. The
   // optional divider (segment.showDivider) sits inside that same wrapper
   // so it moves together with its segment. Unrelated to
-  // itemDisplay.showItemDividers below. When itemDisplay.showItemDividers
-  // is enabled (transparent item shape only), a divider is rendered
-  // between every pair of consecutive products within each run (segment
-  // group or the trailing unsegmented run) — never after the last
-  // product of that run.
+  // itemDisplay.showItemDividers below. itemDisplay.showItemDividers is a
+  // single on/off toggle (transparent item shape only): when enabled, a
+  // divider is rendered after EVERY product in each run (segment group or
+  // the trailing unsegmented run) — there is no "only after the last one"
+  // variant.
   function buildItemsHtml(items, isDemo, interactive, config) {
     if (!items.length) return '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
     const disp = config.itemDisplay || {};
     const dividersEnabled = config.itemShape === "transparent" && !!disp.showItemDividers;
 
     function renderRun(runItems) {
-      return runItems.map((item, idx) => {
+      return runItems.map(item => {
         const html = buildCartItemHTML(item, isDemo, interactive);
-        const isLastOfRun = idx === runItems.length - 1;
-        return (dividersEnabled && !isLastOfRun) ? html + '<div class="cart-item-divider"></div>' : html;
+        return dividersEnabled ? html + '<div class="cart-item-divider"></div>' : html;
       }).join("");
     }
 
