@@ -31,8 +31,6 @@
     empty.classList.add("hidden"); editor.classList.remove("hidden");
 
     PART_FIELD_BLOCK_IDS.forEach(id => document.getElementById(id)?.classList.add("hidden"));
-    const positionFields = document.getElementById("cart-comp-position-fields");
-    positionFields?.classList.toggle("hidden", !!focus().NON_POSITIONABLE?.has(sel));
 
     const config = cart.getConfig();
 
@@ -179,13 +177,6 @@
       if (removeColor) removeColor.value = config.removeButtonColor || "#ef4444";
       const rs = document.getElementById("cid-remove-style"); if (rs) rs.value = config.itemDisplay.removeStyle || "x";
       const rsh = document.getElementById("cid-remove-shape"); if (rsh) rsh.value = config.itemDisplay.removeShape || "circle";
-    }
-
-    if (!focus().NON_POSITIONABLE?.has(sel)) {
-      const layout = focus().getSelectedLayout?.() || { x: 0, y: 0 };
-      const xInput = document.getElementById("cart-part-x"), yInput = document.getElementById("cart-part-y");
-      if (xInput && document.activeElement !== xInput) xInput.value = layout.x;
-      if (yInput && document.activeElement !== yInput) yInput.value = layout.y;
     }
   }
 
