@@ -103,7 +103,18 @@
     const titleHtml = wrapPart(`<span class="cart-item-title">${item.icon ? esc(item.icon) + " " : ""}${esc(item.name)}</span>`, "icon");
     const descHtml = disp.showDescription && item.description ? wrapPart(`<div class="cart-item-desc">${esc(item.description)}</div>`, "description") : "";
 
-    return `<div class="cart-item cart-item-rounded"${idAttr}>
+    // Individual item look, set via the cart editor's "component:items"
+    // panel (see cart-editor-panel.js) — applies to every row identically,
+    // same "empty/null = use the shape class's own default" convention as
+    // cartConfig.cardBackgroundColor.
+    const itemShapeClass = "cart-item-" + (config.itemShape === "square" ? "square" : (config.itemShape === "pill" ? "pill" : (config.itemShape === "transparent" ? "transparent" : "rounded")));
+    const itemStyleParts = [];
+    if (config.itemBackgroundColor) itemStyleParts.push(`background-color:${config.itemBackgroundColor};`);
+    if (config.itemWidth != null) itemStyleParts.push(`width:${Number(config.itemWidth) || 0}px; max-width:100%;`);
+    if (config.itemMinHeight != null) itemStyleParts.push(`min-height:${Number(config.itemMinHeight) || 0}px;`);
+    const itemStyleAttr = itemStyleParts.length ? ` style="${itemStyleParts.join(" ")}"` : "";
+
+    return `<div class="cart-item ${itemShapeClass}"${idAttr}${itemStyleAttr}>
       ${titleHtml}
       ${qtyHtml}
       ${priceHtml}
