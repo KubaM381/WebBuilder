@@ -73,6 +73,15 @@
             <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (<span id="cart-shipping-free-threshold-currency">€</span>)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
             <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist. Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
           </div>
+
+          <div class="hidden" id="cart-comp-free-product-group">
+            <div class="inspector-subcard">
+              <div class="inspector-subcard-title">🎁 Gratis-Produkt</div>
+              <div class="form-group"><label for="cart-comp-free-product-label">Label</label><input type="text" id="cart-comp-free-product-label" placeholder="🎁 Gratis-Produkt"></div>
+              <div class="form-group"><label for="cart-comp-free-product-value">Werttext</label><input type="text" id="cart-comp-free-product-value" placeholder="freigeschaltet"></div>
+              <p class="help-text">Wird nur angezeigt, sobald ein Meilenstein mit Aktion „Gratis-Produkt Hinweis“ erreicht ist.</p>
+            </div>
+          </div>
         </div>
 
         <div id="cart-comp-divider-fields" class="hidden">
@@ -114,7 +123,16 @@
           <p class="help-text">Tipp: Im Editor kannst du die Artikel-Box auch direkt an der Ecke unten rechts ziehen, um die Größe anzupassen.</p>
           <hr class="divider modal-divider-tight">
           <label class="checkbox-row"><input type="checkbox" id="cid-show-description"> Produktbeschreibung anzeigen</label>
-          <label class="checkbox-row hidden" id="cart-item-divider-group"><input type="checkbox" id="cid-show-item-dividers"> Trennlinie zwischen Produkten anzeigen (nur bei „Durchsichtig“)</label>
+          <div class="hidden" id="cart-item-divider-group">
+            <label class="checkbox-row"><input type="checkbox" id="cid-show-item-dividers"> Trennlinie zwischen Produkten anzeigen (nur bei „Durchsichtig“)</label>
+            <div class="form-group hidden" id="cart-item-divider-mode-group">
+              <label for="cid-item-divider-mode">Position der Trennlinie</label>
+              <select id="cid-item-divider-mode">
+                <option value="last">Nur unter dem letzten Produkt</option>
+                <option value="all">Nach jedem Produkt</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div id="cart-comp-qty-fields" class="hidden">
