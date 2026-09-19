@@ -2,19 +2,27 @@
 // WebBuilder cart drawer — owns the real slide-in cart drawer
 // (#cart-drawer/#cart-items-list): rendering, open/close, and all click/
 // change interactions inside it (discount code, add recommended product,
-// quantity/price/remove per item). Split out of the former
-// shop/cart-render.js (see docs/STRUCTURE_PLAN.md Phase 2). HTML building
-// lives in shop/cart-html.js (window.WebBuilderCartHtml) — this file only
-// mounts it into the DOM and wires up interaction. Left-sidebar config UI
-// lives in shop/cart-sidebar.js. Cart data/CRUD lives in shop/cart-data.js.
-// Must load after shop/cart-data.js and shop/cart-html.js (reads
-// window.WebBuilderCart / window.WebBuilderCartHtml at top-level parse
-// time / inside renderCart()).
+// quantity/price/remove per item). HTML building lives in
+// shop/cart-html.js (window.WebBuilderCartHtml) — this file only mounts
+// it into the DOM and wires up interaction. Left-sidebar config UI lives
+// in shop/cart-sidebar.js. Cart data/CRUD lives in shop/cart-data.js.
+// Must load after shop/cart-data.js and shop/cart-html.js.
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCartDrawer: WebBuilderState is not available."); return; }
   const cart = window.WebBuilderCart;
   if (!cart) { console.error("WebBuilderCartDrawer: WebBuilderCart is not available."); return; }
+
+  // The products list only scrolls while its content actually overflows
+  // the configured box height — overflow-y is toggled explicitly instead
+  // of left permanently on "auto" so scrolling (and the scrollbar) is
+  // guaranteed gone whenever every item already fits. Shared with
+  // cart-editor-stage.js (after re-rendering the stage) and
+  // cart-editor-drag.js (while the resize handle is being dragged).
+  function syncItemsBoxScroll(box) {
+    if (!box) return;
+    box.style.overflowY = box.scrollHeight > box.clientHeight + 1 ? "auto" : "hidden";
+  }
 
   // Renders the real slide-in drawer (#cart-items-list, always
   // non-interactive). Title and checkout button are built into
@@ -25,6 +33,7 @@
     if (!list) return;
     const buildCartHtml = window.WebBuilderCartHtml?.buildCartHtml;
     list.innerHTML = buildCartHtml ? buildCartHtml(cart.getItems(), { interactive: false, isDemo: false }) : "";
+    syncItemsBoxScroll(list.querySelector(".cart-items-box"));
     const config = cart.getConfig() || {};
     // "Hintergrund" (component:background) applies to the real drawer too,
     // not just the editor preview.
@@ -103,6 +112,6 @@
   document.addEventListener("DOMContentLoaded", () => setTimeout(bind, 0));
 
   window.WebBuilderCartRuntime = Object.assign(window.WebBuilderCartRuntime || {}, {
-    render: renderCart, refresh: refreshCartViews, open: openCart, close: closeCart
+    render: renderCart, refresh: refreshCartViews, open: openCart, close: closeCart, syncItemsBoxScroll
   });
 })();
