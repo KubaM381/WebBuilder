@@ -19,6 +19,21 @@
     document.getElementById("btn-cart-focus-editor")?.addEventListener("click", e => { e.preventDefault(); focus().enter?.(); }, true);
     document.getElementById("btn-cart-focus-exit")?.addEventListener("click", e => { e.preventDefault(); focus().exit?.(); }, true);
 
+    // Fixed per-category "Trennlinie darunter anzeigen" switches — one
+    // checkbox per positionable category, living inside that category's
+    // own field block (see cart-editor-markup.js).
+    [
+      ["cart-comp-items-divider-after", "items"],
+      ["cart-comp-checkout-divider-after", "checkout"],
+      ["cart-comp-discount-divider-after", "discount"],
+      ["cart-comp-recommend-divider-after", "recommend"],
+      ["cart-comp-totals-divider-after", "totals"],
+      ["cart-comp-progress-divider-after", "progress"]
+    ].forEach(([id, key]) => document.getElementById(id)?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setDividerAfter(key, e.target.checked, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true));
+
     document.getElementById("cart-comp-title-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ cartTitleLabel: e.target.value.trim() || `Dein Warenkorb (${cart.TITLE_COUNT_PLACEHOLDER})` }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -130,33 +145,11 @@
       refreshCartViews();
     }, true);
 
-    // Dividers are an arbitrarily repeatable component. A new divider is
-    // placed at the very bottom of the whole cart body — the stage must
-    // be rendered once first so the divider exists in the DOM at its
-    // natural (top-of-body) position before the bottom offset can be
-    // measured against it — then selected immediately so it's obvious
-    // where it landed.
-    document.getElementById("btn-add-divider")?.addEventListener("click", e => {
-      e.preventDefault(); e.stopImmediatePropagation();
-      if (!state.cartFocusMode) focus().enter?.();
-      const divider = cart.addDivider();
-      if (!divider) return;
-      const fullKey = `${focus().DIVIDER_PREFIX}${divider.id}`;
-      focus().renderStage?.();
-      const bottomOffset = focus().computeBottomOffset?.(fullKey);
-      if (bottomOffset != null) focus().setComponentLayoutByKey?.(`divider:${divider.id}`, 0, bottomOffset);
-      focus().select?.(fullKey);
+    document.getElementById("cart-comp-shipping-enabled")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setConfig({ shippingEnabled: e.target.checked }, false); window.WebBuilderHistory?.commit();
+      window.WebBuilderCartFocus?.renderPartPanel?.();
+      refreshCartViews();
     }, true);
-    document.getElementById("btn-remove-divider")?.addEventListener("click", e => {
-      e.preventDefault(); e.stopImmediatePropagation();
-      const sel = state.cartFocusSelectedPart;
-      if (!focus().isDividerKey?.(sel)) return;
-      cart.removeDivider(sel.slice(focus().DIVIDER_PREFIX.length));
-      state.cartFocusSelectedPart = null;
-      focus().renderStage?.();
-      focus().renderPartPanel?.();
-    }, true);
-
     document.getElementById("cart-comp-shipping-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ shippingLabel: e.target.value.trim() || "Versand" }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
