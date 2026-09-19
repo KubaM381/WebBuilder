@@ -2,11 +2,11 @@
 // WebBuilder cart focus editor — pointer-drag interaction.
 // Owns every pointer-event drag on the cart editor stage: dragging a
 // top-level component (progress/discount/recommend/checkout/totals/
-// title/items/divider) and dragging a cart-item or recommend-card
-// sub-part (icon/qty/price/remove/description), plus resizing the
-// products list box height. Does NOT own the stage's selection state or
-// its layout data model — both live in cart-editor-stage.js and are
-// reached here only through window.WebBuilderCartFocus at runtime.
+// title/items) and dragging a cart-item or recommend-card sub-part
+// (icon/qty/price/remove/description), plus resizing the products list
+// box height. Does NOT own the stage's selection state or its layout
+// data model — both live in cart-editor-stage.js and are reached here
+// only through window.WebBuilderCartFocus at runtime.
 //
 // Not implemented via canvas/alignment.js's shared attachInteraction()
 // controller: this stage positions parts/components via a CSS transform
@@ -141,6 +141,9 @@
           const next = Math.max(min, Math.min(max, Math.round(startHeight + (moveEvent.clientY - startY))));
           box.style.height = next + "px";
           state.cartConfig.itemsBoxHeight = next;
+          // The box only scrolls once its content is actually taller than
+          // the new height (see cart-drawer.js syncItemsBoxScroll()).
+          window.WebBuilderCartRuntime?.syncItemsBoxScroll?.(box);
         }
         function onResizeUp() {
           resizeHandle.removeEventListener("pointermove", onResizeMove);
