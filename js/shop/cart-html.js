@@ -33,9 +33,7 @@
   // state.cartFocusSelectedPart — recommend parts use a "recommend:"
   // prefix so shop/cart-editor-stage.js can tell the two families of
   // parts apart from the key alone (see its resolveLayoutMap()), without
-  // inspecting DOM ancestry. `showFrame` only ever applies to item parts
-  // on a transparent item shape (see shop/cart-item-html.js
-  // buildCartItemHTML) — recommend parts never show the dashed frame.
+  // inspecting DOM ancestry.
   function wrapLayoutPart(innerHtml, layoutKey, layoutMap, dataKey, interactive, showFrame) {
     const off = layoutMap[layoutKey] || { x: 0, y: 0 };
     const hasOffset = !!(off.x || off.y);
@@ -47,12 +45,12 @@
   }
 
   // Wraps a top-level cart block (title / divider / progress bar /
-  // discount field / recommendation card / segment / totals / checkout
-  // button) in a positionable, selectable wrapper — same "only wrap when
-  // needed" rule as wrapLayoutPart() above: outside the editor
-  // (interactive=false), a block without a custom offset renders exactly
-  // as before (no extra DOM), so projects that never touch the cart
-  // editor see zero markup change.
+  // discount field / recommendation card / totals / checkout button) in
+  // a positionable, selectable wrapper — same "only wrap when needed"
+  // rule as wrapLayoutPart() above: outside the editor (interactive=false),
+  // a block without a custom offset renders exactly as before (no extra
+  // DOM), so projects that never touch the cart editor see zero markup
+  // change.
   function wrapComponent(innerHtml, componentKey, interactive) {
     const layout = (cart.getConfig().componentLayout || {})[componentKey] || { x: 0, y: 0 };
     const hasOffset = !!(layout.x || layout.y);
@@ -128,10 +126,6 @@
       const reachedNow = milestones.filter(m => subtotal >= Number(m.amount || 0));
       const rewardsHtml = reachedNow.length ? `<div class="cart-milestone-rewards">${reachedNow.map(m => `<span class="cart-milestone-reward" title="${esc(m.label)}">${esc(m.icon || "🎉")}</span>`).join("")}</div>` : "";
       const barColor = config.progressBarColor || "#10b981";
-      // While a further milestone remains: "X left until Label". Once
-      // the highest milestone is reached (no "next" left), its optional
-      // `reachedText` shows a custom success message instead of the
-      // generic default text.
       const highestReached = reachedNow[reachedNow.length - 1];
       let progressMsg;
       if (next) {
@@ -151,39 +145,23 @@
     }
 
     // The item list sits in a fixed-height, internally scrolling box
-    // (.cart-items-box, default height in css/modals.css) so that
+    // (.cart-items-box, height set in css/modals.css) so that
     // adding/removing items never changes the box's own flow height —
     // otherwise every component positioned below it (progress bar,
     // recommendation, discount field, totals, checkout button) would
     // visibly shift up/down each time the cart's item count changes.
-    // cartConfig.itemsListMaxHeight overrides the default height.
-    const itemsInner = window.WebBuilderCartHtml.buildItemsHtml(items, isDemo, interactive, config);
-    const customHeight = Number(config.itemsListMaxHeight);
-    const boxStyle = Number.isFinite(customHeight) && customHeight > 0 ? ` style="height:${customHeight}px;"` : "";
-    const disp = config.itemDisplay || {};
-    // When per-item dividers are on, the last item already ends with its
-    // own divider line — the generic box divider right after it would
-    // otherwise show as a second, redundant line.
-    const perItemDividersActive = config.itemShape === "transparent" && !!disp.showItemDividers && items.length > 0;
-    const itemsPart = `<div class="cart-items-box"${boxStyle}>${itemsInner}</div>${perItemDividersActive ? "" : '<div class="cart-items-box-divider"></div>'}`;
+    const itemsInner = window.WebBuilderCartHtml.buildItemsHtml(items, isDemo, interactive);
+    const itemsPart = `<div class="cart-items-box">${itemsInner}</div><div class="cart-items-box-divider"></div>`;
 
     let recommendPart = "";
     if (config.recommendEnabled) {
       const recShapeClass = "cart-recommend-card-" + (config.recommendShape === "square" ? "square" : (config.recommendShape === "pill" ? "pill" : "rounded"));
-      // opts.isDemo is passed through so the synthetic demo item (empty
-      // cart, see shop/cart-editor-stage.js renderFocusStage()) is not
-      // mistakenly counted as "already in cart" in pickRecommendation()
-      // (see shop/cart-recommendations.js).
       const picked = cart.pickRecommendation(items, subtotal, { isDemo });
       if (picked) {
         const { rec, product } = picked;
         const recHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(rec.text || cart.defaultRecommendationText())}</p><div class="cart-recommend-card ${recShapeClass}">${window.WebBuilderCartHtml.buildRecommendCardContentHtml(product, interactive)}</div></div>`;
         recommendPart = wrapComponent(recHtml, "recommend", interactive);
       } else if (interactive) {
-        // If recommendations are enabled but nothing is configured / no
-        // condition matches, there's otherwise nothing to click in the
-        // editor to reach the recommendation panel (component:recommend).
-        // This dummy card appears ONLY in the interactive editor mode.
         const dummyHtml = `<div class="cart-recommend"><p class="cart-recommend-title">${esc(cart.defaultRecommendationText())}</p><div class="cart-recommend-card ${recShapeClass}"><span class="cart-recommend-icon">➕</span><span class="cart-recommend-name">Noch keine passende Empfehlung konfiguriert</span></div></div>`;
         recommendPart = wrapComponent(dummyHtml, "recommend", interactive);
       }
@@ -193,25 +171,13 @@
     if (config.discountEnabled) {
       const discColor = config.discountButtonColor || "#4f46e5";
       const discRadius = config.discountButtonShape === "pill" ? "999px" : (config.discountButtonShape === "square" ? "0px" : "6px");
-      // Inside the cart editor (interactive) this field is purely visual/
-      // draggable — readonly, so nobody accidentally types a code there
-      // that is never evaluated anyway.
       const discountHtml = `<div class="cart-discount"><input type="text" class="cart-discount-input" placeholder="Rabattcode (Demo: DEMO10)"${interactive ? " readonly" : ""}><button type="button" class="cart-discount-apply-btn" style="background-color:${discColor}; border-radius:${discRadius};">Anwenden</button>${state.appliedDiscountLabel ? `<p class="cart-discount-msg ok">${esc(state.appliedDiscountLabel)}</p>` : ""}</div>`;
       discountPart = wrapComponent(discountHtml, "discount", interactive);
     }
 
     const reached = milestones.filter(m => subtotal >= Number(m.amount || 0));
-    // Shipping is free via a "free-shipping" milestone OR via the
-    // standalone shippingFreeThreshold — either applies independently,
-    // kept in sync in both directions (cart.syncFreeShippingMilestone() in
-    // cart-data.js, plus the reverse sync in shop/cart-sidebar.js
-    // renderMilestoneList()), but a threshold works on its own even with
-    // no milestone at all.
     const shippingThreshold = config.shippingFreeThreshold;
     const free = reached.some(m => m.action === "free-shipping") || (shippingThreshold != null && subtotal >= Number(shippingThreshold));
-    // Mirror image of the above: the extra discount applies via a reached
-    // milestone with action "discount" OR via the standalone
-    // milestoneDiscountThreshold — both work independently of each other.
     const discountThreshold = config.milestoneDiscountThreshold;
     const milestoneDiscountActive = reached.some(m => m.action === "discount") || (discountThreshold != null && subtotal >= Number(discountThreshold));
     const configuredDiscountPercent = Number(config.milestoneDiscountPercent);
@@ -228,8 +194,6 @@
     const shippingFreeText = esc(config.shippingFreeText || "Kostenlos");
     const totalLabel = esc(config.totalLabel || "Gesamt");
 
-    // Shipping is a plain row inside the totals block, not its own
-    // draggable component. Still only rendered while progressEnabled.
     const shippingRowHtml = config.progressEnabled
       ? `<div class="cart-total-row"><span>${shippingLabel}</span><span>${shipping === 0 ? shippingFreeText : eur(shipping)}</span></div>`
       : "";
@@ -237,9 +201,6 @@
     let totalsHtml = `<div class="cart-totals"><div class="cart-total-row"><span>${subtotalLabel}</span><span>${eur(subtotal)}</span></div>`;
     if (discountAmount > 0) totalsHtml += `<div class="cart-total-row"><span>${discountLabel}</span><span>−${eur(discountAmount)}</span></div>`;
     totalsHtml += shippingRowHtml;
-    // "Gratis-Produkt" row — label and value text come from
-    // cartConfig.freeProductLabel/-ValueText, only shown once a
-    // milestone with action "free-product" is reached.
     if (reached.some(m => m.action === "free-product")) totalsHtml += `<div class="cart-total-row"><span>${esc(config.freeProductLabel || "🎁 Gratis-Produkt")}</span><span>${esc(config.freeProductValueText || "freigeschaltet")}</span></div>`;
     totalsHtml += `<div class="cart-total-row cart-total-final"><span>${totalLabel}</span><span>${eur(total)}</span></div></div>`;
     const totalsPart = wrapComponent(totalsHtml, "totals", interactive);
@@ -264,10 +225,9 @@
   });
 
   // buildCartHtml/buildCartParts are also part of the public
-  // window.WebBuilderCartRuntime API (used by shop/cart-editor-stage.js
-  // and previously exposed from the former shop/cart-render.js) — kept
-  // there via Object.assign so load order relative to shop/cart-drawer.js
-  // (which adds render/refresh/open/close to the same object) doesn't
-  // matter.
+  // window.WebBuilderCartRuntime API (used by shop/cart-editor-stage.js)
+  // — kept there via Object.assign so load order relative to
+  // shop/cart-drawer.js (which adds render/refresh/open/close to the
+  // same object) doesn't matter.
   window.WebBuilderCartRuntime = Object.assign(window.WebBuilderCartRuntime || {}, { buildCartHtml, buildCartParts });
 })();
