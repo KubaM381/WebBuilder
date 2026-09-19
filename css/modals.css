@@ -9,48 +9,28 @@
 @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(0.95); } }
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(2px); z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
 .drawer-backdrop.active { opacity: 1; visibility: visible; }
-/* width: var(--cart-width) — shared with .cart-focus-card below (see
-   css/base.css --cart-width) so the real drawer and the cart editor
-   stage always stay exactly the same width. */
+/* width: var(--cart-width) — shared with .cart-focus-card below so the
+   real drawer and the cart editor stage always stay exactly the same
+   width. */
 .drawer { position: fixed; top: 0; right: 0; width: var(--cart-width); max-width: 100%; height: 100%; background: var(--bg-panel); box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15); z-index: 1001; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
 .drawer.active { transform: translateX(0); }
 .close-btn { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 4px 8px; border-radius: 4px; }
 .close-btn:hover { color: var(--text-main); background: var(--bg-main); }
-/* Es gibt keinen eigenen Kopfbalken mehr (siehe js/shop/cart-render.js
-   buildTitleHtml() — der Titel fließt jetzt ganz normal im Warenkorb-
-   Körper mit). Der Schließen-Button des echten Drawers schwebt deshalb
-   frei oben rechts über dem Inhalt; .drawer hat bereits position:fixed,
-   das reicht als Bezugsrahmen für dieses position:absolute. */
+/* The close button floats over the content since there's no separate
+   header bar — .drawer already has position:fixed as its anchor. */
 .drawer-close-floating { position: absolute; top: 12px; right: 12px; z-index: 2; }
-/* overflow-x: hidden — ein Warenkorb darf sich niemals seitlich scrollen
-   lassen. Ohne die explizite Angabe rechnet der Browser overflow-x bei
-   gesetztem overflow-y automatisch auf "auto" hoch, sodass jeder im
-   Warenkorb-Editor nach rechts gezogene Teil (transform-Offset, siehe
-   js/shop/cart-render.js wrapLayoutPart()) eine horizontale Scrollleiste
-   erzeugt hat. Inhalt, der über den Rand hinausragt, wird jetzt
-   beschnitten statt scrollbar.
-   padding-bottom (statt nur padding) — gibt dem Warenkorb-Körper unten
-   mehr Luft, damit der Zur-Kasse-Button nicht direkt am Drawer-Rand
-   klebt (analog zum vergrößerten .cart-focus-card unten). */
+/* overflow-x: hidden — without it the browser auto-promotes overflow-x
+   to "auto" once overflow-y is set, so any part dragged rightward in the
+   cart editor (transform offset) would create a horizontal scrollbar. */
 .drawer-body { padding: 20px 20px 40px; flex: 1; overflow-y: auto; overflow-x: hidden; }
-/* Warenkorb-Titel — fließt wie jede andere Komponente ganz normal im
-   Warenkorb-Körper mit (kein eigener Kopfbalken mehr), siehe
-   js/shop/cart-render.js buildTitleHtml(). */
 .cart-title-text { font-size: 1.2rem; font-weight: 700; margin-bottom: 14px; }
-/* max-width: 100% — eine per "Artikel-Darstellung" gesetzte feste Breite
-   (cartConfig.itemWidth) darf die Zeile nie breiter als den Warenkorb
-   machen (gilt in Drawer UND Editor-Bühne gleichermaßen). */
+/* max-width: 100% — a fixed width set via "Artikel-Darstellung"
+   (cartConfig.itemWidth) must never make the row wider than the cart. */
 .cart-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-main); flex-wrap: wrap; max-width: 100%; }
 .cart-item.cart-item-square { border-radius: 0; }
 .cart-item.cart-item-rounded { border-radius: 14px; }
 .cart-item.cart-item-pill { border-radius: 999px; padding-left: 18px; padding-right: 18px; }
-/* Transparent = no visible chrome at all in the real drawer/preview. A
-   dashed outline is only added inside the editor stage (see the rule
-   near the bottom of this file), so editing stays possible without
-   showing lines to real visitors. */
 .cart-item.cart-item-transparent { background: transparent; border: none; }
-/* min-width: 0 + overflow-wrap — ein langer Produktname bricht um,
-   statt die Flex-Zeile über die Warenkorb-Breite hinauszudrücken. */
 .cart-item-title { font-weight: 600; font-size: 0.9rem; min-width: 0; overflow-wrap: anywhere; }
 .cart-item-desc { flex-basis: 100%; font-size: 0.75rem; color: var(--text-muted); margin-top: -4px; }
 .cart-empty-msg { color: var(--text-muted); font-size: 0.85rem; text-align: center; padding: 24px 0; }
@@ -67,32 +47,14 @@
 .cart-progress-track { position: relative; height: 8px; background: var(--border-color); border-radius: 4px; margin: 10px 0 8px; }
 .cart-progress-fill { height: 100%; background: var(--success); border-radius: 4px; transition: width 0.3s ease; }
 .cart-progress-mark { position: absolute; top: -4px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--border-color); transform: translateX(-50%); }
-/* T9.1: die Farbe eines erreichten Meilensteins kommt jetzt als
-   Inline-Style aus js/shop/cart-render.js (buildCartParts(), Variable
-   barColor = cartConfig.progressBarColor), damit Marker und Balken immer
-   dieselbe konfigurierte Farbe zeigen. Die frühere hartkodierte
-   "border-color: var(--success); background: var(--success);"-Regel
-   wurde entfernt, da das Inline-Style sie ohnehin immer überschrieben
-   hätte (toter Fallback) — die .reached-Klasse bleibt als reiner
-   Zustands-/Selektor-Hook bestehen (z. B. für zukünftige, nicht
-   farbbezogene Styling-Erweiterungen). */
 .cart-progress-mark.reached { border-width: 2px; }
 .cart-progress-msg { font-size: 0.78rem; color: var(--text-muted); }
-/* Task 9: reached-milestone reward icons, shown between the progress
-   track and the progress message. */
 .cart-milestone-rewards { display: flex; gap: 6px; margin: 2px 0 6px; font-size: 1.15rem; line-height: 1; }
 .cart-milestone-reward { line-height: 1; }
 .cart-recommend { border: 1px dashed var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 16px; }
 .cart-recommend-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
-/* position: relative, damit die Ausrichtungslinien-Schicht
-   (.alignment-guides, position: absolute; inset: 0; — erzeugt von
-   canvas/alignment.js createGuideLayer() und genutzt von
-   js/shop/cart-editor.js für das Verschieben der Empfehlungskarten-Teile
-   Icon/Name/Preis/Plus) korrekt an dieser Karte verankert wird, statt am
-   nächsten positionierten Vorfahren weiter oben in der Seite. Analog zu
-   .cart-item oben, das aus demselben Grund bereits position: relative hat.
-   In eine Deklaration zusammengeführt statt einer zweiten, separaten
-   Regel für denselben Selektor (siehe css/README.md Regel 1). */
+/* position: relative anchors the alignment-guide layer here instead of
+   the nearest positioned ancestor further up the page. */
 .cart-recommend-card { display: flex; align-items: center; gap: 8px; position: relative; }
 .cart-recommend-icon { font-size: 1.4rem; }
 .cart-recommend-name { flex: 1; font-size: 0.85rem; }
@@ -102,49 +64,14 @@
 .cart-discount input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 6px; font-size: 0.85rem; }
 .cart-discount button { width: 100%; padding: 7px; border: none; border-radius: 6px; background: var(--primary); color: #fff; cursor: pointer; font-weight: 600; }
 .cart-discount-msg.ok { color: var(--success); font-size: 0.8rem; margin-top: 6px; }
-/* T9.3: kein hartkodiertes border-top mehr — die Trennlinie über der
-   Zwischensumme ist jetzt eine optionale, positionierbare Komponente
-   (component:totalsDivider, siehe js/shop/cart-render.js buildCartParts()
-   und js/shop/cart-editor.js). margin-top/padding-top bleiben erhalten,
-   damit der Abstand zum vorherigen Block auch ohne aktivierte Trennlinie
-   unverändert bleibt.
-   position: relative — .cart-totals ist der Snap-Container für die darin
-   verschachtelten Komponenten "shipping" und "totalsDivider" (siehe
-   js/shop/cart-editor.js, snapContainer = compEl.parentElement), analog
-   zur Begründung bei .cart-recommend-card oben. */
+/* position: relative — snap container for nested positionable components
+   (shipping row, divider). */
 .cart-totals { margin-top: 12px; padding-top: 12px; position: relative; }
 .cart-total-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
 .cart-total-final { font-weight: 700; font-size: 1rem; margin-top: 8px; }
-/* Zur-Kasse-Button — fließt wie jede andere Komponente ganz normal im
-   Warenkorb-Körper mit (kein eigener Fußbalken mehr), siehe
-   js/shop/cart-render.js buildCheckoutHtml(). Größerer margin-top gibt
-   mehr Luft zur Kosten-Übersicht darüber, passend zum vergrößerten
-   Editor-/Drawer-Innenraum (siehe .cart-focus-card/.drawer-body oben). */
 .cart-checkout-button { margin-top: 18px; }
-/* Aufgabe D: konfigurierbare Trennlinie unter dem letzten Produkt bei
-   durchsichtiger Artikel-Form (cartConfig.itemShape === "transparent" &&
-   itemDisplay.showItemDividers). Wird in buildItemsHtml() (js/shop/
-   cart-item-html.js) einmalig nach dem letzten Artikel der Liste
-   eingefügt, nicht zwischen jedem Artikel.
-   T9.4: bewusst schmaler als die volle Artikelbreite (statt 100%) und
-   zentriert, damit sie als dezente Abtrennung wirkt statt wie eine
-   durchgehende Linie über die ganze Breite. */
 .cart-item-divider { border-top: 1px solid var(--border-color); margin: 4px auto; width: 70%; }
-/* Bounded "products box" (cartConfig.itemsListMaxHeight, see
-   js/shop/cart-render.js buildCartParts()): groups the item rows so they
-   can be given a fixed max-height with their own internal scrollbar,
-   keeping the discount field/recommendation/Kosten-Übersicht/checkout
-   button always visible without first scrolling past a long product
-   list. The box itself carries no visible chrome ("unsichtbar") — no
-   rule needed here beyond the max-height/overflow set inline per
-   project. The divider right after it is the one visible separation
-   from the rest of the cart, always shown regardless of whether a
-   max-height is set. */
 .cart-items-box-divider { border-top: 1px solid var(--border-color); margin: 6px 0 14px; }
-/* Product segments (js/shop/cart-render.js buildItemsHtml()) — a plain
-   grouping wrapper with no styling of its own; the divider after a
-   segment (cartConfig.segments[].showDivider) reuses .cart-item-divider
-   below, so no extra rule is needed for it either. */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
 .modal-overlay.active { opacity: 1; visibility: visible; }
 .modal-container { background: var(--bg-panel); width: 90%; max-width: 520px; border-radius: 12px; box-shadow: var(--shadow-lg); overflow: hidden; transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -153,10 +80,6 @@
 .modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; font-size: 0.925rem; line-height: 1.6; color: #374151; }
 .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-main); }
 
-/* Reusable modal-body layout helpers (used by js/Supabase/supabase-ui.js
-   cloud modal and cart.js's recommendation picker). Extracted from inline
-   style="..." strings in the JS template literals to keep those files
-   shorter and design decisions in one place (see css/README.md). */
 .modal-stack { display: flex; flex-direction: column; gap: 10px; }
 .modal-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .modal-row-btn { flex: 1; justify-content: flex-start; }
@@ -169,111 +92,41 @@
 .pick-list { display: flex; flex-direction: column; gap: 8px; }
 .product-pick-btn { justify-content: flex-start; }
 
-/* ------------------------------------------------------------------
-   Cart editor stage (js/shop/cart-editor.js renderFocusStage()). Shows the
-   full cart body (title/progress/items/recommendation/discount/totals/
-   checkout) centered over the canvas, editable directly instead of a
-   single fixed demo item.
-   ------------------------------------------------------------------ */
 .cart-item-part { display: inline-flex; align-items: center; position: relative; }
 .cart-item-part-frame { border: 1px dashed var(--border-muted); border-radius: 6px; padding: 2px 5px; }
 .cart-item-part-selected,
 .cart-component-selected { outline: 2px solid var(--selection-color); outline-offset: 2px; border-radius: 6px; }
-/* Grab cursor on the part itself AND every descendant (icon spans, the
-   remove/qty buttons, price/qty inputs, ...). Those controls each carry
-   their own `cursor: pointer` rule elsewhere (.cart-item-remove,
-   .cart-qty-stepper button, .cart-qty-group-btn, ...) which — since
-   cursor on the element itself always wins over an inherited value,
-   regardless of specificity — silently beat the plain ".cart-item-part
-   { cursor: grab }" rule below. Adding the ", ... *" descendant selector
-   raises specificity above every one of those single-class button rules,
-   so the whole part reliably shows the move cursor. That matches reality:
-   none of these controls have a working click handler while the cart
-   editor is open (see Aufgabe B) — every click here only ever drags. */
+/* The descendant selector is needed because cursor on the element
+   itself always wins over an inherited value — without it, each
+   control's own cursor rule (remove/qty buttons, inputs, ...) would
+   silently override the grab cursor here. Every one of these controls
+   only ever drags while the cart editor is open, never triggers its
+   normal click action. */
 body.cart-focus-active .cart-item-part,
 body.cart-focus-active .cart-item-part * { cursor: grab; touch-action: none; }
 body.cart-focus-active .cart-item-part:active,
 body.cart-focus-active .cart-item-part:active * { cursor: grabbing; }
 
-/* Top-level draggable blocks (title / progress bar / discount field /
-   recommendation card / checkout button / totals / segments) — same
-   wrapping pattern as .cart-item-part above, one level up. display:block
-   so wrapping a block element (e.g. .cart-progress) doesn't change its
-   flex-item behavior inside .cart-focus-body. Every top-level component
-   is draggable now — there is no more non-draggable header/footer bar,
-   so the generic grab cursor below applies uniformly. */
 .cart-component-wrap { display: block; touch-action: none; }
-/* Same reasoning as .cart-item-part above — every nested control (the
-   discount "Anwenden" button, the recommend "+" button, ...) also gets
-   the move cursor instead of its own pointer/auto cursor, since none of
-   them have a working click handler while the cart editor is open. */
 body.cart-focus-active [data-cart-component],
 body.cart-focus-active [data-cart-component] * { cursor: grab; }
 body.cart-focus-active [data-cart-component]:active,
 body.cart-focus-active [data-cart-component] * :active { cursor: grabbing; }
 
-/* Clicking an article's empty background (not a specific sub-part)
-   selects the overall "Artikel-Darstellung". */
 body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 
-/* Resize handle for the article representation (component:
-   itemRepresentation), shown only while that component is selected —
-   same visual language as header/footer's bar-resize-handle. */
 .cart-item-resize-handle { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; background: var(--selection-color); border: 2px solid #fff; border-radius: 3px; cursor: nwse-resize; touch-action: none; box-shadow: var(--shadow-sm); z-index: 5; }
 
-/* The centered stage showing the cart body on the canvas while the
-   editor is active. Mounted into .canvas-container (position: relative,
-   see css/canvas.css) so it stays fixed regardless of zoom. The generous
-   bottom padding gives the card room to grow downwards before it starts
-   fighting the outer .canvas-container's scroll. */
 .cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px 30px 90px; pointer-events: none; }
-/* T2: the card matches the REAL cart drawer exactly — same width
-   (var(--cart-width), see css/base.css) and the same 20px padding (see
-   .drawer and .drawer-body above). That keeps the "both stay
-   pixel-identical apart from editing affordances" invariant of
-   js/shop/cart-render.js intact: a pixel offset dragged into place here
-   lands in exactly the same spot in the real drawer.
-   min-height gives the editor more usable vertical room — raised further
-   (was 640px) so there is comfortably more drag space below the checkout
-   button for components that get moved further down, without the card
-   feeling cramped once a realistic, fully-configured cart is shown. The
-   card still grows further with its own content beyond this.
-   Title and checkout button are no longer separate fixed header/footer
-   bars — they flow inside .cart-focus-body like every other component
-   (see js/shop/cart-render.js buildTitleHtml()/buildCheckoutHtml()), so
-   .cart-focus-card now has a single flex child instead of three. There is
-   exactly ONE scrollbar for the whole editor: the outer
-   .canvas-container's existing vertical scrollbar (overflow:auto, see
-   css/canvas.css) — the very same one that is already there next to the
-   canvas during normal editing. Nothing in here causes horizontal
-   scrolling either (see also the body.preview-mode /
-   body.cart-focus-active overflow-x guards in css/styles.css). */
+/* Width and padding match the real drawer exactly (var(--cart-width),
+   see css/base.css) so a pixel offset dragged into place here lands in
+   the same spot in the real drawer. */
 .cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: var(--cart-width); max-width: 100%; min-height: 900px; display: flex; flex-direction: column; }
-/* Plain block flow, WITHOUT its own overflow-y:auto — no internal scroll
-   region inside the card at all. Content (title, progress bar, items,
-   recommendation, discount, totals, checkout button) just flows in
-   normal order; the outer .canvas-container takes care of any vertical
-   scrolling once the card no longer fits the visible area (see
-   .cart-focus-card comment above). flex: 1 lets this area soak up the
-   card's min-height, which is what gives components room to be dragged
-   further down. Bottom padding larger than the sides so the checkout
-   button (last in flow) never sits flush against the card edge.
-   The sub-divs built by js/shop/cart-editor.js renderFocusStage()
-   (.cart-focus-fixed-top/-scroll/-fixed-bottom) are kept only as markup
-   hooks for part/component selection, not as separate scroll/flex
-   regions. Title and the freely placeable dividers are direct children
-   of .cart-focus-body itself. */
-/* T6: position: relative — .cart-focus-body ist der Snap-/Guide-Container
-   für die frei platzierbaren Trennlinien und den Titel, die als direkte
-   Kinder dieses Bereichs gerendert werden (siehe js/shop/cart-editor.js
-   renderFocusStage(), snapContainer = compEl.parentElement). */
+/* No internal scroll region here — the outer .canvas-container handles
+   vertical scrolling once the card outgrows the visible area. */
 .cart-focus-body { display: block; flex: 1; padding: 20px 20px 40px; position: relative; }
-/* position: relative auf -fixed-top/-fixed-bottom, damit die
-   Ausrichtungslinien-Schicht (siehe canvas/alignment.js createGuideLayer(),
-   genutzt von js/shop/cart-editor.js beim Verschieben der Top-Level-
-   Komponenten Fortschrittsbalken/Empfehlung/Rabattfeld/Kosten-Übersicht/
-   Zur-Kasse-Button) korrekt an diesen Containern verankert wird statt am
-   nächsten positionierten Vorfahren weiter oben (.cart-focus-stage). */
+/* position: relative anchors the alignment-guide layer to these
+   containers instead of the further-up .cart-focus-stage. */
 .cart-focus-fixed-top,
 .cart-focus-fixed-bottom {
   position: relative;
@@ -281,16 +134,8 @@ body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
 .cart-focus-fixed-top:empty,
 .cart-focus-fixed-bottom:empty { display: none; }
 .cart-focus-scroll { overflow: visible; }
-/* Only inside the editor stage does the transparent item shape get a
-   dashed outline, so item bounds stay visible while editing (see
-   .cart-item-transparent above for the "no lines" real-preview state). */
 .cart-focus-stage .cart-item.cart-item-transparent { border: 1px dashed var(--border-muted); }
 
-/* Task 5: "Gruppe"-Variante der Mengenauswahl — ein zusammenhängender
-   Container statt zweier separater Buttons (siehe .cart-qty-stepper
-   oben). Border-Farbe kommt aus der geschlossenen Farbpalette in
-   js/shop/cart-data.js (quantityColorHex()), Form aus cartConfig.
-   itemDisplay.quantityGroupShape. */
 .cart-qty-group { display: inline-flex; align-items: center; border: 1px solid currentColor; overflow: hidden; }
 .cart-qty-group.cart-qty-group-square { border-radius: 0; }
 .cart-qty-group.cart-qty-group-rounded { border-radius: 6px; }
