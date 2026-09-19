@@ -45,7 +45,9 @@ before/after it", open the README of the folder that file lives in.
   `README.md` for the exact rule).
 - **One module per domain**, exposing exactly one `window.WebBuilderXxx`
   object, even when split across several files (e.g. `shop/`'s four
-  `cart-editor-*.js` files all extend `window.WebBuilderCartFocus`).
+  `cart-editor-*.js` files all extend `window.WebBuilderCartFocus`, and
+  `cart-html.js`/`cart-item-html.js` both extend
+  `window.WebBuilderCartHtml`).
 
 ## Load order
 
@@ -56,7 +58,7 @@ within it):
 core/ → ui/toast.js → core/storage.js
 → ui/sidebar-panels-markup.js → shop/cart-editor-markup.js
 → canvas/elements.js → canvas/icon-registry.js
-→ shop/products.js → shop/ (cart data → html/drawer/sidebar → cart editor)
+→ shop/products.js → shop/ (cart data → html/item-html/drawer/sidebar → cart editor)
 → canvas/alignment.js → canvas/canvas.js → editor/background.js
 → ui/shared-markup.js → editor/inspector.js → editor/inspector-special.js
 → toolbar.js
