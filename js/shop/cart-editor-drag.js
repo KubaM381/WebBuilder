@@ -1,12 +1,12 @@
 // js/shop/cart-editor-drag.js
 // WebBuilder cart focus editor — pointer-drag interaction.
-// Owns every pointer-event drag on the cart editor stage: resizing the
-// article representation ("Artikel-Darstellung"), dragging a top-level
-// component (progress/discount/recommend/checkout/totals/title/segment/
-// divider), and dragging a cart-item or recommend-card sub-part (icon/qty/
-// price/remove/description). Does NOT own the stage's selection state or
-// its layout data model — both live in cart-editor-stage.js and are
-// reached here only through window.WebBuilderCartFocus at runtime.
+// Owns every pointer-event drag on the cart editor stage: dragging a
+// top-level component (progress/discount/recommend/checkout/totals/
+// title/divider) and dragging a cart-item or recommend-card sub-part
+// (icon/qty/price/remove/description). Does NOT own the stage's
+// selection state or its layout data model — both live in
+// cart-editor-stage.js and are reached here only through
+// window.WebBuilderCartFocus at runtime.
 //
 // Not implemented via canvas/alignment.js's shared attachInteraction()
 // controller: this stage positions parts/components via a CSS transform
@@ -32,61 +32,13 @@
     container.addEventListener("pointerdown", e => {
       if (!state.cartFocusMode) return;
 
-      const resizeHandle = e.target.closest?.(".cart-item-resize-handle");
-      if (resizeHandle) {
-        e.preventDefault(); e.stopPropagation();
-        const itemEl = resizeHandle.closest(".cart-item");
-        if (!itemEl) return;
-        const startRect = itemEl.getBoundingClientRect();
-        const startX = e.clientX, startY = e.clientY;
-        const startW = startRect.width, startH = startRect.height;
-        let moved = false;
-        try { resizeHandle.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-        function onMove(moveEvent) {
-          const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
-          if (!moved && Math.hypot(dx, dy) < 3) return;
-          moved = true;
-          const nextW = Math.max(120, Math.round(startW + dx));
-          const nextH = Math.max(30, Math.round(startH + dy));
-          state.cartConfig.itemWidth = nextW;
-          state.cartConfig.itemMinHeight = nextH;
-          itemEl.style.width = nextW + "px";
-          itemEl.style.minHeight = nextH + "px";
-          const wInput = document.getElementById("cart-item-width"), hInput = document.getElementById("cart-item-height");
-          if (wInput) wInput.value = nextW;
-          if (hInput) hInput.value = nextH;
-        }
-        function onUp() {
-          resizeHandle.removeEventListener("pointermove", onMove);
-          resizeHandle.removeEventListener("pointerup", onUp);
-          resizeHandle.removeEventListener("pointercancel", onUp);
-          try { resizeHandle.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-          if (moved) {
-            // Re-clamps any individually positioned sub-part
-            // (icon/qty/price/remove) back inside the article's new
-            // bounds — their stored pixel offset is relative to their
-            // natural flow position, which the resize itself never
-            // touches, so a part can otherwise end up outside the box.
-            focus().clampPartLayoutsToItem?.(itemEl);
-            window.WebBuilderHistory?.commit();
-            notify("cart", "config", state.cartConfig);
-            focus().renderStage?.();
-          }
-        }
-        window.WebBuilderHistory?.arm();
-        resizeHandle.addEventListener("pointermove", onMove);
-        resizeHandle.addEventListener("pointerup", onUp);
-        resizeHandle.addEventListener("pointercancel", onUp);
-        return;
-      }
-
       const compEl = e.target.closest?.("[data-cart-component]");
       if (compEl) {
         const key = compEl.dataset.cartComponent;
         e.preventDefault(); e.stopPropagation();
         focus().selectLight?.(`component:${key}`);
-        // NON_POSITIONABLE components (background/itemRepresentation) are
-        // selectable but never draggable.
+        // NON_POSITIONABLE components (background) are selectable but
+        // never draggable.
         if (focus().NON_POSITIONABLE?.has(`component:${key}`)) return;
 
         const origin = state.cartConfig.componentLayout[key] || { x: 0, y: 0 };
@@ -250,13 +202,6 @@
         partEl.addEventListener("pointermove", onMove);
         partEl.addEventListener("pointerup", onUp);
         partEl.addEventListener("pointercancel", onUp);
-        return;
-      }
-
-      const itemEl = e.target.closest?.(".cart-item");
-      if (itemEl) {
-        e.preventDefault();
-        focus().select?.("component:itemRepresentation");
         return;
       }
 
