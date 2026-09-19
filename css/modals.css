@@ -69,11 +69,24 @@
 .cart-total-final { font-weight: 700; font-size: 1rem; margin-top: 8px; }
 .cart-checkout-button { margin-top: 18px; }
 .cart-item-divider { border-top: 1px solid var(--border-color); margin: 4px auto; width: 70%; }
-/* Fixed height (not max-height) — the item list must always occupy the
-   same amount of space in the flow regardless of how many items it
-   holds, so every component positioned below it never shifts when items
-   are added or removed. */
-.cart-items-box { height: 320px; overflow-y: auto; overflow-x: hidden; }
+/* Freely placeable divider component (js/shop/cart-html.js buildCartParts
+   dividersPart, added via the "Trennlinie hinzufügen" button). These two
+   classes were referenced by the JS but never defined here, so a new
+   divider rendered with zero visible height — the button appeared to do
+   nothing. */
+.cart-divider { padding: 4px 0; }
+.cart-divider-line { display: block; width: 100%; height: 0; border-top: 1px solid var(--border-color); }
+/* Fixed height (not max-height), user-adjustable via
+   .cart-items-resize-handle below (clamped to cartConfig.itemsBoxHeight's
+   configured min/max — see js/shop/cart-config.js) — the item list must
+   always occupy a stable amount of space in the flow regardless of how
+   many items it holds, so every component positioned below it never
+   shifts when items are added or removed. position:relative anchors the
+   resize handle to the box itself. */
+.cart-items-box { position: relative; height: 320px; overflow-y: auto; overflow-x: hidden; }
+.cart-items-resize-handle { position: absolute; left: 0; right: 0; bottom: -6px; height: 12px; cursor: ns-resize; z-index: 5; display: flex; align-items: center; justify-content: center; }
+.cart-items-resize-handle::after { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--border-muted); }
+.cart-items-resize-handle:hover::after { background: var(--primary); }
 .cart-items-box-divider { border-top: 1px solid var(--border-color); margin: 6px 0 14px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
 .modal-overlay.active { opacity: 1; visibility: visible; }
