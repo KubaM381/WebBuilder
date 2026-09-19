@@ -47,12 +47,12 @@
   }
 
   // Wraps a top-level cart block (title / divider / progress bar /
-  // discount field / recommendation card / totals / checkout button) in a
-  // positionable, selectable wrapper — same "only wrap when needed" rule
-  // as wrapLayoutPart() above: outside the editor (interactive=false), a
-  // block without a custom offset renders exactly as before (no extra
-  // DOM), so projects that never touch the cart editor see zero markup
-  // change.
+  // discount field / recommendation card / segment / totals / checkout
+  // button) in a positionable, selectable wrapper — same "only wrap when
+  // needed" rule as wrapLayoutPart() above: outside the editor
+  // (interactive=false), a block without a custom offset renders exactly
+  // as before (no extra DOM), so projects that never touch the cart
+  // editor see zero markup change.
   function wrapComponent(innerHtml, componentKey, interactive) {
     const layout = (cart.getConfig().componentLayout || {})[componentKey] || { x: 0, y: 0 };
     const hasOffset = !!(layout.x || layout.y);
@@ -150,16 +150,22 @@
       progressPart = wrapComponent(progressHtml, "progress", interactive);
     }
 
-    // Bounded "products box" (cartConfig.itemsListMaxHeight): when set,
-    // the item list gets its own max-height + internal scrollbar, so a
-    // long product list never pushes the discount field/recommendation/
-    // Kosten-Übersicht/checkout button out of view. The box itself carries
-    // no visible chrome; the divider right after it is the one visible
-    // separation from the rest of the cart, always shown.
+    // The item list sits in a fixed-height, internally scrolling box
+    // (.cart-items-box, default height in css/modals.css) so that
+    // adding/removing items never changes the box's own flow height —
+    // otherwise every component positioned below it (progress bar,
+    // recommendation, discount field, totals, checkout button) would
+    // visibly shift up/down each time the cart's item count changes.
+    // cartConfig.itemsListMaxHeight overrides the default height.
     const itemsInner = window.WebBuilderCartHtml.buildItemsHtml(items, isDemo, interactive, config);
-    const maxHeight = Number(config.itemsListMaxHeight);
-    const boxStyle = Number.isFinite(maxHeight) && maxHeight > 0 ? ` style="max-height:${maxHeight}px; overflow-y:auto; overflow-x:hidden;"` : "";
-    const itemsPart = `<div class="cart-items-box"${boxStyle}>${itemsInner}</div><div class="cart-items-box-divider"></div>`;
+    const customHeight = Number(config.itemsListMaxHeight);
+    const boxStyle = Number.isFinite(customHeight) && customHeight > 0 ? ` style="height:${customHeight}px;"` : "";
+    const disp = config.itemDisplay || {};
+    // When per-item dividers are on, the last item already ends with its
+    // own divider line — the generic box divider right after it would
+    // otherwise show as a second, redundant line.
+    const perItemDividersActive = config.itemShape === "transparent" && !!disp.showItemDividers && items.length > 0;
+    const itemsPart = `<div class="cart-items-box"${boxStyle}>${itemsInner}</div>${perItemDividersActive ? "" : '<div class="cart-items-box-divider"></div>'}`;
 
     let recommendPart = "";
     if (config.recommendEnabled) {
