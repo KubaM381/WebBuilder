@@ -55,8 +55,9 @@
   }
 
   // Top-level components (progress/discount/recommend/checkout/totals/
-  // title/dividers) use a flat cartConfig.componentLayout map instead of
-  // resolveLayoutMap()'s two maps, since they aren't cart-item sub-parts.
+  // title/dividers/segments) use a flat cartConfig.componentLayout map
+  // instead of resolveLayoutMap()'s two maps, since they aren't cart-item
+  // sub-parts.
   function getSelectedLayout() {
     const sel = state.cartFocusSelectedPart;
     if (!sel) return { x: 0, y: 0 };
@@ -96,13 +97,16 @@
   // "background" (the whole card background) and "itemRepresentation"
   // (the article box, resized via its own drag handle) are selectable/
   // editable but never position-draggable — neither has a sensible free
-  // position. Dividers ("component:divider:<id>") are NOT in this set —
-  // they ARE positionable, like progress/discount/recommend/totals/
-  // checkout/title.
+  // position. Dividers ("component:divider:<id>") and segments
+  // ("component:segment:<id>") are NOT in this set — they ARE
+  // positionable, like progress/discount/recommend/totals/checkout/title.
   const NON_POSITIONABLE = new Set(["component:background", "component:itemRepresentation"]);
 
   const DIVIDER_PREFIX = "component:divider:";
   const isDividerKey = key => String(key || "").startsWith(DIVIDER_PREFIX);
+
+  const SEGMENT_PREFIX = "component:segment:";
+  const isSegmentKey = key => String(key || "").startsWith(SEGMENT_PREFIX);
 
   // Every cart item renders the same data-cart-part keys, because one
   // shared pixel offset per part type applies to all items — so the
@@ -214,6 +218,8 @@
     resetSelectedLayout,
     NON_POSITIONABLE,
     DIVIDER_PREFIX,
-    isDividerKey
+    isDividerKey,
+    SEGMENT_PREFIX,
+    isSegmentKey
   });
 })();
