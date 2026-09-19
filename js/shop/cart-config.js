@@ -84,6 +84,7 @@
     "itemDisplay.quantityGroupShape": "rounded",
     "itemDisplay.quantityButtonColor": "black",
     "itemDisplay.showItemDividers": false,
+    "itemDisplay.itemDividerMode": "last",
     discountButtonColor: "#4f46e5",
     discountButtonShape: "rounded",
     itemBackgroundColor: "",
