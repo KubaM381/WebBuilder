@@ -17,7 +17,7 @@ contribute to `window.WebBuilderCart`.
 |---|---|
 | `cart-items.js` | Item CRUD, price/quantity mutation, totals. |
 | `cart-recommendations.js` | Recommendation rule objects + `pickRecommendation()` (which one to show for a given cart state). |
-| `cart-milestones.js` | Progress-bar milestones, product segments, freely placeable dividers. |
+| `cart-milestones.js` | Progress-bar milestones and freely placeable dividers. |
 | `cart-config.js` | `getConfig`/`setConfig`, currency, discount code, and the orchestrating `normalizeState()`. |
 
 ## Cart HTML, drawer, sidebar
@@ -27,7 +27,7 @@ contribute to `window.WebBuilderCart`.
 | `cart-html.js` | Pure HTML building only — no DOM access, no event binding. Owns the shared positioning primitives (`wrapLayoutPart`/`wrapComponent`) and the cart-body assembly (title, dividers, progress, items, recommendation, discount, totals, checkout) used identically by the real drawer and the cart editor stage. | `window.WebBuilderCartHtml`, plus `buildCartHtml`/`buildCartParts` on `window.WebBuilderCartRuntime` |
 | `cart-item-html.js` | Single cart-item and recommend-card rendering (`buildCartItemHTML`, `buildItemsHtml`, `buildRecommendCardContentHtml`), split out of `cart-html.js`. No parse-time load-order requirement relative to `cart-html.js` — both reach each other only through `window.WebBuilderCartHtml` at runtime. | contributes to `window.WebBuilderCartHtml` |
 | `cart-drawer.js` | The real slide-in drawer: rendering, open/close, all its click/change interactions. `refresh()` re-renders both the drawer and — if open — the cart editor stage. | contributes to `window.WebBuilderCartRuntime` |
-| `cart-sidebar.js` | Left sidebar cart config UI (`#panel-cart`): discount/recommend/progress toggles, items-list max height, product segments, recommendation list editor, milestone list editor. | `window.WebBuilderCartConfigRuntime` |
+| `cart-sidebar.js` | Left sidebar cart config UI (`#panel-cart`): discount/recommend/progress toggles, recommendation list editor, milestone list editor. | `window.WebBuilderCartConfigRuntime` |
 
 ## Cart focus editor ("Warenkorb-Editor")
 
@@ -40,6 +40,6 @@ all five contribute to.
 |---|---|
 | `cart-editor-markup.js` | Injects the static `#cart-inspector-form` markup. Must load before `ui/shared-markup.js` (which fills the shape `<select>`s this file creates empty). |
 | `cart-editor-stage.js` | Enter/exit focus mode, the on-canvas stage DOM, part/component selection state, and the shared layout data model (get/set/reset a part's or component's pixel offset). |
-| `cart-editor-drag.js` | All pointer-drag interaction on the stage (article resize, component drag, part drag). Reuses `canvas/alignment.js`'s snapping primitives directly instead of `attachInteraction()`, since the stage positions things via a CSS transform on an unscaled surface. |
+| `cart-editor-drag.js` | All pointer-drag interaction on the stage (component drag, part drag). Reuses `canvas/alignment.js`'s snapping primitives directly instead of `attachInteraction()`, since the stage positions things via a CSS transform on an unscaled surface. |
 | `cart-editor-panel.js` | Renders the right-hand `#cart-inspector-form` fields for whichever part/component is selected. Read-only — turning input into state changes is `cart-editor-bindings.js`'s job. |
 | `cart-editor-bindings.js` | Every field event listener for `#cart-inspector-form` plus the open/close-editor buttons. |
