@@ -24,8 +24,6 @@
    cart editor (transform offset) would create a horizontal scrollbar. */
 .drawer-body { padding: 20px 20px 40px; flex: 1; overflow-y: auto; overflow-x: hidden; }
 .cart-title-text { font-size: 1.2rem; font-weight: 700; margin-bottom: 14px; }
-/* max-width: 100% — a fixed width set via "Artikel-Darstellung"
-   (cartConfig.itemWidth) must never make the row wider than the cart. */
 .cart-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-main); flex-wrap: wrap; max-width: 100%; }
 .cart-item.cart-item-square { border-radius: 0; }
 .cart-item.cart-item-rounded { border-radius: 14px; }
@@ -74,8 +72,7 @@
 /* Fixed height (not max-height) — the item list must always occupy the
    same amount of space in the flow regardless of how many items it
    holds, so every component positioned below it never shifts when items
-   are added or removed. cartConfig.itemsListMaxHeight overrides this via
-   an inline style (see js/shop/cart-html.js). */
+   are added or removed. */
 .cart-items-box { height: 320px; overflow-y: auto; overflow-x: hidden; }
 .cart-items-box-divider { border-top: 1px solid var(--border-color); margin: 6px 0 14px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
