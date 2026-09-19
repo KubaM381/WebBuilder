@@ -147,23 +147,20 @@
   // Each non-empty segment is wrapped in a plain <div data-segment-id="...">
   // (no styling of its own) and optionally followed by a static divider
   // line (segment.showDivider) — unrelated to itemDisplay.showItemDividers
-  // below.
-  //
-  // itemDisplay.itemDividerMode ("last" default | "all") picks whether
-  // the configurable divider (showItemDividers) appears once below the
-  // last product, or after every product.
+  // below. When itemDisplay.showItemDividers is enabled (transparent item
+  // shape only), a divider is rendered between every pair of consecutive
+  // products within each run (segment group or the trailing unsegmented
+  // run) — never after the last product of that run.
   function buildItemsHtml(items, isDemo, interactive, config) {
     if (!items.length) return '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
     const disp = config.itemDisplay || {};
     const dividersEnabled = config.itemShape === "transparent" && !!disp.showItemDividers;
-    const dividerAfterEach = dividersEnabled && disp.itemDividerMode === "all";
-    const dividerAfterLastOnly = dividersEnabled && !dividerAfterEach;
 
     function renderRun(runItems) {
       return runItems.map((item, idx) => {
         const html = buildCartItemHTML(item, isDemo, interactive);
         const isLastOfRun = idx === runItems.length - 1;
-        return (dividerAfterEach && !isLastOfRun) ? html + '<div class="cart-item-divider"></div>' : html;
+        return (dividersEnabled && !isLastOfRun) ? html + '<div class="cart-item-divider"></div>' : html;
       }).join("");
     }
 
@@ -187,7 +184,6 @@
       });
       html += renderRun(remaining);
     }
-    if (dividerAfterLastOnly) html += '<div class="cart-item-divider"></div>';
     return html;
   }
 
