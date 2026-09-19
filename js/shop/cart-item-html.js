@@ -8,7 +8,7 @@
 // and the cart focus editor stage (shop/cart-editor-stage.js,
 // interactive=true) — both must stay pixel-identical apart from editing
 // affordances, so any change here affects both. Reaches
-// shop/cart-html.js's wrapLayoutPart() only through
+// shop/cart-html.js's wrapLayoutPart()/wrapComponent() only through
 // window.WebBuilderCartHtml at runtime, so there is no parse-time
 // load-order requirement between the two files. Must load after
 // shop/cart-data.js (reads window.WebBuilderCart at top-level parse
@@ -144,13 +144,18 @@
   // Groups the cart's item rows by configured segment (cartConfig.segments,
   // see shop/cart-data.js), in segment-config order, then any items that
   // don't belong to a segment follow at the end in their original order.
-  // Each non-empty segment is wrapped in a plain <div data-segment-id="...">
-  // (no styling of its own) and optionally followed by a static divider
-  // line (segment.showDivider) — unrelated to itemDisplay.showItemDividers
-  // below. When itemDisplay.showItemDividers is enabled (transparent item
-  // shape only), a divider is rendered between every pair of consecutive
-  // products within each run (segment group or the trailing unsegmented
-  // run) — never after the last product of that run.
+  // Each non-empty segment is wrapped via cart-html.js's wrapComponent()
+  // under the key "segment:<id>" so it is selectable/draggable in the
+  // cart focus editor exactly like any other top-level component (title,
+  // progress bar, ...) — outside the editor (interactive=false) with no
+  // stored offset this still renders as plain markup, no extra DOM. The
+  // optional divider (segment.showDivider) sits inside that same wrapper
+  // so it moves together with its segment. Unrelated to
+  // itemDisplay.showItemDividers below. When itemDisplay.showItemDividers
+  // is enabled (transparent item shape only), a divider is rendered
+  // between every pair of consecutive products within each run (segment
+  // group or the trailing unsegmented run) — never after the last
+  // product of that run.
   function buildItemsHtml(items, isDemo, interactive, config) {
     if (!items.length) return '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
     const disp = config.itemDisplay || {};
@@ -179,8 +184,8 @@
           const idx = remaining.indexOf(item);
           if (idx > -1) remaining.splice(idx, 1);
         });
-        html += `<div class="cart-segment" data-segment-id="${esc(segment.id)}">${renderRun(groupItems)}</div>`;
-        if (segment.showDivider) html += '<div class="cart-item-divider"></div>';
+        const segmentInner = `<div class="cart-segment" data-segment-id="${esc(segment.id)}">${renderRun(groupItems)}</div>${segment.showDivider ? '<div class="cart-item-divider"></div>' : ""}`;
+        html += window.WebBuilderCartHtml.wrapComponent(segmentInner, `segment:${segment.id}`, interactive);
       });
       html += renderRun(remaining);
     }
