@@ -9,19 +9,11 @@
 @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(0.95); } }
 .drawer-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(2px); z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
 .drawer-backdrop.active { opacity: 1; visibility: visible; }
-/* width: var(--cart-width) — shared with .cart-focus-card below so the
-   real drawer and the cart editor stage always stay exactly the same
-   width. */
 .drawer { position: fixed; top: 0; right: 0; width: var(--cart-width); max-width: 100%; height: 100%; background: var(--bg-panel); box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15); z-index: 1001; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
 .drawer.active { transform: translateX(0); }
 .close-btn { background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 4px 8px; border-radius: 4px; }
 .close-btn:hover { color: var(--text-main); background: var(--bg-main); }
-/* The close button floats over the content since there's no separate
-   header bar — .drawer already has position:fixed as its anchor. */
 .drawer-close-floating { position: absolute; top: 12px; right: 12px; z-index: 2; }
-/* overflow-x: hidden — without it the browser auto-promotes overflow-x
-   to "auto" once overflow-y is set, so any part dragged rightward in the
-   cart editor (transform offset) would create a horizontal scrollbar. */
 .drawer-body { padding: 20px 20px 40px; flex: 1; overflow-y: auto; overflow-x: hidden; }
 .cart-title-text { font-size: 1.2rem; font-weight: 700; margin-bottom: 14px; }
 .cart-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-main); flex-wrap: wrap; max-width: 100%; }
@@ -51,8 +43,6 @@
 .cart-milestone-reward { line-height: 1; }
 .cart-recommend { border: 1px dashed var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 16px; }
 .cart-recommend-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 8px; }
-/* position: relative anchors the alignment-guide layer here instead of
-   the nearest positioned ancestor further up the page. */
 .cart-recommend-card { display: flex; align-items: center; gap: 8px; position: relative; }
 .cart-recommend-icon { font-size: 1.4rem; }
 .cart-recommend-name { flex: 1; font-size: 0.85rem; }
@@ -62,27 +52,17 @@
 .cart-discount input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 6px; font-size: 0.85rem; }
 .cart-discount button { width: 100%; padding: 7px; border: none; border-radius: 6px; background: var(--primary); color: #fff; cursor: pointer; font-weight: 600; }
 .cart-discount-msg.ok { color: var(--success); font-size: 0.8rem; margin-top: 6px; }
-/* position: relative — snap container for nested positionable components
-   (shipping row, divider). */
-.cart-totals { margin-top: 12px; padding-top: 12px; position: relative; }
+/* min-height keeps the block a stable size regardless of which rows
+   (Zwischensumme/Rabatt/Versand/Gratis-Produkt) are currently shown, so
+   toggling any of them never shifts the checkout button below it. Sized
+   for the maximum case (all rows + the final total row). */
+.cart-totals { margin-top: 12px; padding-top: 12px; position: relative; min-height: 168px; }
 .cart-total-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
 .cart-total-final { font-weight: 700; font-size: 1rem; margin-top: 8px; }
 .cart-checkout-button { margin-top: 18px; }
 .cart-item-divider { border-top: 1px solid var(--border-color); margin: 4px auto; width: 70%; }
-/* Freely placeable divider component (js/shop/cart-html.js buildCartParts
-   dividersPart, added via the "Trennlinie hinzufügen" button). These two
-   classes were referenced by the JS but never defined here, so a new
-   divider rendered with zero visible height — the button appeared to do
-   nothing. */
 .cart-divider { padding: 4px 0; }
 .cart-divider-line { display: block; width: 100%; height: 0; border-top: 1px solid var(--border-color); }
-/* Fixed height (not max-height), user-adjustable via
-   .cart-items-resize-handle below (clamped to cartConfig.itemsBoxHeight's
-   configured min/max — see js/shop/cart-config.js) — the item list must
-   always occupy a stable amount of space in the flow regardless of how
-   many items it holds, so every component positioned below it never
-   shifts when items are added or removed. position:relative anchors the
-   resize handle to the box itself. */
 .cart-items-box { position: relative; height: 320px; overflow-y: auto; overflow-x: hidden; }
 .cart-items-resize-handle { position: absolute; left: 0; right: 0; bottom: -6px; height: 12px; cursor: ns-resize; z-index: 5; display: flex; align-items: center; justify-content: center; }
 .cart-items-resize-handle::after { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--border-muted); }
@@ -112,12 +92,6 @@
 .cart-item-part-frame { border: 1px dashed var(--border-muted); border-radius: 6px; padding: 2px 5px; }
 .cart-item-part-selected,
 .cart-component-selected { outline: 2px solid var(--selection-color); outline-offset: 2px; border-radius: 6px; }
-/* The descendant selector is needed because cursor on the element
-   itself always wins over an inherited value — without it, each
-   control's own cursor rule (remove/qty buttons, inputs, ...) would
-   silently override the grab cursor here. Every one of these controls
-   only ever drags while the cart editor is open, never triggers its
-   normal click action. */
 body.cart-focus-active .cart-item-part,
 body.cart-focus-active .cart-item-part * { cursor: grab; touch-action: none; }
 body.cart-focus-active .cart-item-part:active,
@@ -130,15 +104,8 @@ body.cart-focus-active [data-cart-component]:active,
 body.cart-focus-active [data-cart-component] * :active { cursor: grabbing; }
 
 .cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px 30px 90px; pointer-events: none; }
-/* Width and padding match the real drawer exactly (var(--cart-width),
-   see css/base.css) so a pixel offset dragged into place here lands in
-   the same spot in the real drawer. */
 .cart-focus-card { pointer-events: auto; background: var(--bg-panel); border-radius: 12px; box-shadow: var(--shadow-lg); width: var(--cart-width); max-width: 100%; min-height: 900px; display: flex; flex-direction: column; }
-/* No internal scroll region here — the outer .canvas-container handles
-   vertical scrolling once the card outgrows the visible area. */
 .cart-focus-body { display: block; flex: 1; padding: 20px 20px 40px; position: relative; }
-/* position: relative anchors the alignment-guide layer to these
-   containers instead of the further-up .cart-focus-stage. */
 .cart-focus-fixed-top,
 .cart-focus-fixed-bottom {
   position: relative;
