@@ -210,10 +210,10 @@
 
       <div class="section-title">Artikelliste</div>
       <div class="sidebar-subsection">
-        <p class="help-text" style="margin-bottom:8px;">Wird die Liste sehr lang, kann sie auf eine feste Höhe begrenzt werden — sie bekommt dann ihren eigenen Scrollbalken, während Rabattfeld, Empfehlung und Kosten-Übersicht immer sichtbar bleiben.</p>
+        <p class="help-text" style="margin-bottom:8px;">Die Artikelliste hat eine feste Höhe und bekommt bei Bedarf ihren eigenen Scrollbalken — so bleiben Rabattfeld, Empfehlung und Kosten-Übersicht immer an derselben Stelle, egal wie viele Artikel im Warenkorb liegen.</p>
         <div class="form-group">
-          <label for="cart-items-max-height">Maximale Höhe (px, leer = kein Limit)</label>
-          <input type="number" id="cart-items-max-height" min="80" step="10" placeholder="kein Limit">
+          <label for="cart-items-max-height">Höhe der Artikelliste (px, leer = Standard)</label>
+          <input type="number" id="cart-items-max-height" min="80" step="10" placeholder="Standard">
         </div>
       </div>
 
