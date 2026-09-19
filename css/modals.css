@@ -116,8 +116,6 @@ body.cart-focus-active [data-cart-component] * { cursor: grab; }
 body.cart-focus-active [data-cart-component]:active,
 body.cart-focus-active [data-cart-component] * :active { cursor: grabbing; }
 
-body.cart-focus-active #cart-focus-stage .cart-item { cursor: pointer; }
-
 .cart-focus-stage { position: absolute; top: 0; left: 0; right: 0; z-index: 90; display: flex; justify-content: center; padding: 30px 30px 90px; pointer-events: none; }
 /* Width and padding match the real drawer exactly (var(--cart-width),
    see css/base.css) so a pixel offset dragged into place here lands in
