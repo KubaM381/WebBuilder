@@ -1,20 +1,19 @@
 // js/shop/cart-editor-markup.js
 // Statisches Markup von #cart-inspector-form (rechtes Warenkorb-Editor-
-// Panel) aus web.html ausgelagert. Baut nur HTML und injiziert es per
-// innerHTML — bindet keine Events und liest keinen State (das bleibt in
+// Panel). Baut nur HTML und injiziert es per innerHTML — bindet keine
+// Events und liest keinen State (das bleibt in
 // cart-editor-panel.js/cart-editor-bindings.js, die dieselben Feld-IDs
-// per getElementById ansprechen wie zuvor in web.html).
+// per getElementById ansprechen).
 //
 // Ladereihenfolge: MUSS vor js/ui/shared-markup.js laden — dieses füllt
-// die hier absichtlich leeren Shape-Selects (Abgerundet/Eckig/
-// Rund (Pille)) per shared-markup.js's buildShapeOptionsHtml(), was nur
-// funktioniert, wenn die <select>-Elemente zu dem Zeitpunkt schon im DOM
-// stehen.
+// die hier absichtlich leeren Shape-Selects per shared-markup.js's
+// buildShapeOptionsHtml(), was nur funktioniert, wenn die <select>-
+// Elemente zu dem Zeitpunkt schon im DOM stehen.
 (() => {
   function markup() {
     return `
       <p class="help-text" style="margin-bottom:6px;">🛒 Warenkorb-Editor</p>
-      <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Produktliste, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button, Kosten-Übersicht oder Trennlinie), um ihn hier anzupassen.</p>
+      <p class="help-text" id="cart-part-empty">Noch kein Element ausgewählt. Klicke im Editor auf einen Bereich (Warenkorb-Titel, Produktliste, Artikel, Fortschrittsbalken, Rabattfeld, Empfehlung, Zur-Kasse-Button oder Kosten-Übersicht), um ihn hier anzupassen.</p>
 
       <div id="cart-part-editor" class="hidden">
         <div class="form-group"><label id="cart-part-label">Element</label></div>
@@ -28,6 +27,7 @@
         </div>
 
         <div id="cart-comp-items-fields" class="hidden">
+          <label class="checkbox-row"><input type="checkbox" id="cart-comp-items-divider-after"> Trennlinie darunter anzeigen</label>
           <p class="help-text">Diese Einstellungen gelten für jedes einzelne Produkt im Warenkorb. Die gesamte Produktliste lässt sich zusätzlich wie jede andere Komponente frei verschieben — dazu einfach auf eine freie Stelle im Produktbereich klicken und ziehen.</p>
           <div class="form-group"><label for="cart-comp-items-shape">Form</label>
             <select id="cart-comp-items-shape">
@@ -43,6 +43,7 @@
         </div>
 
         <div id="cart-comp-checkout-fields" class="hidden">
+          <label class="checkbox-row"><input type="checkbox" id="cart-comp-checkout-divider-after"> Trennlinie darunter anzeigen</label>
           <div class="form-group"><label for="cart-comp-checkout-label">Beschriftung</label><input type="text" id="cart-comp-checkout-label"></div>
           <div class="form-group"><label for="cart-comp-checkout-color">Farbe</label><input type="color" id="cart-comp-checkout-color"></div>
           <div class="form-group"><label for="cart-comp-checkout-shape">Form</label>
@@ -51,6 +52,7 @@
         </div>
 
         <div id="cart-comp-discount-fields" class="hidden">
+          <label class="checkbox-row"><input type="checkbox" id="cart-comp-discount-divider-after"> Trennlinie darunter anzeigen</label>
           <div class="form-group"><label for="cart-comp-discount-color">Farbe</label><input type="color" id="cart-comp-discount-color"></div>
           <div class="form-group"><label for="cart-comp-discount-shape">Form</label>
             <select id="cart-comp-discount-shape"></select>
@@ -62,6 +64,7 @@
         </div>
 
         <div id="cart-comp-totals-fields" class="hidden">
+          <label class="checkbox-row"><input type="checkbox" id="cart-comp-totals-divider-after"> Trennlinie darunter anzeigen</label>
           <div class="form-group"><label for="cart-comp-currency">Währung</label>
             <select id="cart-comp-currency">
               <option value="eur">€ Euro</option>
@@ -71,8 +74,9 @@
           </div>
           <div class="form-group"><label for="cart-comp-subtotal-label">Label „Zwischensumme“</label><input type="text" id="cart-comp-subtotal-label" placeholder="Zwischensumme"></div>
           <div class="form-group"><label for="cart-comp-total-label">Label „Gesamt“</label><input type="text" id="cart-comp-total-label" placeholder="Gesamt"></div>
+          <p class="help-text">Die Zwischensumme wird nur angezeigt, wenn zusätzlich Rabatt, Versand oder ein Gratis-Produkt-Hinweis in der Übersicht erscheinen — ansonsten steht direkt „Gesamt“.</p>
 
-          <div class="inspector-subcard">
+          <div class="inspector-subcard" id="cart-comp-rabatt-subcard">
             <div class="inspector-subcard-title">💸 Rabatt</div>
             <div class="form-group"><label for="cart-comp-discount-label">Label „Rabatt“</label><input type="text" id="cart-comp-discount-label" placeholder="Rabatt"></div>
             <div class="form-group"><label for="cart-comp-discount-percent">Extra-Rabatt bei Meilenstein (%)</label><input type="number" id="cart-comp-discount-percent" min="0" max="100" step="1" placeholder="10"></div>
@@ -82,11 +86,14 @@
 
           <div class="inspector-subcard">
             <div class="inspector-subcard-title">🚚 Versand</div>
-            <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
-            <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (<span id="cart-shipping-cost-currency">€</span>)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
-            <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
-            <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (<span id="cart-shipping-free-threshold-currency">€</span>)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
-            <p class="help-text">Die Versandkosten gelten nur, solange der Fortschrittsbalken aktiviert ist. Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
+            <label class="checkbox-row"><input type="checkbox" id="cart-comp-shipping-enabled"> Versand aktivieren</label>
+            <div id="cart-comp-shipping-fields-wrap">
+              <div class="form-group"><label for="cart-comp-shipping-label">Label „Versand“</label><input type="text" id="cart-comp-shipping-label" placeholder="Versand"></div>
+              <div class="form-group"><label for="cart-comp-shipping-cost">Versandkosten (<span id="cart-shipping-cost-currency">€</span>)</label><input type="number" id="cart-comp-shipping-cost" min="0" step="0.01"></div>
+              <div class="form-group"><label for="cart-comp-shipping-free-text">Text bei kostenlosem Versand</label><input type="text" id="cart-comp-shipping-free-text" placeholder="Kostenlos"></div>
+              <div class="form-group"><label for="cart-comp-shipping-free-threshold">Kostenlos ab Warenkorbwert (<span id="cart-shipping-free-threshold-currency">€</span>)</label><input type="number" id="cart-comp-shipping-free-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
+              <p class="help-text">Kostenlos wird der Versand, sobald entweder ein Meilenstein „Kostenloser Versand“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert.</p>
+            </div>
           </div>
 
           <div class="hidden" id="cart-comp-free-product-group">
@@ -99,12 +106,8 @@
           </div>
         </div>
 
-        <div id="cart-comp-divider-fields" class="hidden">
-          <p class="help-text">Diese Trennlinie lässt sich überall im Warenkorb frei platzieren — zieh sie einfach an die gewünschte Stelle.</p>
-          <button type="button" id="btn-remove-divider" class="btn btn-danger-outline" style="width:100%;">🗑️ Trennlinie entfernen</button>
-        </div>
-
         <div id="cart-comp-progress-fields" class="hidden">
+          <label class="checkbox-row"><input type="checkbox" id="cart-comp-progress-divider-after"> Trennlinie darunter anzeigen</label>
           <div class="form-group"><label for="cart-comp-progress-color">Balkenfarbe</label><input type="color" id="cart-comp-progress-color"></div>
           <div class="form-group"><label for="cart-comp-progress-complete-text">Text bei „alle Ziele erreicht“</label><input type="text" id="cart-comp-progress-complete-text" placeholder="✓ Alle Ziele freigeschaltet"></div>
           <p class="help-text" style="margin-top:-6px;">Wird angezeigt, sobald der höchste Meilenstein erreicht ist und dieser selbst kein eigenes „Text bei Erreichen“ gesetzt hat (siehe unten in der Meilenstein-Liste).</p>
@@ -114,6 +117,7 @@
         </div>
 
         <div id="cart-comp-recommend-fields" class="hidden">
+          <label class="checkbox-row"><input type="checkbox" id="cart-comp-recommend-divider-after"> Trennlinie darunter anzeigen</label>
           <div class="form-group"><label for="cart-comp-recommend-shape">Form der Empfehlungskarte</label>
             <select id="cart-comp-recommend-shape"></select>
           </div>
@@ -177,9 +181,6 @@
           <div class="form-group"><label>Farbe Entfernen-Button</label><input type="color" id="cart-remove-color"></div>
         </div>
       </div>
-
-      <hr class="divider">
-      <button type="button" id="btn-add-divider" class="btn btn-secondary" style="width:100%;">+ Trennlinie hinzufügen</button>
 
       <hr class="divider">
       <button type="button" id="btn-cart-focus-exit" class="btn btn-danger-outline" style="width:100%;">✖ Warenkorb-Editor schließen</button>
