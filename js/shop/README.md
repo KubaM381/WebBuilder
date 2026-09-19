@@ -24,7 +24,8 @@ contribute to `window.WebBuilderCart`.
 
 | File | Purpose | API |
 |---|---|---|
-| `cart-html.js` | Pure HTML building only — no DOM access, no event binding. Builds the shared cart body (title, dividers, progress, items, recommendation, discount, totals, checkout) used identically by the real drawer and the cart editor stage. | `window.WebBuilderCartHtml`, plus `buildCartHtml`/`buildCartParts` on `window.WebBuilderCartRuntime` |
+| `cart-html.js` | Pure HTML building only — no DOM access, no event binding. Owns the shared positioning primitives (`wrapLayoutPart`/`wrapComponent`) and the cart-body assembly (title, dividers, progress, items, recommendation, discount, totals, checkout) used identically by the real drawer and the cart editor stage. | `window.WebBuilderCartHtml`, plus `buildCartHtml`/`buildCartParts` on `window.WebBuilderCartRuntime` |
+| `cart-item-html.js` | Single cart-item and recommend-card rendering (`buildCartItemHTML`, `buildItemsHtml`, `buildRecommendCardContentHtml`), split out of `cart-html.js`. No parse-time load-order requirement relative to `cart-html.js` — both reach each other only through `window.WebBuilderCartHtml` at runtime. | contributes to `window.WebBuilderCartHtml` |
 | `cart-drawer.js` | The real slide-in drawer: rendering, open/close, all its click/change interactions. `refresh()` re-renders both the drawer and — if open — the cart editor stage. | contributes to `window.WebBuilderCartRuntime` |
 | `cart-sidebar.js` | Left sidebar cart config UI (`#panel-cart`): discount/recommend/progress toggles, items-list max height, product segments, recommendation list editor, milestone list editor. | `window.WebBuilderCartConfigRuntime` |
 
