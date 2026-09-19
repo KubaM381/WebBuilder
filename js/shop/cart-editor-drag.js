@@ -2,11 +2,11 @@
 // WebBuilder cart focus editor — pointer-drag interaction.
 // Owns every pointer-event drag on the cart editor stage: resizing the
 // article representation ("Artikel-Darstellung"), dragging a top-level
-// component (progress/discount/recommend/checkout/totals/title/divider),
-// and dragging a cart-item or recommend-card sub-part (icon/qty/price/
-// remove/description). Does NOT own the stage's selection state or its
-// layout data model — both live in cart-editor-stage.js and are reached
-// here only through window.WebBuilderCartFocus at runtime.
+// component (progress/discount/recommend/checkout/totals/title/segment/
+// divider), and dragging a cart-item or recommend-card sub-part (icon/qty/
+// price/remove/description). Does NOT own the stage's selection state or
+// its layout data model — both live in cart-editor-stage.js and are
+// reached here only through window.WebBuilderCartFocus at runtime.
 //
 // Not implemented via canvas/alignment.js's shared attachInteraction()
 // controller: this stage positions parts/components via a CSS transform
@@ -61,7 +61,17 @@
           resizeHandle.removeEventListener("pointerup", onUp);
           resizeHandle.removeEventListener("pointercancel", onUp);
           try { resizeHandle.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-          if (moved) { window.WebBuilderHistory?.commit(); notify("cart", "config", state.cartConfig); }
+          if (moved) {
+            // Re-clamps any individually positioned sub-part
+            // (icon/qty/price/remove) back inside the article's new
+            // bounds — their stored pixel offset is relative to their
+            // natural flow position, which the resize itself never
+            // touches, so a part can otherwise end up outside the box.
+            focus().clampPartLayoutsToItem?.(itemEl);
+            window.WebBuilderHistory?.commit();
+            notify("cart", "config", state.cartConfig);
+            focus().renderStage?.();
+          }
         }
         window.WebBuilderHistory?.arm();
         resizeHandle.addEventListener("pointermove", onMove);
