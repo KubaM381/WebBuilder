@@ -78,7 +78,7 @@
   }
 
   // Top-level components (progress/discount/recommend/checkout/totals/
-  // title/dividers) use a flat cartConfig.componentLayout map instead of
+  // title/items) use a flat cartConfig.componentLayout map instead of
   // resolveLayoutMap()'s two maps, since they aren't cart-item sub-parts.
   function getSelectedLayout() {
     const sel = state.cartFocusSelectedPart;
@@ -116,43 +116,9 @@
     }
   }
 
-  // Generic version of setSelectedLayout() for a component key that is
-  // not (yet) the current selection — used right after creating a new
-  // divider, before it has been selected, so it can be placed at the
-  // bottom immediately (see cart-editor-bindings.js "btn-add-divider").
-  function setComponentLayoutByKey(key, x, y, recordHistory = true) {
-    if (recordHistory) window.WebBuilderHistory?.arm();
-    state.cartConfig.componentLayout[key] = { x: Math.round(x) || 0, y: Math.round(y) || 0 };
-    if (recordHistory) window.WebBuilderHistory?.commit();
-    notify("cart", "component-layout", state.cartConfig.componentLayout);
-  }
-
-  // Measures the already-rendered stage to find how far down (in px) the
-  // component identified by `fullKey` (a "component:<key>" selection key)
-  // would have to move to sit below every other visible cart block —
-  // used so a freshly added divider lands at the bottom of the cart
-  // instead of at its natural flow position right under the title.
-  // Returns null if the stage or the component isn't in the DOM yet
-  // (caller should renderStage() first).
-  function computeBottomOffset(fullKey) {
-    const key = fullKey.startsWith("component:") ? fullKey.slice("component:".length) : fullKey;
-    const stage = document.getElementById("cart-focus-stage");
-    const bodyEl = stage?.querySelector(".cart-focus-body");
-    const compEl = stage?.querySelector(`[data-cart-component="${CSS.escape(key)}"]`);
-    if (!bodyEl || !compEl) return null;
-    const bodyRect = bodyEl.getBoundingClientRect();
-    const compRect = compEl.getBoundingClientRect();
-    return Math.max(0, Math.round(bodyRect.bottom - compRect.top));
-  }
-
   // "background" (the whole card background) is selectable/editable but
   // never position-draggable — it has no sensible free position.
-  // Dividers ("component:divider:<id>") ARE positionable, like
-  // progress/discount/recommend/totals/checkout/title.
   const NON_POSITIONABLE = new Set(["component:background"]);
-
-  const DIVIDER_PREFIX = "component:divider:";
-  const isDividerKey = key => String(key || "").startsWith(DIVIDER_PREFIX);
 
   // Every cart item renders the same data-cart-part keys, because one
   // shared pixel offset per part type applies to all items — so the
@@ -172,10 +138,9 @@
     }
   }
 
-  // "Heavy" select re-renders the whole stage (used for selections that
-  // may also change what's on stage, e.g. after adding a divider).
-  // "Light" select only updates the highlight + panel — used at drag
-  // start so an in-progress drag's DOM node isn't replaced mid-move.
+  // "Heavy" select re-renders the whole stage. "Light" select only
+  // updates the highlight + panel — used at drag start so an
+  // in-progress drag's DOM node isn't replaced mid-move.
   function selectFocusPart(partKey) {
     state.cartFocusSelectedPart = partKey;
     renderFocusStage();
@@ -212,12 +177,11 @@
     const buildCartParts = window.WebBuilderCartRuntime?.buildCartParts;
     const parts = buildCartParts
       ? buildCartParts(items, { interactive: true, isDemo: usingDemo })
-      : { title: "", dividers: "", progress: "", items: "", recommend: "", discount: "", totals: "", checkout: "" };
+      : { title: "", progress: "", items: "", recommend: "", discount: "", totals: "", checkout: "" };
     stage.innerHTML = `
       <div class="cart-focus-card${bgSelectedClass}"${cardBgStyle}>
         <div class="cart-focus-body">
           ${parts.title}
-          ${parts.dividers}
           <div class="cart-focus-fixed-top">${parts.progress}</div>
           <div class="cart-focus-scroll">${parts.items}</div>
           <div class="cart-focus-fixed-bottom">${parts.recommend}${parts.discount}${parts.totals}${parts.checkout}</div>
@@ -225,6 +189,7 @@
       </div>
     `;
     window.WebBuilderCartFocus?.bindFocusStageInteractions?.(stage);
+    window.WebBuilderCartRuntime?.syncItemsBoxScroll?.(stage.querySelector(".cart-items-box"));
   }
 
   function enterFocusMode() {
@@ -260,10 +225,6 @@
     getSelectedLayout,
     setSelectedLayout,
     resetSelectedLayout,
-    setComponentLayoutByKey,
-    computeBottomOffset,
-    NON_POSITIONABLE,
-    DIVIDER_PREFIX,
-    isDividerKey
+    NON_POSITIONABLE
   });
 })();
