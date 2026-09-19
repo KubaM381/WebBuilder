@@ -1,72 +1,45 @@
-# JavaScript Architecture
+# js/shop/ — Products + cart
 
-No bundler, no framework. Every module attaches its public API to
-`window.WebBuilderXxx`. `js/builder.js` loads every other file in a fixed
-order via `document.write` — the order is functionally relevant, not just
-cosmetic (exception: the three `type="module"` Supabase files at the end,
-whose actual load order is resolved by the browser via ES `import`).
+## Products
 
-This file is only a map. For "what does file X do" and "what must load
-before/after it", open the README of the folder that file lives in.
-
-## Folders
-
-| Folder | Domain | README |
+| File | Purpose | API |
 |---|---|---|
-| `core/` | Shared state, utils, storage/history — everything else depends on this | `core/README.md` |
-| `canvas/` | Canvas rendering, canvas-element CRUD, icon registry, shared drag/alignment | `canvas/README.md` |
-| `editor/` | Right-hand properties panel for canvas elements + the background editor | `editor/README.md` |
-| `layout/` | Real page header/footer: data, canvas rendering, inspector panel | `layout/README.md` |
-| `shop/` | Products + cart, incl. the cart focus editor | `shop/README.md` |
-| `ui/` | Cross-domain UI helpers: toast, modal, shared markup, sidebar tabs | `ui/README.md` |
-| `Supabase/` | Supabase client, auth, project/page CRUD, cloud modal UI | `Supabase/README.md` |
-| `pages/` | Reserved for a future multi-page client feature — currently empty | — |
+| `products.js` | Product CRUD + normalization + the products tab UI (`#product-list`). Must load before every cart file below — they reference products only via `window.WebBuilderProducts`. | `window.WebBuilderProducts`, `window.WebBuilderProductsRuntime` |
 
-## Root-level files (no subfolder)
+## Cart data (four files, one shared object)
 
-| File | What it does | API |
+Load order matters: `cart-items.js` → `cart-recommendations.js` →
+`cart-milestones.js` → `cart-config.js` (last — it calls
+`normalizeState()` once every other file has attached its part). All four
+contribute to `window.WebBuilderCart`.
+
+| File | Purpose |
+|---|---|
+| `cart-items.js` | Item CRUD, price/quantity mutation, totals. |
+| `cart-recommendations.js` | Recommendation rule objects + `pickRecommendation()` (which one to show for a given cart state). |
+| `cart-milestones.js` | Progress-bar milestones and freely placeable dividers. |
+| `cart-config.js` | `getConfig`/`setConfig`, currency, discount code, and the orchestrating `normalizeState()`. |
+
+## Cart HTML, drawer, sidebar
+
+| File | Purpose | API |
 |---|---|---|
-| `builder.js` | Bootstrap: fixes the load order for every module via `document.write`, then kicks off the initial render on `DOMContentLoaded`. Read this first for the exact, current load order — its own comments explain each constraint. | — (orchestrator only) |
-| `toolbar.js` | Top toolbar: zoom (delegates to `canvas/canvas.js`), undo/redo (via `core/storage.js`), local save binding. `refreshAllDomains()` re-renders every affected UI area after undo/redo or a cloud load. | `window.WebBuilderToolbar` |
-| `export.js` | Builds a static HTML document (header/elements/footer) from the current state for the export button. Pure snapshot-to-HTML renderer, no own state. | `window.WebBuilderExport` |
-| `preview.js` | Preview mode (hides editor chrome) + the click-action runtime used in preview/live mode (scroll, browser history, open URL, add to cart, open cart drawer, open modal, show message). | `window.WebBuilderPreview`, `window.WebBuilderActionRuntime` |
+| `cart-html.js` | Pure HTML building only — no DOM access, no event binding. Owns the shared positioning primitives (`wrapLayoutPart`/`wrapComponent`) and the cart-body assembly (title, dividers, progress, items, recommendation, discount, totals, checkout) used identically by the real drawer and the cart editor stage. | `window.WebBuilderCartHtml`, plus `buildCartHtml`/`buildCartParts` on `window.WebBuilderCartRuntime` |
+| `cart-item-html.js` | Single cart-item and recommend-card rendering (`buildCartItemHTML`, `buildItemsHtml`, `buildRecommendCardContentHtml`), split out of `cart-html.js`. No parse-time load-order requirement relative to `cart-html.js` — both reach each other only through `window.WebBuilderCartHtml` at runtime. | contributes to `window.WebBuilderCartHtml` |
+| `cart-drawer.js` | The real slide-in drawer: rendering, open/close, all its click/change interactions. `refresh()` re-renders both the drawer and — if open — the cart editor stage. | contributes to `window.WebBuilderCartRuntime` |
+| `cart-sidebar.js` | Left sidebar cart config UI (`#panel-cart`): discount/recommend/progress toggles, recommendation list editor, milestone list editor. | `window.WebBuilderCartConfigRuntime` |
 
-## Core principles
+## Cart focus editor ("Warenkorb-Editor")
 
-- **One central state** — everything lives on `window.WebBuilderState`
-  (`core/state.js`); no module keeps its own parallel state.
-- **Pub/sub** — `state.notify(domain, action, payload)` /
-  `state.subscribe(fn)`. Header/footer is the one exception: it dispatches
-  its own `webbuilder:header-footer-change` CustomEvent instead (see
-  `layout/README.md`).
-- **One serialization format** — `core/storage.js`'s
-  `createSnapshot()`/`applySnapshot()`, used by local save, undo/redo and
-  Supabase alike. A new persistable field must be added there (see root
-  `README.md` for the exact rule).
-- **One module per domain**, exposing exactly one `window.WebBuilderXxx`
-  object, even when split across several files (e.g. `shop/`'s four
-  `cart-editor-*.js` files all extend `window.WebBuilderCartFocus`, and
-  `cart-html.js`/`cart-item-html.js` both extend
-  `window.WebBuilderCartHtml`).
+Read `docs/CART_EDITOR_TASKS.md` before changing any of these files. No
+parse-time load-order requirement between the five below — each reaches
+the others only through `window.WebBuilderCartFocus` at runtime, which
+all five contribute to.
 
-## Load order
-
-Folder-level chain (see each folder's README for the order of files
-within it):
-
-```
-core/ → ui/toast.js → core/storage.js
-→ ui/sidebar-panels-markup.js → shop/cart-editor-markup.js
-→ canvas/elements.js → canvas/icon-registry.js
-→ shop/products.js → shop/ (cart data → html/item-html/drawer/sidebar → cart editor)
-→ canvas/alignment.js → canvas/canvas.js → editor/background.js
-→ ui/shared-markup.js → editor/inspector.js → editor/inspector-special.js
-→ toolbar.js
-→ layout/ (header-footer-data → -render → -inspector)
-→ export.js → ui/modals.js → preview.js → ui/tabs.js
-→ Supabase/ (ES modules — order resolved by the browser)
-```
-
-`builder.js` itself is the single source of truth for the exact
-sequence — this is only a rough map to help you find the right
-neighborhood.
+| File | Purpose |
+|---|---|
+| `cart-editor-markup.js` | Injects the static `#cart-inspector-form` markup. Must load before `ui/shared-markup.js` (which fills the shape `<select>`s this file creates empty). |
+| `cart-editor-stage.js` | Enter/exit focus mode, the on-canvas stage DOM, part/component selection state, and the shared layout data model (get/set/reset a part's or component's pixel offset). |
+| `cart-editor-drag.js` | All pointer-drag interaction on the stage (article resize, component drag, part drag). Reuses `canvas/alignment.js`'s snapping primitives directly instead of `attachInteraction()`, since the stage positions things via a CSS transform on an unscaled surface. |
+| `cart-editor-panel.js` | Renders the right-hand `#cart-inspector-form` fields for whichever part/component is selected. Read-only — turning input into state changes is `cart-editor-bindings.js`'s job. |
+| `cart-editor-bindings.js` | Every field event listener for `#cart-inspector-form` plus the open/close-editor buttons. |
