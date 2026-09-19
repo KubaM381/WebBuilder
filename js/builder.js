@@ -24,7 +24,11 @@ document.write('<script src="js/shop/cart-items.js"><\/script>');
 document.write('<script src="js/shop/cart-recommendations.js"><\/script>');
 document.write('<script src="js/shop/cart-milestones.js"><\/script>');
 document.write('<script src="js/shop/cart-config.js"><\/script>');
+// cart-html.js/cart-item-html.js have no parse-time load-order
+// requirement relative to each other — each reaches the other only
+// through window.WebBuilderCartHtml at runtime.
 document.write('<script src="js/shop/cart-html.js"><\/script>');
+document.write('<script src="js/shop/cart-item-html.js"><\/script>');
 document.write('<script src="js/shop/cart-drawer.js"><\/script>');
 document.write('<script src="js/shop/cart-sidebar.js"><\/script>');
 document.write('<script src="js/shop/cart-editor-stage.js"><\/script>');
