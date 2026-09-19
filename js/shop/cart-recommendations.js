@@ -51,6 +51,18 @@
     }
   }
 
+  // Whether `product` is already represented by one of the given cart
+  // items. Matches by productId whenever an item has one — the reliable
+  // case. Name matching is only a fallback for genuinely legacy items
+  // that predate the productId field: applying it unconditionally caused
+  // false positives whenever two different products happened to share a
+  // name (e.g. both still at the default "Neues Produkt"), which silently
+  // blocked a valid recommendation from ever showing.
+  function isProductInCart(product, cartItems) {
+    if (!product) return false;
+    return cartItems.some(item => item.productId ? item.productId === product.id : item.name === product.name);
+  }
+
   // First matching recommendation for the given cart contents. If its
   // primary product is already in the cart, falls back to the configured
   // alternative (if any and not itself already in the cart).
@@ -64,16 +76,12 @@
     if (!list.length) return null;
     const count = items.reduce((s, i) => s + (Number(i.qty) || 0), 0);
     const inCartItems = opts.isDemo ? [] : items;
-    const inCartIds = new Set(inCartItems.map(i => i.productId).filter(Boolean));
-    const inCartNames = new Set(inCartItems.map(i => i.name));
     for (const rec of list) {
       if (!conditionMatches(rec.condition, { count, subtotal })) continue;
       let product = rec.productId ? window.WebBuilderProducts?.getById?.(rec.productId) : null;
-      const primaryInCart = product && (inCartIds.has(product.id) || inCartNames.has(product.name));
-      if (primaryInCart) {
+      if (isProductInCart(product, inCartItems)) {
         product = rec.alternativeProductId ? window.WebBuilderProducts?.getById?.(rec.alternativeProductId) : null;
-        if (!product) continue;
-        if (inCartIds.has(product.id) || inCartNames.has(product.name)) continue;
+        if (!product || isProductInCart(product, inCartItems)) continue;
       }
       if (!product) continue;
       return { rec, product };
