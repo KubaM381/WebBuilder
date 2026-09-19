@@ -26,6 +26,21 @@
     return currency.position === "before" ? `${symbol}${amount}` : `${amount} ${symbol}`;
   }
 
+  // Products-list ("Produkte" component) height bounds for the draggable
+  // resize handle (see cart-editor-drag.js). Expressed as an estimated
+  // per-item pixel height so the min/max map roughly to "N products
+  // visible" as requested, rather than an arbitrary pixel range —
+  // 320 / 5 = 64px matches the previous fixed height exactly, so the
+  // unchanged default (5 items) stays visually identical.
+  const ITEMS_BOX_ITEM_HEIGHT = 64;
+  const ITEMS_BOX_MIN_HEIGHT = ITEMS_BOX_ITEM_HEIGHT * 3;
+  const ITEMS_BOX_MAX_HEIGHT = ITEMS_BOX_ITEM_HEIGHT * 8;
+  const ITEMS_BOX_DEFAULT_HEIGHT = ITEMS_BOX_ITEM_HEIGHT * 5;
+  function clampItemsBoxHeight(value) {
+    const n = Number(value);
+    return Math.min(ITEMS_BOX_MAX_HEIGHT, Math.max(ITEMS_BOX_MIN_HEIGHT, Number.isFinite(n) ? n : ITEMS_BOX_DEFAULT_HEIGHT));
+  }
+
   // Placeholder token for the live item count inside cartConfig.cartTitleLabel.
   const TITLE_COUNT_PLACEHOLDER = "{anzahl}";
 
@@ -84,6 +99,7 @@
     itemBackgroundColor: "",
     itemWidth: null,
     itemMinHeight: null,
+    itemsBoxHeight: ITEMS_BOX_DEFAULT_HEIGHT,
     discountButtonColor: "#4f46e5",
     discountButtonShape: "rounded",
     cardBackgroundColor: "",
@@ -128,6 +144,10 @@
     delete config.footerBackgroundColor;
 
     applyConfigDefaults(config, CONFIG_DEFAULTS);
+    // Re-clamp on every normalize pass (not just when applying the
+    // default) so a value loaded from an older project, or a future
+    // lowering of the bounds, always ends up valid.
+    config.itemsBoxHeight = clampItemsBoxHeight(config.itemsBoxHeight);
 
     // {anzahl} can sit anywhere in the title text (see cart-html.js
     // buildTitleHtml()). A title saved before this placeholder existed is
@@ -153,6 +173,8 @@
   window.WebBuilderCart = Object.assign(window.WebBuilderCart || {}, {
     getConfig, setConfig, setItemDisplay, setButtonLabel, applyDiscountCode,
     quantityColorHex, formatCurrency, CURRENCY_PRESETS, TITLE_COUNT_PLACEHOLDER,
+    ITEMS_BOX_ITEM_HEIGHT, ITEMS_BOX_MIN_HEIGHT, ITEMS_BOX_MAX_HEIGHT, ITEMS_BOX_DEFAULT_HEIGHT,
+    clampItemsBoxHeight,
     normalizeState
   });
 
