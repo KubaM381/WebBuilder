@@ -54,6 +54,33 @@
     notify("cart", "part-layout", layout);
   }
 
+  // After the article box (itemEl, a real .cart-item DOM node on the
+  // stage) is resized, a part's stored pixel offset (itemDisplay.layout)
+  // can now sit partly or fully outside the box — the offset is measured
+  // from the part's natural flow position, which the resize itself never
+  // moves. Only clamps parts that already have a custom offset (the
+  // default in-flow position of an unmoved part always stays inside its
+  // own box, so there is nothing to fix for those). Compares live
+  // bounding rects (post-resize, pre-correction) so it works regardless
+  // of flex-wrap reflow between parts.
+  function clampPartLayoutsToItem(itemEl) {
+    if (!itemEl) return;
+    const itemRect = itemEl.getBoundingClientRect();
+    itemEl.querySelectorAll(":scope > [data-cart-part]").forEach(partEl => {
+      const partKey = partEl.dataset.cartPart;
+      const { layout, key } = resolveLayoutMap(partKey);
+      const current = layout[key];
+      if (!current) return;
+      const partRect = partEl.getBoundingClientRect();
+      let dx = 0, dy = 0;
+      if (partRect.left < itemRect.left) dx = itemRect.left - partRect.left;
+      else if (partRect.right > itemRect.right) dx = itemRect.right - partRect.right;
+      if (partRect.top < itemRect.top) dy = itemRect.top - partRect.top;
+      else if (partRect.bottom > itemRect.bottom) dy = itemRect.bottom - partRect.bottom;
+      if (dx || dy) layout[key] = { x: Math.round(current.x + dx), y: Math.round(current.y + dy) };
+    });
+  }
+
   // Top-level components (progress/discount/recommend/checkout/totals/
   // title/dividers/segments) use a flat cartConfig.componentLayout map
   // instead of resolveLayoutMap()'s two maps, since they aren't cart-item
@@ -213,6 +240,7 @@
     getPartLayout,
     setPartLayoutSilent,
     resolveLayoutMap,
+    clampPartLayoutsToItem,
     getSelectedLayout,
     setSelectedLayout,
     resetSelectedLayout,
