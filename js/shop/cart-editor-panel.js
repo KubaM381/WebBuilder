@@ -71,15 +71,15 @@
       const shapeSel = document.getElementById("cart-comp-checkout-shape");
       if (shapeSel) shapeSel.value = config.buttonShape || "rounded";
     } else if (sel === "component:discount") {
+      // Only the discount-field's own visual styling (button color/shape)
+      // lives here — the milestone percent/threshold settings sit with
+      // the other Kosten-Übersicht fields (component:totals below), the
+      // same place "Versand"'s free-shipping threshold lives.
       document.getElementById("cart-comp-discount-fields")?.classList.remove("hidden");
       const colorInput = document.getElementById("cart-comp-discount-color");
       if (colorInput) colorInput.value = config.discountButtonColor || "#4f46e5";
       const shapeSel = document.getElementById("cart-comp-discount-shape");
       if (shapeSel) shapeSel.value = config.discountButtonShape || "rounded";
-      const percentInput = document.getElementById("cart-comp-discount-percent");
-      if (percentInput && document.activeElement !== percentInput) percentInput.value = config.milestoneDiscountPercent != null ? config.milestoneDiscountPercent : 10;
-      const discountThresholdInput = document.getElementById("cart-comp-discount-threshold");
-      if (discountThresholdInput && document.activeElement !== discountThresholdInput) discountThresholdInput.value = config.milestoneDiscountThreshold != null ? config.milestoneDiscountThreshold : "";
     } else if (sel === "component:progress") {
       document.getElementById("cart-comp-progress-fields")?.classList.remove("hidden");
       const progressColorInput = document.getElementById("cart-comp-progress-color");
@@ -121,10 +121,18 @@
       }
       const subtotalInput = document.getElementById("cart-comp-subtotal-label");
       if (subtotalInput && document.activeElement !== subtotalInput) subtotalInput.value = config.subtotalLabel || "Zwischensumme";
-      const discountInput = document.getElementById("cart-comp-discount-label");
-      if (discountInput && document.activeElement !== discountInput) discountInput.value = config.discountLabel || "Rabatt";
       const totalLabelInput = document.getElementById("cart-comp-total-label");
       if (totalLabelInput && document.activeElement !== totalLabelInput) totalLabelInput.value = config.totalLabel || "Gesamt";
+
+      // Rabatt-Subcard (Label + Meilenstein-Prozentsatz + Ziel-Warenkorbwert)
+      // — dieselbe Feld-Vollständigkeit wie die Versand-Subcard unten.
+      const discountInput = document.getElementById("cart-comp-discount-label");
+      if (discountInput && document.activeElement !== discountInput) discountInput.value = config.discountLabel || "Rabatt";
+      const percentInput = document.getElementById("cart-comp-discount-percent");
+      if (percentInput && document.activeElement !== percentInput) percentInput.value = config.milestoneDiscountPercent != null ? config.milestoneDiscountPercent : 10;
+      const discountThresholdInput = document.getElementById("cart-comp-discount-threshold");
+      if (discountThresholdInput && document.activeElement !== discountThresholdInput) discountThresholdInput.value = config.milestoneDiscountThreshold != null ? config.milestoneDiscountThreshold : "";
+
       const hasFreeProductMilestone = (config.milestones || []).some(m => m.action === "free-product");
       const freeProductGroup = document.getElementById("cart-comp-free-product-group");
       freeProductGroup?.classList.toggle("hidden", !hasFreeProductMilestone);
