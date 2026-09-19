@@ -1,17 +1,15 @@
 // js/shop/cart-sidebar.js
 // WebBuilder cart sidebar UI — the left sidebar's cart config controls
 // (#panel-cart): the discount/recommend/progress enable toggles, the
-// items-list max-height field, product-segment management, the
 // recommendation list editor and the milestone list editor. None of this
 // ties to selecting a specific on-canvas part, which is why it lives here
 // rather than in the right-hand cart editor panel (shop/cart-editor.js).
-// Split out of the former shop/cart-render.js (see
-// docs/STRUCTURE_PLAN.md Phase 2). HTML building lives in
-// shop/cart-html.js; the real drawer lives in shop/cart-drawer.js — this
-// file calls window.WebBuilderCartRuntime.refresh() at runtime to update
-// both after a change here, rather than duplicating that logic. Cart
-// data/CRUD lives in shop/cart-data.js. Must load after shop/cart-data.js
-// (reads window.WebBuilderCart at top-level parse time).
+// HTML building lives in shop/cart-html.js; the real drawer lives in
+// shop/cart-drawer.js — this file calls
+// window.WebBuilderCartRuntime.refresh() at runtime to update both after
+// a change here, rather than duplicating that logic. Cart data/CRUD lives
+// in shop/cart-data.js. Must load after shop/cart-data.js (reads
+// window.WebBuilderCart at top-level parse time).
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCartSidebar: WebBuilderState is not available."); return; }
@@ -26,8 +24,6 @@
   // Recommendations
   // ------------------------------------------------------------------
 
-  // Delegierte Bindings für den Empfehlungs-Editor, einmalig auf den nie
-  // ersetzten Container gelegt statt auf jede wegwerfbare Zeile.
   function bindRecommendListDelegated() {
     const listEl = document.getElementById("cart-recommend-list");
     if (!listEl || listEl.dataset.webBuilderRecBound === "true") return;
@@ -69,7 +65,6 @@
     if (!listEl) return;
     bindRecommendListDelegated();
     let list = Array.isArray(cart.getConfig()?.recommendations) ? cart.getConfig().recommendations : [];
-    // Drop recommendations whose product was deleted in the meantime.
     const valid = list.filter(rec => window.WebBuilderProducts?.getById?.(rec.productId));
     if (valid.length !== list.length) { state.cartConfig.recommendations = valid; list = valid; }
     const products = window.WebBuilderProducts?.getAll?.() || [];
@@ -132,9 +127,6 @@
     const listEl = document.getElementById("cart-milestone-list");
     if (!listEl) return;
     const milestones = Array.isArray(cart.getConfig()?.milestones) ? cart.getConfig().milestones : [];
-    // Der Extra-Rabatt ist konfigurierbar (cartConfig.milestoneDiscountPercent),
-    // deshalb zeigt die Option den aktuellen Wert statt eines fest
-    // verdrahteten "(10%)".
     const milestoneDiscountPercent = Number(cart.getConfig()?.milestoneDiscountPercent);
     const discountOptionLabel = `Extra-Rabatt (${Number.isFinite(milestoneDiscountPercent) ? milestoneDiscountPercent : 10}%)`;
     listEl.innerHTML = milestones.length ? "" : '<p class="help-text">Noch keine Meilensteine.</p>';
@@ -163,11 +155,6 @@
       if (m) {
         window.WebBuilderHistory?.arm();
         m.amount = parseFloat(e.target.value) || 0;
-        // Gegenrichtung von cart.syncFreeShippingMilestone(): wird der
-        // Betrag eines "free-shipping"-Meilensteins hier bearbeitet, zieht
-        // das Freibetrag-Feld in der Kosten-Übersicht mit. Analog für
-        // einen "discount"-Meilenstein und
-        // cartConfig.milestoneDiscountThreshold.
         if (m.action === "free-shipping") state.cartConfig.shippingFreeThreshold = m.amount;
         else if (m.action === "discount") state.cartConfig.milestoneDiscountThreshold = m.amount;
         window.WebBuilderHistory?.commit();
@@ -187,17 +174,9 @@
       if (m) {
         window.WebBuilderHistory?.arm();
         m.action = e.target.value;
-        // Wird dieser Meilenstein gerade zum free-shipping-/discount-
-        // Meilenstein, übernimmt das passende Ziel-Feld sofort seinen
-        // aktuellen Betrag (passend zum Betrags-Sync oben).
         if (m.action === "free-shipping") state.cartConfig.shippingFreeThreshold = m.amount;
         else if (m.action === "discount") state.cartConfig.milestoneDiscountThreshold = m.amount;
         window.WebBuilderHistory?.commit();
-        // Ein neu zugewiesenes "free-product"-Milestone kann dazu führen,
-        // dass das Gratis-Produkt-Eingabefeld im Kosten-Übersicht-Panel
-        // jetzt sichtbar werden muss (bzw. ein entferntes Milestone es
-        // wieder verstecken muss) — siehe shop/cart-editor.js
-        // renderFocusPartPanel().
         window.WebBuilderCartFocus?.renderPartPanel?.();
         refreshCartViews();
       }
@@ -224,92 +203,6 @@
   }
 
   // ------------------------------------------------------------------
-  // Product segments
-  // ------------------------------------------------------------------
-
-  function renderSegmentList() {
-    const listEl = document.getElementById("cart-segment-list");
-    if (!listEl) return;
-    const segments = Array.isArray(cart.getConfig()?.segments) ? cart.getConfig().segments : [];
-    listEl.innerHTML = segments.length ? "" : '<p class="help-text">Noch keine Segmente.</p>';
-    segments.forEach(segment => {
-      const row = document.createElement("div");
-      row.className = "item-row";
-      row.innerHTML = `<span class="item-row-text">${esc(segment.name)} (${(segment.productIds || []).length})</span><button type="button" class="btn btn-secondary btn-sm segment-edit-btn" data-seg-id="${esc(segment.id)}">✏️ Bearbeiten</button><button type="button" class="item-delete segment-delete-btn" data-seg-id="${esc(segment.id)}">✕</button>`;
-      listEl.appendChild(row);
-    });
-  }
-
-  // The "Markierungswerkzeug": a checklist of every product, pre-checked
-  // for whichever ones already belong to this segment, plus name and
-  // divider toggle. Reuses window.WebBuilderModals (same generic modal
-  // every other picker in this file uses) instead of a bespoke dialog.
-  function openSegmentModal(segmentId = null) {
-    const config = cart.getConfig() || {};
-    const existing = segmentId ? (config.segments || []).find(s => s.id === segmentId) : null;
-    const products = window.WebBuilderProducts?.getAll?.() || [];
-    const checkedIds = new Set(existing?.productIds || []);
-    const rowsHtml = products.length
-      ? products.map(p => `<label class="checkbox-row"><input type="checkbox" class="segment-product-check" value="${esc(p.id)}" ${checkedIds.has(p.id) ? "checked" : ""}> ${esc(p.icon || "📦")} ${esc(p.name)}</label>`).join("")
-      : '<p class="help-text">Noch keine Produkte vorhanden — lege zuerst im Tab „📦 Produkte“ ein Produkt an.</p>';
-    const bodyHtml = `
-      <div class="modal-stack">
-        <div class="form-group"><label for="segment-name-input">Name</label><input type="text" id="segment-name-input" value="${esc(existing?.name || "")}" placeholder="z. B. Zubehör"></div>
-        <label class="checkbox-row"><input type="checkbox" id="segment-divider-toggle" ${!existing || existing.showDivider ? "checked" : ""}> Trennlinie unterhalb anzeigen</label>
-        <hr class="divider modal-divider-tight">
-        <p class="help-text" style="margin:0 0 4px;">Produkte für dieses Segment auswählen:</p>
-        ${rowsHtml}
-      </div>
-    `;
-    const footerHtml = `<button type="button" class="btn btn-primary" id="segment-save-btn">Speichern</button>`;
-    window.WebBuilderModals?.open?.(existing ? "Segment bearbeiten" : "Segment erstellen", bodyHtml, footerHtml);
-    document.getElementById("segment-save-btn")?.addEventListener("click", () => {
-      const name = document.getElementById("segment-name-input")?.value.trim() || "Neues Segment";
-      const showDivider = !!document.getElementById("segment-divider-toggle")?.checked;
-      const productIds = Array.from(document.querySelectorAll(".segment-product-check:checked")).map(cb => cb.value);
-      if (existing) cart.updateSegment(existing.id, { name, productIds, showDivider });
-      else cart.addSegment({ name, productIds, showDivider });
-      renderSegmentList();
-      refreshCartViews();
-      window.WebBuilderModals?.close?.();
-    }, { once: true });
-  }
-
-  function bindSegmentControls() {
-    const addBtn = document.getElementById("btn-add-segment");
-    if (addBtn && addBtn.dataset.webBuilderSegBound !== "true") {
-      addBtn.dataset.webBuilderSegBound = "true";
-      addBtn.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); openSegmentModal(null); }, true);
-    }
-    const listEl = document.getElementById("cart-segment-list");
-    if (listEl && listEl.dataset.webBuilderSegBound !== "true") {
-      listEl.dataset.webBuilderSegBound = "true";
-      listEl.addEventListener("click", e => {
-        const editBtn = e.target.closest?.(".segment-edit-btn");
-        if (editBtn) { e.preventDefault(); e.stopImmediatePropagation(); openSegmentModal(editBtn.dataset.segId); return; }
-        const delBtn = e.target.closest?.(".segment-delete-btn");
-        if (delBtn) {
-          e.preventDefault(); e.stopImmediatePropagation();
-          cart.removeSegment(delBtn.dataset.segId);
-          renderSegmentList();
-          refreshCartViews();
-        }
-      }, true);
-    }
-    const heightInput = document.getElementById("cart-items-max-height");
-    if (heightInput && heightInput.dataset.webBuilderSegBound !== "true") {
-      heightInput.dataset.webBuilderSegBound = "true";
-      heightInput.addEventListener("change", e => {
-        const raw = e.target.value;
-        const v = raw === "" ? null : Math.max(80, Number(raw) || 0);
-        window.WebBuilderHistory?.arm(); cart.setConfig({ itemsListMaxHeight: v }, false); window.WebBuilderHistory?.commit();
-        refreshCartViews();
-      }, true);
-    }
-    renderSegmentList();
-  }
-
-  // ------------------------------------------------------------------
   // Base toggles (discount/recommend/progress) + master render
   // ------------------------------------------------------------------
 
@@ -317,9 +210,6 @@
     const c = cart.getConfig() || {};
     const ids = [["cart-discount-toggle", c.discountEnabled], ["cart-recommend-toggle", c.recommendEnabled], ["cart-progress-toggle", c.progressEnabled]];
     ids.forEach(([id, v]) => { const e = document.getElementById(id); if (e) e.checked = !!v; });
-    const heightInput = document.getElementById("cart-items-max-height");
-    if (heightInput && document.activeElement !== heightInput) heightInput.value = c.itemsListMaxHeight != null ? c.itemsListMaxHeight : "";
-    renderSegmentList();
     if (state.cartFocusMode) {
       window.WebBuilderCartFocus?.renderStage?.();
       window.WebBuilderCartFocus?.renderPartPanel?.();
@@ -331,7 +221,6 @@
     Object.entries(map).forEach(([id, p]) => document.getElementById(id)?.addEventListener("change", e => { window.WebBuilderHistory?.arm(); cart.setConfig({ [p]: e.target.checked }, false); window.WebBuilderHistory?.commit(); renderConfig(); refreshCartViews(); }, true));
     bindAddRecommendation();
     bindAddMilestone();
-    bindSegmentControls();
     renderConfig();
     renderRecommendList();
     renderMilestoneList();
@@ -339,5 +228,5 @@
   }
   document.addEventListener("DOMContentLoaded", () => setTimeout(bindSidebar, 0));
 
-  window.WebBuilderCartConfigRuntime = { render: renderConfig, renderRecommendList, renderMilestoneList, renderSegmentList };
+  window.WebBuilderCartConfigRuntime = { render: renderConfig, renderRecommendList, renderMilestoneList };
 })();
