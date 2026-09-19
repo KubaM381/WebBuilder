@@ -202,28 +202,6 @@
         <button type="button" id="btn-open-cart" class="btn btn-secondary" style="width:100%;">🛒 Vorschau öffnen</button>
       </div>
 
-      <div class="section-title">Artikel-Darstellung</div>
-      <div class="sidebar-subsection">
-        <p class="help-text" style="margin-bottom:8px;">Form, Hintergrund und Größe der Artikel im Warenkorb. Öffnet den Editor und wählt die Artikel-Darstellung — dort lässt sie sich auch direkt an der Ecke ziehen, um sie größer/kleiner zu machen.</p>
-        <button type="button" id="btn-select-item-representation" class="btn btn-secondary" style="width:100%;">🖼️ Artikel-Darstellung bearbeiten</button>
-      </div>
-
-      <div class="section-title">Artikelliste</div>
-      <div class="sidebar-subsection">
-        <p class="help-text" style="margin-bottom:8px;">Die Artikelliste hat eine feste Höhe und bekommt bei Bedarf ihren eigenen Scrollbalken — so bleiben Rabattfeld, Empfehlung und Kosten-Übersicht immer an derselben Stelle, egal wie viele Artikel im Warenkorb liegen.</p>
-        <div class="form-group">
-          <label for="cart-items-max-height">Höhe der Artikelliste (px, leer = Standard)</label>
-          <input type="number" id="cart-items-max-height" min="80" step="10" placeholder="Standard">
-        </div>
-      </div>
-
-      <div class="section-title">Produkt-Segmente</div>
-      <div class="sidebar-subsection">
-        <p class="help-text" style="margin-bottom:8px;">Gruppiere bestimmte Produkte im Warenkorb zu einem Segment (z. B. „Zubehör“) und trenne sie optional mit einer Linie von den übrigen Artikeln ab.</p>
-        <div id="cart-segment-list" class="items-list"></div>
-        <button type="button" id="btn-add-segment" class="btn btn-secondary" style="width:100%;">+ Segment erstellen</button>
-      </div>
-
       <hr class="divider">
       <label class="checkbox-row"><input type="checkbox" id="cart-discount-toggle"> Rabattcode-Feld aktivieren</label>
       <p class="help-text" style="margin:-6px 0 0;">Farbe, Form &amp; Position im Warenkorb-Editor anpassbar — dort auf das Rabattfeld klicken.</p>
