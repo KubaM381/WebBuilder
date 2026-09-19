@@ -27,11 +27,9 @@
   }
 
   // Products-list ("Produkte" component) height bounds for the draggable
-  // resize handle (see cart-editor-drag.js). Expressed as an estimated
-  // per-item pixel height so the min/max map roughly to "N products
-  // visible" as requested, rather than an arbitrary pixel range —
-  // 320 / 5 = 64px matches the previous fixed height exactly, so the
-  // unchanged default (5 items) stays visually identical.
+  // resize handle (see cart-editor-drag.js). 320 / 5 = 64px matches the
+  // previous fixed height exactly, so the unchanged default (5 items)
+  // stays visually identical.
   const ITEMS_BOX_ITEM_HEIGHT = 64;
   const ITEMS_BOX_MIN_HEIGHT = ITEMS_BOX_ITEM_HEIGHT * 3;
   const ITEMS_BOX_MAX_HEIGHT = ITEMS_BOX_ITEM_HEIGHT * 8;
@@ -88,10 +86,8 @@
   // Simple scalar defaults applied to a saved (or brand-new) cartConfig
   // whenever the field is still unset. Dotted paths reach one level into
   // an already-guaranteed-to-exist nested object (itemDisplay). Anything
-  // that isn't a plain "still missing -> default" scalar — object/array
-  // existence guards, the cartTitleLabel placeholder migration, delegated
-  // normalizeXxx() calls — is NOT in this table and is applied separately
-  // in normalizeState() below.
+  // that isn't a plain "still missing -> default" scalar is applied
+  // separately in normalizeState() below.
   const CONFIG_DEFAULTS = {
     "itemDisplay.quantityGroupShape": "rounded",
     "itemDisplay.quantityButtonColor": "black",
@@ -139,15 +135,20 @@
     if (!config.componentLayout || typeof config.componentLayout !== "object") config.componentLayout = {};
     delete config.itemDisplay.itemDividerMode;
     // No longer its own component — title/checkout flow like any other
-    // component in the cart body (see cart-html.js). Drop a value loaded
-    // from an older project instead of keeping it as a dead field.
+    // component in the cart body (see cart-html.js).
     delete config.footerBackgroundColor;
 
     applyConfigDefaults(config, CONFIG_DEFAULTS);
-    // Re-clamp on every normalize pass (not just when applying the
-    // default) so a value loaded from an older project, or a future
-    // lowering of the bounds, always ends up valid.
+    // Re-clamp on every normalize pass so a value loaded from an older
+    // project always ends up valid.
     config.itemsBoxHeight = clampItemsBoxHeight(config.itemsBoxHeight);
+
+    // Independent on/off switch for shipping in the cost overview. A
+    // project saved before this switch existed inherits whatever the
+    // progress bar's enabled state was (that used to gate shipping), so
+    // nothing visually changes on load — from here on the two are
+    // unrelated and each has its own toggle.
+    if (config.shippingEnabled == null) config.shippingEnabled = !!config.progressEnabled;
 
     // {anzahl} can sit anywhere in the title text (see cart-html.js
     // buildTitleHtml()). A title saved before this placeholder existed is
@@ -158,7 +159,7 @@
       config.cartTitleLabel = `${config.cartTitleLabel} (${TITLE_COUNT_PLACEHOLDER})`;
     }
 
-    wc.normalizeDividersState(config);
+    wc.normalizeDividerAfterConfig(config);
 
     if (!config.recommendDisplay || typeof config.recommendDisplay !== "object") config.recommendDisplay = {};
     if (!config.recommendDisplay.layout || typeof config.recommendDisplay.layout !== "object") config.recommendDisplay.layout = {};
