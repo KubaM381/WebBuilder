@@ -146,16 +146,27 @@
   // don't belong to a segment follow at the end in their original order.
   // Each non-empty segment is wrapped in a plain <div data-segment-id="...">
   // (no styling of its own) and optionally followed by a static divider
-  // line (segment.showDivider). Separate from cartConfig.itemDisplay's
-  // showItemDividers below — a segment divider is static and always sits
-  // right after its segment's items, while showItemDividers renders a
-  // single divider once, after the last product in the whole list.
+  // line (segment.showDivider) — unrelated to itemDisplay.showItemDividers
+  // below.
+  //
+  // itemDisplay.itemDividerMode ("last" default | "all") picks whether
+  // the configurable divider (showItemDividers) appears once below the
+  // last product, or after every product.
   function buildItemsHtml(items, isDemo, interactive, config) {
     if (!items.length) return '<p class="cart-empty-msg">Dein Warenkorb ist leer.</p>';
-    const showItemDividers = config.itemShape === "transparent" && !!(config.itemDisplay || {}).showItemDividers;
+    const disp = config.itemDisplay || {};
+    const dividersEnabled = config.itemShape === "transparent" && !!disp.showItemDividers;
+    const dividerAfterEach = dividersEnabled && disp.itemDividerMode === "all";
+    const dividerAfterLastOnly = dividersEnabled && !dividerAfterEach;
+
     function renderRun(runItems) {
-      return runItems.map(item => buildCartItemHTML(item, isDemo, interactive)).join("");
+      return runItems.map((item, idx) => {
+        const html = buildCartItemHTML(item, isDemo, interactive);
+        const isLastOfRun = idx === runItems.length - 1;
+        return (dividerAfterEach && !isLastOfRun) ? html + '<div class="cart-item-divider"></div>' : html;
+      }).join("");
     }
+
     const segments = Array.isArray(config.segments) ? config.segments.filter(s => (s.productIds || []).length) : [];
     let html;
     if (!segments.length) {
@@ -176,7 +187,7 @@
       });
       html += renderRun(remaining);
     }
-    if (showItemDividers) html += '<div class="cart-item-divider"></div>';
+    if (dividerAfterLastOnly) html += '<div class="cart-item-divider"></div>';
     return html;
   }
 
