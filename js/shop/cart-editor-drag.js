@@ -2,8 +2,8 @@
 // WebBuilder cart focus editor — pointer-drag interaction.
 // Owns every pointer-event drag on the cart editor stage: dragging a
 // top-level component (progress/discount/recommend/checkout/totals/
-// title/divider) and dragging a cart-item or recommend-card sub-part
-// (icon/qty/price/remove/description). Does NOT own the stage's
+// title/items/divider) and dragging a cart-item or recommend-card
+// sub-part (icon/qty/price/remove/description). Does NOT own the stage's
 // selection state or its layout data model — both live in
 // cart-editor-stage.js and are reached here only through
 // window.WebBuilderCartFocus at runtime.
@@ -31,6 +31,94 @@
     container.dataset.webBuilderPartsBound = "true";
     container.addEventListener("pointerdown", e => {
       if (!state.cartFocusMode) return;
+
+      // Part-level target (cart-item sub-parts: icon/qty/price/remove/
+      // description; recommend-card sub-parts) is checked BEFORE the
+      // component check below — parts now sit nested inside the "items"
+      // and "recommend" components (see cart-html.js wrapComponent()), so
+      // without this priority a click on e.g. the quantity stepper would
+      // resolve to the outer component instead of the more specific part.
+      const partEl = e.target.closest?.("[data-cart-part]");
+      if (partEl) {
+        const partKey = partEl.dataset.cartPart;
+        e.preventDefault(); e.stopPropagation();
+        focus().selectLight?.(partKey);
+        const origin = focus().getPartLayout?.(partKey) || { x: 0, y: 0 };
+        const startX = e.clientX, startY = e.clientY;
+        let moved = false;
+        let guides = null;
+
+        // Bounds relative to the parent box (.cart-item for cart-item
+        // sub-parts, .cart-recommend-card for recommendation-card
+        // sub-parts — both handled the same way, see
+        // cart-editor-stage.js's resolveLayoutMap()).
+        const parentEl = partEl.closest(".cart-item") || partEl.closest(".cart-recommend-card");
+        let bounds = null;
+        let naturalLeft = null, naturalTop = null;
+        if (parentEl) {
+          const parentRect = parentEl.getBoundingClientRect();
+          const partRect = partEl.getBoundingClientRect();
+          naturalLeft = partRect.left - (origin.x || 0);
+          naturalTop = partRect.top - (origin.y || 0);
+          const rawMinX = parentRect.left - naturalLeft;
+          const rawMaxX = parentRect.right - partRect.width - naturalLeft;
+          const rawMinY = parentRect.top - naturalTop;
+          const rawMaxY = parentRect.bottom - partRect.height - naturalTop;
+          bounds = {
+            minX: Math.min(rawMinX, rawMaxX), maxX: Math.max(rawMinX, rawMaxX),
+            minY: Math.min(rawMinY, rawMaxY), maxY: Math.max(rawMinY, rawMaxY)
+          };
+        }
+
+        try { partEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+        function onMove(moveEvent) {
+          const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
+          if (!moved && Math.hypot(dx, dy) < 3) return;
+          if (!moved) {
+            moved = true;
+            if (parentEl && window.WebBuilderAlignment?.createGuideLayer) {
+              guides = window.WebBuilderAlignment.createGuideLayer(parentEl);
+            }
+          }
+          let nextX = origin.x + dx, nextY = origin.y + dy;
+          if (bounds) {
+            nextX = Math.min(bounds.maxX, Math.max(bounds.minX, nextX));
+            nextY = Math.min(bounds.maxY, Math.max(bounds.minY, nextY));
+          }
+
+          if (guides && parentEl && naturalLeft != null && window.WebBuilderAlignment?.collectSnapTargets) {
+            const parentRect = parentEl.getBoundingClientRect();
+            const partRect = partEl.getBoundingClientRect();
+            const localX = (naturalLeft - parentRect.left) + nextX;
+            const localY = (naturalTop - parentRect.top) + nextY;
+            const targets = window.WebBuilderAlignment.collectSnapTargets(parentEl, partEl, "[data-cart-part]", 1);
+            const snapped = window.WebBuilderAlignment.snapPosition(localX, localY, partRect.width, partRect.height, targets, 1);
+            nextX += (snapped.x - localX);
+            nextY += (snapped.y - localY);
+            window.WebBuilderAlignment.updateGuideVisibility(guides, snapped.guideX, snapped.guideY);
+          }
+
+          partEl.style.transform = `translate(${nextX}px, ${nextY}px)`;
+          focus().setPartLayoutSilent?.(partKey, nextX, nextY);
+        }
+        function onUp() {
+          partEl.removeEventListener("pointermove", onMove);
+          partEl.removeEventListener("pointerup", onUp);
+          partEl.removeEventListener("pointercancel", onUp);
+          try { partEl.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+          if (guides) { window.WebBuilderAlignment?.removeGuideLayer?.(guides); guides = null; }
+          if (moved) {
+            window.WebBuilderHistory?.commit();
+            const { layout } = focus().resolveLayoutMap?.(partKey) || {};
+            notify("cart", "part-layout", layout);
+          }
+        }
+        window.WebBuilderHistory?.arm();
+        partEl.addEventListener("pointermove", onMove);
+        partEl.addEventListener("pointerup", onUp);
+        partEl.addEventListener("pointercancel", onUp);
+        return;
+      }
 
       const compEl = e.target.closest?.("[data-cart-component]");
       if (compEl) {
@@ -120,88 +208,6 @@
         compEl.addEventListener("pointermove", onMove);
         compEl.addEventListener("pointerup", onUp);
         compEl.addEventListener("pointercancel", onUp);
-        return;
-      }
-
-      const partEl = e.target.closest?.("[data-cart-part]");
-      if (partEl) {
-        const partKey = partEl.dataset.cartPart;
-        e.preventDefault(); e.stopPropagation();
-        focus().selectLight?.(partKey);
-        const origin = focus().getPartLayout?.(partKey) || { x: 0, y: 0 };
-        const startX = e.clientX, startY = e.clientY;
-        let moved = false;
-        let guides = null;
-
-        // Bounds relative to the parent box (.cart-item for cart-item
-        // sub-parts, .cart-recommend-card for recommendation-card
-        // sub-parts — both handled the same way, see
-        // cart-editor-stage.js's resolveLayoutMap()).
-        const parentEl = partEl.closest(".cart-item") || partEl.closest(".cart-recommend-card");
-        let bounds = null;
-        let naturalLeft = null, naturalTop = null;
-        if (parentEl) {
-          const parentRect = parentEl.getBoundingClientRect();
-          const partRect = partEl.getBoundingClientRect();
-          naturalLeft = partRect.left - (origin.x || 0);
-          naturalTop = partRect.top - (origin.y || 0);
-          const rawMinX = parentRect.left - naturalLeft;
-          const rawMaxX = parentRect.right - partRect.width - naturalLeft;
-          const rawMinY = parentRect.top - naturalTop;
-          const rawMaxY = parentRect.bottom - partRect.height - naturalTop;
-          bounds = {
-            minX: Math.min(rawMinX, rawMaxX), maxX: Math.max(rawMinX, rawMaxX),
-            minY: Math.min(rawMinY, rawMaxY), maxY: Math.max(rawMinY, rawMaxY)
-          };
-        }
-
-        try { partEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-        function onMove(moveEvent) {
-          const dx = moveEvent.clientX - startX, dy = moveEvent.clientY - startY;
-          if (!moved && Math.hypot(dx, dy) < 3) return;
-          if (!moved) {
-            moved = true;
-            if (parentEl && window.WebBuilderAlignment?.createGuideLayer) {
-              guides = window.WebBuilderAlignment.createGuideLayer(parentEl);
-            }
-          }
-          let nextX = origin.x + dx, nextY = origin.y + dy;
-          if (bounds) {
-            nextX = Math.min(bounds.maxX, Math.max(bounds.minX, nextX));
-            nextY = Math.min(bounds.maxY, Math.max(bounds.minY, nextY));
-          }
-
-          if (guides && parentEl && naturalLeft != null && window.WebBuilderAlignment?.collectSnapTargets) {
-            const parentRect = parentEl.getBoundingClientRect();
-            const partRect = partEl.getBoundingClientRect();
-            const localX = (naturalLeft - parentRect.left) + nextX;
-            const localY = (naturalTop - parentRect.top) + nextY;
-            const targets = window.WebBuilderAlignment.collectSnapTargets(parentEl, partEl, "[data-cart-part]", 1);
-            const snapped = window.WebBuilderAlignment.snapPosition(localX, localY, partRect.width, partRect.height, targets, 1);
-            nextX += (snapped.x - localX);
-            nextY += (snapped.y - localY);
-            window.WebBuilderAlignment.updateGuideVisibility(guides, snapped.guideX, snapped.guideY);
-          }
-
-          partEl.style.transform = `translate(${nextX}px, ${nextY}px)`;
-          focus().setPartLayoutSilent?.(partKey, nextX, nextY);
-        }
-        function onUp() {
-          partEl.removeEventListener("pointermove", onMove);
-          partEl.removeEventListener("pointerup", onUp);
-          partEl.removeEventListener("pointercancel", onUp);
-          try { partEl.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-          if (guides) { window.WebBuilderAlignment?.removeGuideLayer?.(guides); guides = null; }
-          if (moved) {
-            window.WebBuilderHistory?.commit();
-            const { layout } = focus().resolveLayoutMap?.(partKey) || {};
-            notify("cart", "part-layout", layout);
-          }
-        }
-        window.WebBuilderHistory?.arm();
-        partEl.addEventListener("pointermove", onMove);
-        partEl.addEventListener("pointerup", onUp);
-        partEl.addEventListener("pointercancel", onUp);
         return;
       }
 
