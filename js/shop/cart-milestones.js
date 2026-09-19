@@ -1,8 +1,8 @@
 // js/shop/cart-milestones.js
-// Cart progress-bar milestones, product segments, and freely placeable
-// dividers — grouped together since all three are repeatable,
-// user-managed lists under cartConfig with the same add/remove shape.
-// Contributes to window.WebBuilderCart.
+// Cart progress-bar milestones and freely placeable dividers — grouped
+// together since both are repeatable, user-managed lists under
+// cartConfig with the same add/remove shape. Contributes to
+// window.WebBuilderCart.
 (() => {
   const state = window.WebBuilderState;
   if (!state) { console.error("WebBuilderCart: WebBuilderState is not available."); return; }
@@ -39,11 +39,6 @@
     notify("cart", "milestones", state.cartConfig.milestones);
   }
 
-  // Keeps a "free-shipping" milestone's amount and
-  // cartConfig.shippingFreeThreshold in sync (called from the shipping
-  // fields in cart-editor-bindings.js). Reverse direction (editing the
-  // milestone directly) lives in cart-sidebar.js. Returns false if no
-  // such milestone exists — the threshold still applies on its own.
   function syncFreeShippingMilestone(amount, recordHistory = true) {
     const milestone = (state.cartConfig.milestones || []).find(m => m.action === "free-shipping");
     if (!milestone) return false;
@@ -54,8 +49,6 @@
     return true;
   }
 
-  // Same as syncFreeShippingMilestone(), for a "discount" milestone and
-  // cartConfig.milestoneDiscountThreshold.
   function syncDiscountMilestone(amount, recordHistory = true) {
     const milestone = (state.cartConfig.milestones || []).find(m => m.action === "discount");
     if (!milestone) return false;
@@ -64,51 +57,6 @@
     if (recordHistory) window.WebBuilderHistory?.commit();
     notify("cart", "milestones", state.cartConfig.milestones);
     return true;
-  }
-
-  // ------------------------------------------------------------------
-  // Product segments
-  // ------------------------------------------------------------------
-
-  function normalizeSegment(entry = {}) {
-    return {
-      id: entry.id || `seg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      name: entry.name || "Neues Segment",
-      productIds: Array.isArray(entry.productIds) ? entry.productIds.filter(Boolean) : [],
-      showDivider: entry.showDivider !== false
-    };
-  }
-  function normalizeSegments(list) {
-    return window.WebBuilderUtils.normalizeInPlace(Array.isArray(list) ? list : [], normalizeSegment);
-  }
-
-  function addSegment(patch = {}) {
-    window.WebBuilderHistory?.arm();
-    if (!Array.isArray(state.cartConfig.segments)) state.cartConfig.segments = [];
-    const segment = normalizeSegment(patch);
-    state.cartConfig.segments.push(segment);
-    window.WebBuilderHistory?.commit();
-    notify("cart", "segments", state.cartConfig.segments);
-    return segment;
-  }
-
-  function updateSegment(segmentId, patch = {}, recordHistory = true) {
-    const segment = (state.cartConfig.segments || []).find(s => s.id === segmentId);
-    if (!segment) return null;
-    if (recordHistory) window.WebBuilderHistory?.arm();
-    if (patch.name !== undefined) segment.name = patch.name || "Neues Segment";
-    if (patch.productIds !== undefined) segment.productIds = Array.isArray(patch.productIds) ? patch.productIds.filter(Boolean) : [];
-    if (patch.showDivider !== undefined) segment.showDivider = !!patch.showDivider;
-    if (recordHistory) window.WebBuilderHistory?.commit();
-    notify("cart", "segments", state.cartConfig.segments);
-    return segment;
-  }
-
-  function removeSegment(segmentId) {
-    window.WebBuilderHistory?.arm();
-    state.cartConfig.segments = (state.cartConfig.segments || []).filter(s => s.id !== segmentId);
-    window.WebBuilderHistory?.commit();
-    notify("cart", "segments", state.cartConfig.segments);
   }
 
   // ------------------------------------------------------------------
@@ -121,8 +69,7 @@
 
   // Normalizes cartConfig.dividers and migrates the old single
   // "totalsDividerEnabled" flag (pre-repeatable-dividers) into a real
-  // divider entry, carrying over its stored position. Requires
-  // config.componentLayout to already exist.
+  // divider entry, carrying over its stored position.
   function normalizeDividersState(config) {
     config.dividers = window.WebBuilderUtils.normalizeInPlace(Array.isArray(config.dividers) ? config.dividers : [], normalizeDivider);
     if (config.totalsDividerEnabled) {
@@ -155,7 +102,6 @@
 
   window.WebBuilderCart = Object.assign(window.WebBuilderCart || {}, {
     normalizeMilestonesConfig, addMilestone, removeMilestone, syncFreeShippingMilestone, syncDiscountMilestone,
-    normalizeSegment, normalizeSegments, addSegment, updateSegment, removeSegment,
     normalizeDivider, normalizeDividersState, addDivider, removeDivider
   });
 })();
