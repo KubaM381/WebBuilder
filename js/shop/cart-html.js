@@ -45,12 +45,12 @@
   }
 
   // Wraps a top-level cart block (title / divider / progress bar /
-  // discount field / recommendation card / totals / checkout button) in
-  // a positionable, selectable wrapper — same "only wrap when needed"
-  // rule as wrapLayoutPart() above: outside the editor (interactive=false),
-  // a block without a custom offset renders exactly as before (no extra
-  // DOM), so projects that never touch the cart editor see zero markup
-  // change.
+  // discount field / recommendation card / items list / totals /
+  // checkout button) in a positionable, selectable wrapper — same "only
+  // wrap when needed" rule as wrapLayoutPart() above: outside the editor
+  // (interactive=false), a block without a custom offset renders exactly
+  // as before (no extra DOM), so projects that never touch the cart
+  // editor see zero markup change.
   function wrapComponent(innerHtml, componentKey, interactive) {
     const layout = (cart.getConfig().componentLayout || {})[componentKey] || { x: 0, y: 0 };
     const hasOffset = !!(layout.x || layout.y);
@@ -151,7 +151,11 @@
     // recommendation, discount field, totals, checkout button) would
     // visibly shift up/down each time the cart's item count changes.
     const itemsInner = window.WebBuilderCartHtml.buildItemsHtml(items, isDemo, interactive);
-    const itemsPart = `<div class="cart-items-box">${itemsInner}</div><div class="cart-items-box-divider"></div>`;
+    const itemsBoxHtml = `<div class="cart-items-box">${itemsInner}</div><div class="cart-items-box-divider"></div>`;
+    // Wrapped as a normal component ("items") so the whole product list
+    // is selectable and freely movable in the cart editor, exactly like
+    // title/progress/discount/recommend/totals/checkout.
+    const itemsPart = wrapComponent(itemsBoxHtml, "items", interactive);
 
     let recommendPart = "";
     if (config.recommendEnabled) {
