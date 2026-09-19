@@ -117,22 +117,15 @@
               <option value="pill">Rund</option>
             </select>
           </div>
+          <div class="hidden" id="cart-item-divider-group">
+            <label class="checkbox-row"><input type="checkbox" id="cid-show-item-dividers"> Trennlinien zwischen Produkten</label>
+          </div>
           <div class="form-group"><label for="cart-item-bg-color">Hintergrundfarbe</label><input type="color" id="cart-item-bg-color"></div>
           <div class="form-group"><label for="cart-item-width">Breite (px, leer = automatisch)</label><input type="number" id="cart-item-width" min="120" step="1" placeholder="automatisch"></div>
           <div class="form-group"><label for="cart-item-height">Mindesthöhe (px, leer = automatisch)</label><input type="number" id="cart-item-height" min="30" step="1" placeholder="automatisch"></div>
           <p class="help-text">Tipp: Im Editor kannst du die Artikel-Box auch direkt an der Ecke unten rechts ziehen, um die Größe anzupassen.</p>
           <hr class="divider modal-divider-tight">
           <label class="checkbox-row"><input type="checkbox" id="cid-show-description"> Produktbeschreibung anzeigen</label>
-          <div class="hidden" id="cart-item-divider-group">
-            <label class="checkbox-row"><input type="checkbox" id="cid-show-item-dividers"> Trennlinie zwischen Produkten anzeigen (nur bei „Durchsichtig“)</label>
-            <div class="form-group hidden" id="cart-item-divider-mode-group">
-              <label for="cid-item-divider-mode">Position der Trennlinie</label>
-              <select id="cid-item-divider-mode">
-                <option value="last">Nur unter dem letzten Produkt</option>
-                <option value="all">Nach jedem Produkt</option>
-              </select>
-            </div>
-          </div>
         </div>
 
         <div id="cart-comp-qty-fields" class="hidden">
