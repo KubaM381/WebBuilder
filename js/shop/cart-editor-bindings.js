@@ -18,11 +18,6 @@
   function bindFocusEditor() {
     document.getElementById("btn-cart-focus-editor")?.addEventListener("click", e => { e.preventDefault(); focus().enter?.(); }, true);
     document.getElementById("btn-cart-focus-exit")?.addEventListener("click", e => { e.preventDefault(); focus().exit?.(); }, true);
-    document.getElementById("btn-select-item-representation")?.addEventListener("click", e => {
-      e.preventDefault(); e.stopImmediatePropagation();
-      if (!state.cartFocusMode) focus().enter?.();
-      focus().select?.("component:itemRepresentation");
-    }, true);
 
     document.getElementById("cart-comp-title-label")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ cartTitleLabel: e.target.value.trim() || `Dein Warenkorb (${cart.TITLE_COUNT_PLACEHOLDER})` }, false); window.WebBuilderHistory?.commit();
@@ -160,24 +155,6 @@
       refreshCartViews();
     }, true);
 
-    document.getElementById("cart-item-shape")?.addEventListener("change", e => {
-      window.WebBuilderHistory?.arm(); cart.setConfig({ itemShape: e.target.value }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
-    document.getElementById("cart-item-bg-color")?.addEventListener("input", e => {
-      window.WebBuilderHistory?.arm(); cart.setConfig({ itemBackgroundColor: e.target.value }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
-    document.getElementById("cart-item-width")?.addEventListener("change", e => {
-      const v = e.target.value === "" ? null : Math.max(120, Number(e.target.value) || 0);
-      window.WebBuilderHistory?.arm(); cart.setConfig({ itemWidth: v }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
-    document.getElementById("cart-item-height")?.addEventListener("change", e => {
-      const v = e.target.value === "" ? null : Math.max(30, Number(e.target.value) || 0);
-      window.WebBuilderHistory?.arm(); cart.setConfig({ itemMinHeight: v }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
     document.getElementById("cart-remove-color")?.addEventListener("input", e => {
       window.WebBuilderHistory?.arm(); cart.setConfig({ removeButtonColor: e.target.value }, false); window.WebBuilderHistory?.commit();
       refreshCartViews();
@@ -204,15 +181,6 @@
     }, true);
     document.getElementById("cid-price-style")?.addEventListener("change", e => {
       window.WebBuilderHistory?.arm(); cart.setItemDisplay({ priceStyle: e.target.value }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
-    document.getElementById("cid-show-description")?.addEventListener("change", e => {
-      window.WebBuilderHistory?.arm(); cart.setItemDisplay({ showDescription: e.target.checked }, false); window.WebBuilderHistory?.commit();
-      refreshCartViews();
-    }, true);
-    document.getElementById("cid-show-item-dividers")?.addEventListener("change", e => {
-      window.WebBuilderHistory?.arm(); cart.setItemDisplay({ showItemDividers: e.target.checked }, false); window.WebBuilderHistory?.commit();
-      window.WebBuilderCartFocus?.renderPartPanel?.();
       refreshCartViews();
     }, true);
 
