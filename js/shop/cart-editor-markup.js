@@ -40,10 +40,6 @@
           <div class="form-group"><label for="cart-comp-discount-shape">Form</label>
             <select id="cart-comp-discount-shape"></select>
           </div>
-          <hr class="divider modal-divider-tight">
-          <div class="form-group"><label for="cart-comp-discount-percent">Extra-Rabatt bei Meilenstein (%)</label><input type="number" id="cart-comp-discount-percent" min="0" max="100" step="1" placeholder="10"></div>
-          <div class="form-group"><label for="cart-comp-discount-threshold">Rabatt ab Warenkorbwert (<span id="cart-discount-threshold-currency">€</span>)</label><input type="number" id="cart-comp-discount-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
-          <p class="help-text">Der Extra-Rabatt gilt, sobald entweder ein Meilenstein „Extra-Rabatt“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert. Er kommt zusätzlich zu einem eingelösten Rabattcode obendrauf.</p>
         </div>
 
         <div id="cart-comp-background-fields" class="hidden">
@@ -59,8 +55,15 @@
             </select>
           </div>
           <div class="form-group"><label for="cart-comp-subtotal-label">Label „Zwischensumme“</label><input type="text" id="cart-comp-subtotal-label" placeholder="Zwischensumme"></div>
-          <div class="form-group"><label for="cart-comp-discount-label">Label „Rabatt“</label><input type="text" id="cart-comp-discount-label" placeholder="Rabatt"></div>
           <div class="form-group"><label for="cart-comp-total-label">Label „Gesamt“</label><input type="text" id="cart-comp-total-label" placeholder="Gesamt"></div>
+
+          <div class="inspector-subcard">
+            <div class="inspector-subcard-title">💸 Rabatt</div>
+            <div class="form-group"><label for="cart-comp-discount-label">Label „Rabatt“</label><input type="text" id="cart-comp-discount-label" placeholder="Rabatt"></div>
+            <div class="form-group"><label for="cart-comp-discount-percent">Extra-Rabatt bei Meilenstein (%)</label><input type="number" id="cart-comp-discount-percent" min="0" max="100" step="1" placeholder="10"></div>
+            <div class="form-group"><label for="cart-comp-discount-threshold">Rabatt ab Warenkorbwert (<span id="cart-discount-threshold-currency">€</span>)</label><input type="number" id="cart-comp-discount-threshold" min="0" step="0.01" placeholder="kein automatisches Ziel"></div>
+            <p class="help-text">Der Extra-Rabatt gilt, sobald entweder ein Meilenstein „Extra-Rabatt“ erreicht ist oder der Warenkorbwert das oben eingestellte Ziel erreicht — beide Werte werden automatisch synchron gehalten, wenn ein solcher Meilenstein existiert. Er kommt zusätzlich zu einem eingelösten Rabattcode obendrauf.</p>
+          </div>
 
           <div class="inspector-subcard">
             <div class="inspector-subcard-title">🚚 Versand</div>
@@ -81,7 +84,7 @@
           <div class="form-group"><label for="cart-comp-progress-color">Balkenfarbe</label><input type="color" id="cart-comp-progress-color"></div>
           <div class="form-group"><label for="cart-comp-progress-complete-text">Text bei „alle Ziele erreicht“</label><input type="text" id="cart-comp-progress-complete-text" placeholder="✓ Alle Ziele freigeschaltet"></div>
           <p class="help-text" style="margin-top:-6px;">Wird angezeigt, sobald der höchste Meilenstein erreicht ist und dieser selbst kein eigenes „Text bei Erreichen“ gesetzt hat (siehe unten in der Meilenstein-Liste).</p>
-          <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel in der Kosten-Übersicht synchron, ein Meilenstein „Extra-Rabatt“ entsprechend mit dem Rabatt-Ziel im Rabattfeld-Panel:</p>
+          <p class="help-text">Meilensteine (das optionale Feld „Text bei Erreichen“ ersetzt die Standard-Erfolgsmeldung, sobald dieser Meilenstein der zuletzt erreichte ist). Ein Meilenstein mit Aktion „Kostenloser Versand“ hält sein Betrag-Feld automatisch mit dem Freibetrag-Ziel in der Kosten-Übersicht synchron, ein Meilenstein „Extra-Rabatt“ entsprechend mit dem Rabatt-Ziel im Rabatt-Bereich der Kosten-Übersicht:</p>
           <div class="mini-btn-row"><button type="button" id="btn-add-milestone" class="btn btn-secondary btn-sm" style="width:100%;">+ Meilenstein</button></div>
           <div id="cart-milestone-list" class="items-list"></div>
         </div>
