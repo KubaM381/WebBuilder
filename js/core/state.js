@@ -20,6 +20,14 @@ window.WebBuilderState = window.WebBuilderState || {
   cartItems: [],
   cartButtonLabel: "Zur Kasse gehen",
   cartConfig: {
+    // Individual item look ("Produkte" component, selectable via the
+    // cart editor stage — see cart-editor-panel.js "component:items").
+    // Applies to every single .cart-item row; the surrounding items box
+    // itself is positioned like any other component via componentLayout.
+    itemShape: "rounded",
+    itemBackgroundColor: "",
+    itemWidth: null,
+    itemMinHeight: null,
     cardBackgroundColor: "",
     removeButtonColor: "#ef4444",
     buttonColor: "#4f46e5",
@@ -106,10 +114,11 @@ window.WebBuilderState = window.WebBuilderState || {
   // js/shop/cart-editor-stage.js / cart-editor-panel.js). Either a
   // sub-part key ("icon"/"qty"/"price"/"remove"/"description"), a
   // component key prefixed with "component:" ("component:title"/
-  // "component:progress"/"component:discount"/"component:recommend"/
-  // "component:checkout"/"component:totals"/"component:background"/
-  // "component:divider:<id>"), or "previewHeader"/"previewFooter" for the
-  // cart editor's own preview bars.
+  // "component:items"/"component:progress"/"component:discount"/
+  // "component:recommend"/"component:checkout"/"component:totals"/
+  // "component:background"/"component:divider:<id>"), or
+  // "previewHeader"/"previewFooter" for the cart editor's own preview
+  // bars.
   cartFocusSelectedPart: null,
   background: {
     type: "solid",
