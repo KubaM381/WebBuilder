@@ -103,13 +103,13 @@ window.WebBuilderState = window.WebBuilderState || {
   cartFocusMode: false,
   // Which cart-item sub-part or top-level component is currently selected
   // for editing in the focus editor's right panel (see
-  // js/shop/cart-editor.js). Either a sub-part key
-  // ("icon"/"qty"/"price"/"remove"/"description"), a component key
-  // prefixed with "component:" ("component:progress"/"component:discount"/
-  // "component:recommend"/"component:checkout"/"component:totals"/
-  // "component:background"/"component:itemRepresentation"/
-  // "component:header"), or "previewHeader"/"previewFooter" for the cart
-  // editor's own preview bars.
+  // js/shop/cart-editor-stage.js / cart-editor-panel.js). Either a
+  // sub-part key ("icon"/"qty"/"price"/"remove"/"description"), a
+  // component key prefixed with "component:" ("component:title"/
+  // "component:progress"/"component:discount"/"component:recommend"/
+  // "component:checkout"/"component:totals"/"component:background"/
+  // "component:divider:<id>"), or "previewHeader"/"previewFooter" for the
+  // cart editor's own preview bars.
   cartFocusSelectedPart: null,
   background: {
     type: "solid",
