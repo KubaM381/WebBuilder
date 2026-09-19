@@ -13,13 +13,12 @@
   if (!state) { console.error("WebBuilderCartFocus: WebBuilderState is not available."); return; }
   const cart = window.WebBuilderCart;
   if (!cart) { console.error("WebBuilderCartFocus: WebBuilderCart is not available."); return; }
-  const focus = () => window.WebBuilderCartFocus || {};
 
   const PART_FIELD_BLOCK_IDS = [
     "cart-comp-title-fields", "cart-comp-items-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields",
     "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
-    "cart-comp-totals-fields", "cart-comp-divider-fields"
+    "cart-comp-totals-fields"
   ];
 
   function renderFocusPartPanel() {
@@ -41,10 +40,7 @@
       "component:totals": "Kosten-Übersicht", "component:title": "Warenkorb-Titel", "component:items": "Produkte"
     };
     const labelEl = document.getElementById("cart-part-label");
-    if (labelEl) {
-      const label = focus().isDividerKey?.(sel) ? "Trennlinie" : (labels[sel] || sel);
-      labelEl.textContent = label;
-    }
+    if (labelEl) labelEl.textContent = labels[sel] || sel;
 
     // Labels that would otherwise show a hardcoded "€" follow the
     // currently selected currency (cartConfig.currency, see
@@ -71,6 +67,8 @@
       if (widthInput && document.activeElement !== widthInput) widthInput.value = config.itemWidth != null ? config.itemWidth : "";
       const minHeightInput = document.getElementById("cart-comp-items-min-height");
       if (minHeightInput && document.activeElement !== minHeightInput) minHeightInput.value = config.itemMinHeight != null ? config.itemMinHeight : "";
+      const dividerInput = document.getElementById("cart-comp-items-divider-after");
+      if (dividerInput) dividerInput.checked = !!config.dividerAfter?.items;
     } else if (sel === "component:checkout") {
       document.getElementById("cart-comp-checkout-fields")?.classList.remove("hidden");
       const labelInput = document.getElementById("cart-comp-checkout-label");
@@ -79,14 +77,20 @@
       if (colorInput) colorInput.value = config.buttonColor || "#4f46e5";
       const shapeSel = document.getElementById("cart-comp-checkout-shape");
       if (shapeSel) shapeSel.value = config.buttonShape || "rounded";
+      const dividerInput = document.getElementById("cart-comp-checkout-divider-after");
+      if (dividerInput) dividerInput.checked = !!config.dividerAfter?.checkout;
     } else if (sel === "component:discount") {
       document.getElementById("cart-comp-discount-fields")?.classList.remove("hidden");
       const colorInput = document.getElementById("cart-comp-discount-color");
       if (colorInput) colorInput.value = config.discountButtonColor || "#4f46e5";
       const shapeSel = document.getElementById("cart-comp-discount-shape");
       if (shapeSel) shapeSel.value = config.discountButtonShape || "rounded";
+      const dividerInput = document.getElementById("cart-comp-discount-divider-after");
+      if (dividerInput) dividerInput.checked = !!config.dividerAfter?.discount;
     } else if (sel === "component:progress") {
       document.getElementById("cart-comp-progress-fields")?.classList.remove("hidden");
+      const dividerInput = document.getElementById("cart-comp-progress-divider-after");
+      if (dividerInput) dividerInput.checked = !!config.dividerAfter?.progress;
       const progressColorInput = document.getElementById("cart-comp-progress-color");
       if (progressColorInput) progressColorInput.value = config.progressBarColor || "#10b981";
       const completeTextInput = document.getElementById("cart-comp-progress-complete-text");
@@ -94,6 +98,8 @@
       window.WebBuilderCartConfigRuntime?.renderMilestoneList?.();
     } else if (sel === "component:recommend") {
       document.getElementById("cart-comp-recommend-fields")?.classList.remove("hidden");
+      const dividerInput = document.getElementById("cart-comp-recommend-divider-after");
+      if (dividerInput) dividerInput.checked = !!config.dividerAfter?.recommend;
       window.WebBuilderCartConfigRuntime?.renderRecommendList?.();
     } else if (sel === "component:background") {
       document.getElementById("cart-comp-background-fields")?.classList.remove("hidden");
@@ -101,6 +107,9 @@
       if (colorInput) colorInput.value = config.cardBackgroundColor || "#ffffff";
     } else if (sel === "component:totals") {
       document.getElementById("cart-comp-totals-fields")?.classList.remove("hidden");
+      const dividerInput = document.getElementById("cart-comp-totals-divider-after");
+      if (dividerInput) dividerInput.checked = !!config.dividerAfter?.totals;
+
       const currencySelect = document.getElementById("cart-comp-currency");
       if (currencySelect) {
         const currency = config.currency || {};
@@ -115,6 +124,9 @@
       const totalLabelInput = document.getElementById("cart-comp-total-label");
       if (totalLabelInput && document.activeElement !== totalLabelInput) totalLabelInput.value = config.totalLabel || "Gesamt";
 
+      // The extra-discount subcard only matters while the discount code
+      // field ("Rabattfeld") is enabled — nothing to configure otherwise.
+      document.getElementById("cart-comp-rabatt-subcard")?.classList.toggle("hidden", !config.discountEnabled);
       const discountInput = document.getElementById("cart-comp-discount-label");
       if (discountInput && document.activeElement !== discountInput) discountInput.value = config.discountLabel || "Rabatt";
       const percentInput = document.getElementById("cart-comp-discount-percent");
@@ -131,6 +143,10 @@
         const freeProductValueInput = document.getElementById("cart-comp-free-product-value");
         if (freeProductValueInput && document.activeElement !== freeProductValueInput) freeProductValueInput.value = config.freeProductValueText || "freigeschaltet";
       }
+
+      const shippingEnabledInput = document.getElementById("cart-comp-shipping-enabled");
+      if (shippingEnabledInput) shippingEnabledInput.checked = config.shippingEnabled !== false;
+      document.getElementById("cart-comp-shipping-fields-wrap")?.classList.toggle("hidden", !config.shippingEnabled);
       const shippingLabelInput = document.getElementById("cart-comp-shipping-label");
       if (shippingLabelInput && document.activeElement !== shippingLabelInput) shippingLabelInput.value = config.shippingLabel || "Versand";
       const shippingCostInput = document.getElementById("cart-comp-shipping-cost");
@@ -139,8 +155,6 @@
       if (shippingFreeInput && document.activeElement !== shippingFreeInput) shippingFreeInput.value = config.shippingFreeText || "Kostenlos";
       const shippingThresholdInput = document.getElementById("cart-comp-shipping-free-threshold");
       if (shippingThresholdInput && document.activeElement !== shippingThresholdInput) shippingThresholdInput.value = config.shippingFreeThreshold != null ? config.shippingFreeThreshold : "";
-    } else if (focus().isDividerKey?.(sel)) {
-      document.getElementById("cart-comp-divider-fields")?.classList.remove("hidden");
     } else if (sel === "qty") {
       document.getElementById("cart-comp-qty-fields")?.classList.remove("hidden");
       const qs = document.getElementById("cid-quantity-style"); if (qs) qs.value = config.itemDisplay.quantityStyle || "stepper";
