@@ -16,27 +16,41 @@
   // Sizes the products list so the whole cart fits inside its visible
   // viewport without the viewport itself needing to scroll — the
   // products area is what grows or shrinks to make room for whatever
-  // else is currently shown (progress bar, recommendation, discount
-  // field, ...). It only scrolls internally, once it has already shrunk
-  // to a single product's height and there still isn't room for all of
-  // them.
+  // else is currently shown. It only scrolls internally, once it has
+  // already shrunk to a single product's height and there still isn't
+  // room for all of them.
   //
   // `scrollHost` is the actual scrollable viewport (the drawer body for
   // the real drawer, `.canvas-container` for the editor stage);
   // `contentRoot` is the element whose full rendered content should fit
-  // inside it (the same element as scrollHost for the drawer, since the
-  // cart markup is injected directly into the drawer body).
-  function fitItemsBox(scrollHost, contentRoot) {
+  // inside it (the same element as scrollHost for the drawer; the
+  // `.cart-focus-card` for the editor).
+  function applyFit(scrollHost, contentRoot) {
     const box = contentRoot?.querySelector(".cart-items-box");
     if (!scrollHost || !contentRoot || !box) return;
+
+    // contentRoot can carry its own CSS min-height (`.cart-focus-card` in
+    // the editor, so a near-empty cart doesn't look tiny) — combined with
+    // its flex-direction:column layout, that min-height stretches the
+    // body below it too, which would make "how tall is everything besides
+    // the box" measure far more than the content actually needs.
+    // Neutralized here for the duration of the measurement only.
+    const prevMinHeight = contentRoot.style.minHeight;
+    contentRoot.style.minHeight = "0px";
+
     box.style.height = "auto";
+    box.style.overflowY = "hidden";
     const naturalHeight = box.scrollHeight;
+    const otherHeight = Math.max(0, contentRoot.scrollHeight - naturalHeight);
     const hostVisible = scrollHost.clientHeight;
-    if (!hostVisible) { box.style.height = naturalHeight + "px"; box.style.overflowY = "hidden"; return; }
-    const otherHeight = contentRoot.scrollHeight - naturalHeight;
     const hostRect = scrollHost.getBoundingClientRect();
     const contentRect = contentRoot.getBoundingClientRect();
-    const topOffset = (contentRect.top - hostRect.top) + scrollHost.scrollTop;
+    const topOffset = Math.max(0, (contentRect.top - hostRect.top) + scrollHost.scrollTop);
+
+    contentRoot.style.minHeight = prevMinHeight;
+
+    if (!hostVisible) { box.style.height = naturalHeight + "px"; return; }
+
     const bottomBreathingRoom = 12;
     const available = Math.max(0, hostVisible - topOffset - otherHeight - bottomBreathingRoom);
     const min = cart.ITEMS_BOX_ITEM_HEIGHT;
@@ -45,9 +59,17 @@
     box.style.overflowY = naturalHeight > desired + 1 ? "auto" : "hidden";
   }
 
-  // Re-fits both the real drawer and — if open — the editor stage.
-  // Used after a window resize, since either viewport's available height
-  // may have changed.
+  // Runs the fit twice: immediately (instant feedback) and once more on
+  // the next animation frame, to also catch any layout that only settles
+  // a frame later (e.g. a web font swapping in and changing text height).
+  function fitItemsBox(scrollHost, contentRoot) {
+    applyFit(scrollHost, contentRoot);
+    requestAnimationFrame(() => applyFit(scrollHost, contentRoot));
+  }
+
+  // Re-fits both the real drawer and — if open — the editor stage. Used
+  // after a window resize, since either viewport's available height may
+  // have changed.
   function refitAll() {
     const list = document.getElementById("cart-items-list");
     if (list) fitItemsBox(list, list);
