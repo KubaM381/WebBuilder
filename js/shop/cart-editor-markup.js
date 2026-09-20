@@ -17,6 +17,7 @@
 
       <div id="cart-part-editor" class="hidden">
         <div class="form-group"><label id="cart-part-label">Element</label></div>
+        <button type="button" id="btn-reset-part-position" class="btn btn-secondary btn-sm hidden" style="width:100%; margin-bottom:10px;">↺ Position zurücksetzen</button>
 
         <div id="cart-comp-title-fields" class="hidden">
           <div class="form-group">
@@ -125,6 +126,15 @@
           <p class="help-text">Empfehlungen (angezeigt wird die erste passende):</p>
           <div class="mini-btn-row"><button type="button" id="btn-add-recommendation" class="btn btn-secondary btn-sm" style="width:100%;">+ Empfehlung aus Produkten</button></div>
           <div id="cart-recommend-list" class="items-list"></div>
+        </div>
+
+        <div id="cart-comp-recommend-price-fields" class="hidden">
+          <div class="form-group"><label>Preisanzeige</label>
+            <select id="cid-recommend-price-style">
+              <option value="simple">Einfach</option>
+              <option value="strikethrough">Mit durchgestrichenem Originalpreis</option>
+            </select>
+          </div>
         </div>
 
         <div id="cart-comp-qty-fields" class="hidden">
