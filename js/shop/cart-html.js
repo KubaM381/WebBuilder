@@ -52,9 +52,10 @@
     return `<div class="cart-component-wrap${selectedClass}"${compAttr} style="transform:translate(${layout.x || 0}px, ${layout.y || 0}px);">${innerHtml}</div>`;
   }
 
-  // A fixed divider directly below a component — no longer freely
-  // positioned or individually selectable, just an on/off switch stored
+  // A fixed divider directly below a component — an on/off switch stored
   // per category in cartConfig.dividerAfter (see cart-milestones.js).
+  // This is the only source of a divider line under any component now —
+  // no component renders one unconditionally on its own.
   function dividerFragment(show) {
     return show ? '<div class="cart-divider"><span class="cart-divider-line"></span></div>' : "";
   }
@@ -136,20 +137,17 @@
       progressPart = wrapComponent(progressHtml, "progress", interactive) + dividerFragment(dividerAfter.progress);
     }
 
-    // The item list sits in a box whose height is user-configurable
-    // (cartConfig.itemsBoxHeight, dragged via the resize handle in the
-    // cart editor — see cart-editor-drag.js) so that adding/removing
-    // items never changes the box's own flow height — otherwise every
+    // The item list sits in a box with a fixed height (about 5 products
+    // — cart.ITEMS_BOX_DEFAULT_HEIGHT) so that adding/removing items
+    // never changes the box's own flow height — otherwise every
     // component positioned below it would visibly shift up/down each
-    // time the cart's item count changes. The box only scrolls while its
-    // content actually overflows that height (see cart-drawer.js /
-    // cart-editor-stage.js syncItemsBoxScroll()).
+    // time the cart's item count changes, and the checkout button could
+    // require scrolling to reach. The box only scrolls while its content
+    // actually exceeds that fixed height (see cart-drawer.js /
+    // cart-editor-stage.js syncItemsBoxScroll()); the height itself is
+    // no longer user-adjustable.
     const itemsInner = window.WebBuilderCartHtml.buildItemsHtml(items, isDemo, interactive);
-    const boxHeight = cart.clampItemsBoxHeight(config.itemsBoxHeight);
-    // Resize handle only rendered in the cart editor — the real
-    // drawer/preview always just uses the configured height.
-    const resizeHandleHtml = interactive ? `<div class="cart-items-resize-handle" title="Höhe ziehen (min. 3, max. 8 Produkte)"></div>` : "";
-    const itemsBoxHtml = `<div class="cart-items-box" style="height:${boxHeight}px;">${itemsInner}${resizeHandleHtml}</div><div class="cart-items-box-divider"></div>`;
+    const itemsBoxHtml = `<div class="cart-items-box" style="height:${cart.ITEMS_BOX_DEFAULT_HEIGHT}px;">${itemsInner}</div>`;
     const itemsPart = wrapComponent(itemsBoxHtml, "items", interactive) + dividerFragment(dividerAfter.items);
 
     let recommendPart = "";
