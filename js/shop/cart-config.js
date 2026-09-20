@@ -26,10 +26,11 @@
     return currency.position === "before" ? `${symbol}${amount}` : `${amount} ${symbol}`;
   }
 
-  // Products-list ("Produkte" component) is a fixed height, not
-  // user-resizable — sized to show about 5 products at once so the
-  // checkout button stays reachable in the real preview without
-  // scrolling the page. 320 = 64px per item × 5.
+  // Products-list ("Produkte" component) is a fixed minimum height, not
+  // user-resizable — the actual box height is computed dynamically at
+  // render time (see cart-drawer.js fitItemsBox()) to fill whatever room
+  // the rest of the cart leaves over. ITEMS_BOX_ITEM_HEIGHT is only used
+  // as that computation's absolute floor.
   const ITEMS_BOX_ITEM_HEIGHT = 64;
   const ITEMS_BOX_DEFAULT_HEIGHT = ITEMS_BOX_ITEM_HEIGHT * 5;
 
@@ -52,6 +53,18 @@
     if (recordHistory) window.WebBuilderHistory?.commit();
     notify("cart", "display", state.cartConfig.itemDisplay);
     return state.cartConfig.itemDisplay;
+  }
+
+  // Parallel to setItemDisplay(), but for the recommendation card's own
+  // display settings (currently just its price style — position offsets
+  // for its sub-parts live under recommendDisplay.layout instead, see
+  // cart-editor-stage.js resolveLayoutMap()).
+  function setRecommendDisplay(patch = {}, recordHistory = true) {
+    if (recordHistory) window.WebBuilderHistory?.arm();
+    state.cartConfig.recommendDisplay = Object.assign({}, state.cartConfig.recommendDisplay || {}, clone(patch));
+    if (recordHistory) window.WebBuilderHistory?.commit();
+    notify("cart", "recommend-display", state.cartConfig.recommendDisplay);
+    return state.cartConfig.recommendDisplay;
   }
 
   function setButtonLabel(label, recordHistory = true) {
@@ -79,12 +92,11 @@
 
   // Simple scalar defaults applied to a saved (or brand-new) cartConfig
   // whenever the field is still unset. Dotted paths reach one level into
-  // an already-guaranteed-to-exist nested object (itemDisplay). Anything
-  // that isn't a plain "still missing -> default" scalar is applied
-  // separately in normalizeState() below.
+  // an already-guaranteed-to-exist nested object.
   const CONFIG_DEFAULTS = {
     "itemDisplay.quantityGroupShape": "rounded",
     "itemDisplay.quantityButtonColor": "black",
+    "recommendDisplay.priceStyle": "simple",
     itemShape: "rounded",
     itemBackgroundColor: "",
     itemWidth: null,
@@ -127,13 +139,11 @@
     if (!config.itemDisplay.layout || typeof config.itemDisplay.layout !== "object") config.itemDisplay.layout = {};
     if (!config.componentLayout || typeof config.componentLayout !== "object") config.componentLayout = {};
     delete config.itemDisplay.itemDividerMode;
-    // No longer its own component — title/checkout flow like any other
-    // component in the cart body (see cart-html.js).
     delete config.footerBackgroundColor;
-    // Products box height is fixed now (no more drag-to-resize), so a
-    // stored value from an older project is dropped rather than kept
-    // as a dead field.
     delete config.itemsBoxHeight;
+
+    if (!config.recommendDisplay || typeof config.recommendDisplay !== "object") config.recommendDisplay = {};
+    if (!config.recommendDisplay.layout || typeof config.recommendDisplay.layout !== "object") config.recommendDisplay.layout = {};
 
     applyConfigDefaults(config, CONFIG_DEFAULTS);
 
@@ -155,9 +165,6 @@
 
     wc.normalizeDividerAfterConfig(config);
 
-    if (!config.recommendDisplay || typeof config.recommendDisplay !== "object") config.recommendDisplay = {};
-    if (!config.recommendDisplay.layout || typeof config.recommendDisplay.layout !== "object") config.recommendDisplay.layout = {};
-
     if (!config.currency || typeof config.currency !== "object") {
       config.currency = Object.assign({}, CURRENCY_PRESETS.eur);
     }
@@ -166,7 +173,7 @@
   }
 
   window.WebBuilderCart = Object.assign(window.WebBuilderCart || {}, {
-    getConfig, setConfig, setItemDisplay, setButtonLabel, applyDiscountCode,
+    getConfig, setConfig, setItemDisplay, setRecommendDisplay, setButtonLabel, applyDiscountCode,
     quantityColorHex, formatCurrency, CURRENCY_PRESETS, TITLE_COUNT_PLACEHOLDER,
     ITEMS_BOX_ITEM_HEIGHT, ITEMS_BOX_DEFAULT_HEIGHT,
     normalizeState
