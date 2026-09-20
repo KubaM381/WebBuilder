@@ -54,8 +54,6 @@
 
   // A fixed divider directly below a component — an on/off switch stored
   // per category in cartConfig.dividerAfter (see cart-milestones.js).
-  // This is the only source of a divider line under any component now —
-  // no component renders one unconditionally on its own.
   function dividerFragment(show) {
     return show ? '<div class="cart-divider"><span class="cart-divider-line"></span></div>' : "";
   }
@@ -97,6 +95,13 @@
   // component's optional divider (cartConfig.dividerAfter) is appended
   // directly onto that component's own part string, so it always renders
   // immediately below it wherever that part ends up.
+  //
+  // The products box (".cart-items-box") is deliberately given no
+  // explicit height here — it starts at the CSS fallback (320px, see
+  // css/modals.css) and is then measured/resized by
+  // window.WebBuilderCartRuntime.fitItemsBox() right after this HTML is
+  // mounted into the DOM, so it always takes exactly the space left over
+  // once every other visible block has claimed its own.
   function buildCartParts(items, opts = {}) {
     const interactive = !!opts.interactive;
     const isDemo = !!opts.isDemo;
@@ -111,43 +116,45 @@
 
     const titlePart = buildTitleHtml(count, interactive);
 
+    // Enabled-but-not-yet-configured (no milestones) still renders a
+    // selectable placeholder while interactive, exactly like the
+    // recommendation's dummy card below — otherwise there would be
+    // nothing on the stage to click to reach the milestone editor once
+    // the sidebar toggle is switched on.
     let progressPart = "";
-    if (config.progressEnabled && milestones.length) {
-      const max = Number(milestones[milestones.length - 1].amount || 1);
-      const pct = Math.min(100, subtotal / max * 100);
-      const next = milestones.find(m => subtotal < Number(m.amount));
-      const reachedNow = milestones.filter(m => subtotal >= Number(m.amount || 0));
-      const rewardsHtml = reachedNow.length ? `<div class="cart-milestone-rewards">${reachedNow.map(m => `<span class="cart-milestone-reward" title="${esc(m.label)}">${esc(m.icon || "🎉")}</span>`).join("")}</div>` : "";
-      const barColor = config.progressBarColor || "#10b981";
-      const highestReached = reachedNow[reachedNow.length - 1];
-      let progressMsg;
-      if (next) {
-        progressMsg = `Noch ${eur(Number(next.amount) - subtotal)} bis „${esc(next.label)}“`;
-      } else if (highestReached && highestReached.reachedText) {
-        progressMsg = esc(highestReached.reachedText);
+    if (config.progressEnabled && (milestones.length || interactive)) {
+      if (milestones.length) {
+        const max = Number(milestones[milestones.length - 1].amount || 1);
+        const pct = Math.min(100, subtotal / max * 100);
+        const next = milestones.find(m => subtotal < Number(m.amount));
+        const reachedNow = milestones.filter(m => subtotal >= Number(m.amount || 0));
+        const rewardsHtml = reachedNow.length ? `<div class="cart-milestone-rewards">${reachedNow.map(m => `<span class="cart-milestone-reward" title="${esc(m.label)}">${esc(m.icon || "🎉")}</span>`).join("")}</div>` : "";
+        const barColor = config.progressBarColor || "#10b981";
+        const highestReached = reachedNow[reachedNow.length - 1];
+        let progressMsg;
+        if (next) {
+          progressMsg = `Noch ${eur(Number(next.amount) - subtotal)} bis „${esc(next.label)}“`;
+        } else if (highestReached && highestReached.reachedText) {
+          progressMsg = esc(highestReached.reachedText);
+        } else {
+          progressMsg = esc(config.progressCompleteText || "✓ Alle Ziele freigeschaltet");
+        }
+        const marksHtml = milestones.map(m => {
+          const isReached = subtotal >= Number(m.amount);
+          const colorStyle = isReached ? ` background-color:${barColor}; border-color:${barColor};` : "";
+          return `<div class="cart-progress-mark ${isReached ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%;${colorStyle}" title="${esc(m.label)}"></div>`;
+        }).join("");
+        const progressHtml = `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%; background-color:${barColor};"></div>${marksHtml}</div>${rewardsHtml}<p class="cart-progress-msg">${progressMsg}</p></div>`;
+        progressPart = wrapComponent(progressHtml, "progress", interactive);
       } else {
-        progressMsg = esc(config.progressCompleteText || "✓ Alle Ziele freigeschaltet");
+        const dummyHtml = `<div class="cart-progress"><p class="cart-progress-msg">Noch keine Meilensteine konfiguriert — füge rechts einen hinzu.</p></div>`;
+        progressPart = wrapComponent(dummyHtml, "progress", interactive);
       }
-      const marksHtml = milestones.map(m => {
-        const isReached = subtotal >= Number(m.amount);
-        const colorStyle = isReached ? ` background-color:${barColor}; border-color:${barColor};` : "";
-        return `<div class="cart-progress-mark ${isReached ? "reached" : ""}" style="left:${Math.min(100, (Number(m.amount) / max) * 100)}%;${colorStyle}" title="${esc(m.label)}"></div>`;
-      }).join("");
-      const progressHtml = `<div class="cart-progress"><div class="cart-progress-track"><div class="cart-progress-fill" style="width:${pct}%; background-color:${barColor};"></div>${marksHtml}</div>${rewardsHtml}<p class="cart-progress-msg">${progressMsg}</p></div>`;
-      progressPart = wrapComponent(progressHtml, "progress", interactive) + dividerFragment(dividerAfter.progress);
+      progressPart += dividerFragment(dividerAfter.progress);
     }
 
-    // The item list sits in a box with a fixed height (about 5 products
-    // — cart.ITEMS_BOX_DEFAULT_HEIGHT) so that adding/removing items
-    // never changes the box's own flow height — otherwise every
-    // component positioned below it would visibly shift up/down each
-    // time the cart's item count changes, and the checkout button could
-    // require scrolling to reach. The box only scrolls while its content
-    // actually exceeds that fixed height (see cart-drawer.js /
-    // cart-editor-stage.js syncItemsBoxScroll()); the height itself is
-    // no longer user-adjustable.
     const itemsInner = window.WebBuilderCartHtml.buildItemsHtml(items, isDemo, interactive);
-    const itemsBoxHtml = `<div class="cart-items-box" style="height:${cart.ITEMS_BOX_DEFAULT_HEIGHT}px;">${itemsInner}</div>`;
+    const itemsBoxHtml = `<div class="cart-items-box">${itemsInner}</div>`;
     const itemsPart = wrapComponent(itemsBoxHtml, "items", interactive) + dividerFragment(dividerAfter.items);
 
     let recommendPart = "";
@@ -232,7 +239,7 @@
   // buildCartHtml/buildCartParts are also part of the public
   // window.WebBuilderCartRuntime API (used by shop/cart-editor-stage.js)
   // — kept there via Object.assign so load order relative to
-  // shop/cart-drawer.js (which adds render/refresh/open/close to the
-  // same object) doesn't matter.
+  // shop/cart-drawer.js (which adds render/refresh/open/close/
+  // fitItemsBox to the same object) doesn't matter.
   window.WebBuilderCartRuntime = Object.assign(window.WebBuilderCartRuntime || {}, { buildCartHtml, buildCartParts });
 })();
