@@ -13,15 +13,48 @@
   const cart = window.WebBuilderCart;
   if (!cart) { console.error("WebBuilderCartDrawer: WebBuilderCart is not available."); return; }
 
-  // The products list only scrolls while its content actually overflows
-  // the configured box height — overflow-y is toggled explicitly instead
-  // of left permanently on "auto" so scrolling (and the scrollbar) is
-  // guaranteed gone whenever every item already fits. Shared with
-  // cart-editor-stage.js (after re-rendering the stage) and
-  // cart-editor-drag.js (while the resize handle is being dragged).
-  function syncItemsBoxScroll(box) {
-    if (!box) return;
-    box.style.overflowY = box.scrollHeight > box.clientHeight + 1 ? "auto" : "hidden";
+  // Sizes the products list so the whole cart fits inside its visible
+  // viewport without the viewport itself needing to scroll — the
+  // products area is what grows or shrinks to make room for whatever
+  // else is currently shown (progress bar, recommendation, discount
+  // field, ...). It only scrolls internally, once it has already shrunk
+  // to a single product's height and there still isn't room for all of
+  // them.
+  //
+  // `scrollHost` is the actual scrollable viewport (the drawer body for
+  // the real drawer, `.canvas-container` for the editor stage);
+  // `contentRoot` is the element whose full rendered content should fit
+  // inside it (the same element as scrollHost for the drawer, since the
+  // cart markup is injected directly into the drawer body).
+  function fitItemsBox(scrollHost, contentRoot) {
+    const box = contentRoot?.querySelector(".cart-items-box");
+    if (!scrollHost || !contentRoot || !box) return;
+    box.style.height = "auto";
+    const naturalHeight = box.scrollHeight;
+    const hostVisible = scrollHost.clientHeight;
+    if (!hostVisible) { box.style.height = naturalHeight + "px"; box.style.overflowY = "hidden"; return; }
+    const otherHeight = contentRoot.scrollHeight - naturalHeight;
+    const hostRect = scrollHost.getBoundingClientRect();
+    const contentRect = contentRoot.getBoundingClientRect();
+    const topOffset = (contentRect.top - hostRect.top) + scrollHost.scrollTop;
+    const bottomBreathingRoom = 12;
+    const available = Math.max(0, hostVisible - topOffset - otherHeight - bottomBreathingRoom);
+    const min = cart.ITEMS_BOX_ITEM_HEIGHT;
+    const desired = Math.max(min, Math.min(naturalHeight, available));
+    box.style.height = desired + "px";
+    box.style.overflowY = naturalHeight > desired + 1 ? "auto" : "hidden";
+  }
+
+  // Re-fits both the real drawer and — if open — the editor stage.
+  // Used after a window resize, since either viewport's available height
+  // may have changed.
+  function refitAll() {
+    const list = document.getElementById("cart-items-list");
+    if (list) fitItemsBox(list, list);
+    const stage = document.getElementById("cart-focus-stage");
+    const host = document.querySelector(".canvas-container");
+    const card = stage?.querySelector(".cart-focus-card");
+    if (host && card) fitItemsBox(host, card);
   }
 
   // Renders the real slide-in drawer (#cart-items-list, always
@@ -33,7 +66,7 @@
     if (!list) return;
     const buildCartHtml = window.WebBuilderCartHtml?.buildCartHtml;
     list.innerHTML = buildCartHtml ? buildCartHtml(cart.getItems(), { interactive: false, isDemo: false }) : "";
-    syncItemsBoxScroll(list.querySelector(".cart-items-box"));
+    fitItemsBox(list, list);
     const config = cart.getConfig() || {};
     // "Hintergrund" (component:background) applies to the real drawer too,
     // not just the editor preview.
@@ -63,6 +96,13 @@
     document.getElementById("cart-drawer")?.classList.remove("active");
     document.getElementById("cart-drawer-backdrop")?.classList.remove("active");
     return true;
+  }
+
+  let resizeQueued = false;
+  function scheduleRefit() {
+    if (resizeQueued) return;
+    resizeQueued = true;
+    requestAnimationFrame(() => { resizeQueued = false; refitAll(); });
   }
 
   function bind() {
@@ -104,6 +144,7 @@
     document.getElementById("close-cart-btn")?.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); closeCart(); }, true);
     document.getElementById("cart-drawer-backdrop")?.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); closeCart(); }, true);
     document.getElementById("btn-open-cart")?.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); openCart(); }, true);
+    window.addEventListener("resize", scheduleRefit);
 
     state.subscribe?.(e => { if (["cart", "products"].includes(e?.domain)) refreshCartViews(); });
     refreshCartViews();
@@ -112,6 +153,6 @@
   document.addEventListener("DOMContentLoaded", () => setTimeout(bind, 0));
 
   window.WebBuilderCartRuntime = Object.assign(window.WebBuilderCartRuntime || {}, {
-    render: renderCart, refresh: refreshCartViews, open: openCart, close: closeCart, syncItemsBoxScroll
+    render: renderCart, refresh: refreshCartViews, open: openCart, close: closeCart, fitItemsBox, refitAll
   });
 })();
