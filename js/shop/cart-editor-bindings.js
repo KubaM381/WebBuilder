@@ -19,6 +19,20 @@
     document.getElementById("btn-cart-focus-editor")?.addEventListener("click", e => { e.preventDefault(); focus().enter?.(); }, true);
     document.getElementById("btn-cart-focus-exit")?.addEventListener("click", e => { e.preventDefault(); focus().exit?.(); }, true);
 
+    // Shown for every positionable selection (any part or component
+    // except the background) regardless of whether it has any other
+    // fields — gives every clickable sub-part something to act on.
+    document.getElementById("btn-reset-part-position")?.addEventListener("click", e => {
+      e.preventDefault(); e.stopImmediatePropagation();
+      focus().resetSelectedLayout?.();
+      refreshCartViews();
+    }, true);
+
+    document.getElementById("cid-recommend-price-style")?.addEventListener("change", e => {
+      window.WebBuilderHistory?.arm(); cart.setRecommendDisplay({ priceStyle: e.target.value }, false); window.WebBuilderHistory?.commit();
+      refreshCartViews();
+    }, true);
+
     // Fixed per-category "Trennlinie darunter anzeigen" switches — one
     // checkbox per positionable category, living inside that category's
     // own field block (see cart-editor-markup.js).
