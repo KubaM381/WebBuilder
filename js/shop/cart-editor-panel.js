@@ -16,7 +16,7 @@
 
   const PART_FIELD_BLOCK_IDS = [
     "cart-comp-title-fields", "cart-comp-items-fields", "cart-comp-checkout-fields", "cart-comp-discount-fields",
-    "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-progress-fields",
+    "cart-comp-background-fields", "cart-comp-recommend-fields", "cart-comp-recommend-price-fields", "cart-comp-progress-fields",
     "cart-comp-qty-fields", "cart-comp-price-fields", "cart-comp-remove-fields",
     "cart-comp-totals-fields"
   ];
@@ -31,10 +31,18 @@
 
     PART_FIELD_BLOCK_IDS.forEach(id => document.getElementById(id)?.classList.add("hidden"));
 
+    // Every positionable selection (any part or component except the
+    // whole-card background, which has no sensible free position) gets
+    // this button, so there is always something to act on even for parts
+    // without dedicated fields below (e.g. the recommendation's icon or
+    // name).
+    document.getElementById("btn-reset-part-position")?.classList.toggle("hidden", sel === "component:background");
+
     const config = cart.getConfig();
 
     const labels = {
       icon: "Icon / Name", qty: "Mengenanzeige", price: "Preis", remove: "Entfernen-Button", description: "Beschreibung",
+      "recommend:icon": "Empfehlung: Icon", "recommend:name": "Empfehlung: Name", "recommend:price": "Empfehlung: Preis", "recommend:add": "Empfehlung: Hinzufügen-Button",
       "component:checkout": "Zur-Kasse-Button", "component:discount": "Rabattfeld", "component:progress": "Fortschrittsbalken",
       "component:recommend": "Empfehlung", "component:background": "Hintergrund",
       "component:totals": "Kosten-Übersicht", "component:title": "Warenkorb-Titel", "component:items": "Produkte"
@@ -101,6 +109,10 @@
       const dividerInput = document.getElementById("cart-comp-recommend-divider-after");
       if (dividerInput) dividerInput.checked = !!config.dividerAfter?.recommend;
       window.WebBuilderCartConfigRuntime?.renderRecommendList?.();
+    } else if (sel === "recommend:price") {
+      document.getElementById("cart-comp-recommend-price-fields")?.classList.remove("hidden");
+      const ps = document.getElementById("cid-recommend-price-style");
+      if (ps) ps.value = (config.recommendDisplay && config.recommendDisplay.priceStyle) || "simple";
     } else if (sel === "component:background") {
       document.getElementById("cart-comp-background-fields")?.classList.remove("hidden");
       const colorInput = document.getElementById("cart-comp-bg-color");
