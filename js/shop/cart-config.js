@@ -26,18 +26,12 @@
     return currency.position === "before" ? `${symbol}${amount}` : `${amount} ${symbol}`;
   }
 
-  // Products-list ("Produkte" component) height bounds for the draggable
-  // resize handle (see cart-editor-drag.js). 320 / 5 = 64px matches the
-  // previous fixed height exactly, so the unchanged default (5 items)
-  // stays visually identical.
+  // Products-list ("Produkte" component) is a fixed height, not
+  // user-resizable — sized to show about 5 products at once so the
+  // checkout button stays reachable in the real preview without
+  // scrolling the page. 320 = 64px per item × 5.
   const ITEMS_BOX_ITEM_HEIGHT = 64;
-  const ITEMS_BOX_MIN_HEIGHT = ITEMS_BOX_ITEM_HEIGHT * 3;
-  const ITEMS_BOX_MAX_HEIGHT = ITEMS_BOX_ITEM_HEIGHT * 8;
   const ITEMS_BOX_DEFAULT_HEIGHT = ITEMS_BOX_ITEM_HEIGHT * 5;
-  function clampItemsBoxHeight(value) {
-    const n = Number(value);
-    return Math.min(ITEMS_BOX_MAX_HEIGHT, Math.max(ITEMS_BOX_MIN_HEIGHT, Number.isFinite(n) ? n : ITEMS_BOX_DEFAULT_HEIGHT));
-  }
 
   // Placeholder token for the live item count inside cartConfig.cartTitleLabel.
   const TITLE_COUNT_PLACEHOLDER = "{anzahl}";
@@ -95,7 +89,6 @@
     itemBackgroundColor: "",
     itemWidth: null,
     itemMinHeight: null,
-    itemsBoxHeight: ITEMS_BOX_DEFAULT_HEIGHT,
     discountButtonColor: "#4f46e5",
     discountButtonShape: "rounded",
     cardBackgroundColor: "",
@@ -137,11 +130,12 @@
     // No longer its own component — title/checkout flow like any other
     // component in the cart body (see cart-html.js).
     delete config.footerBackgroundColor;
+    // Products box height is fixed now (no more drag-to-resize), so a
+    // stored value from an older project is dropped rather than kept
+    // as a dead field.
+    delete config.itemsBoxHeight;
 
     applyConfigDefaults(config, CONFIG_DEFAULTS);
-    // Re-clamp on every normalize pass so a value loaded from an older
-    // project always ends up valid.
-    config.itemsBoxHeight = clampItemsBoxHeight(config.itemsBoxHeight);
 
     // Independent on/off switch for shipping in the cost overview. A
     // project saved before this switch existed inherits whatever the
@@ -174,8 +168,7 @@
   window.WebBuilderCart = Object.assign(window.WebBuilderCart || {}, {
     getConfig, setConfig, setItemDisplay, setButtonLabel, applyDiscountCode,
     quantityColorHex, formatCurrency, CURRENCY_PRESETS, TITLE_COUNT_PLACEHOLDER,
-    ITEMS_BOX_ITEM_HEIGHT, ITEMS_BOX_MIN_HEIGHT, ITEMS_BOX_MAX_HEIGHT, ITEMS_BOX_DEFAULT_HEIGHT,
-    clampItemsBoxHeight,
+    ITEMS_BOX_ITEM_HEIGHT, ITEMS_BOX_DEFAULT_HEIGHT,
     normalizeState
   });
 
