@@ -189,7 +189,7 @@
       </div>
     `;
     window.WebBuilderCartFocus?.bindFocusStageInteractions?.(stage);
-    window.WebBuilderCartRuntime?.syncItemsBoxScroll?.(stage.querySelector(".cart-items-box"));
+    window.WebBuilderCartRuntime?.fitItemsBox?.(host, stage.querySelector(".cart-focus-card"));
   }
 
   function enterFocusMode() {
