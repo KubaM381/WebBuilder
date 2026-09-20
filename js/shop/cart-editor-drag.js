@@ -3,10 +3,10 @@
 // Owns every pointer-event drag on the cart editor stage: dragging a
 // top-level component (progress/discount/recommend/checkout/totals/
 // title/items) and dragging a cart-item or recommend-card sub-part
-// (icon/qty/price/remove/description), plus resizing the products list
-// box height. Does NOT own the stage's selection state or its layout
-// data model — both live in cart-editor-stage.js and are reached here
-// only through window.WebBuilderCartFocus at runtime.
+// (icon/qty/price/remove/description). Does NOT own the stage's
+// selection state or its layout data model — both live in
+// cart-editor-stage.js and are reached here only through
+// window.WebBuilderCartFocus at runtime.
 //
 // Not implemented via canvas/alignment.js's shared attachInteraction()
 // controller: this stage positions parts/components via a CSS transform
@@ -119,43 +119,6 @@
         partEl.addEventListener("pointermove", onMove);
         partEl.addEventListener("pointerup", onUp);
         partEl.addEventListener("pointercancel", onUp);
-        return;
-      }
-
-      // Products-box resize handle (see cart-html.js's itemsBoxHtml) —
-      // resizes cartConfig.itemsBoxHeight, clamped to the configured
-      // min/max (~3 to ~8 visible products, see cart-config.js). Checked
-      // before the generic [data-cart-component] handling below since
-      // the handle sits nested inside the "items" component.
-      const resizeHandle = e.target.closest?.(".cart-items-resize-handle");
-      if (resizeHandle) {
-        const box = resizeHandle.closest(".cart-items-box");
-        if (!box) return;
-        e.preventDefault(); e.stopPropagation();
-        const startY = e.clientY;
-        const startHeight = box.getBoundingClientRect().height;
-        const min = cart.ITEMS_BOX_MIN_HEIGHT, max = cart.ITEMS_BOX_MAX_HEIGHT;
-        try { resizeHandle.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-        window.WebBuilderHistory?.arm();
-        function onResizeMove(moveEvent) {
-          const next = Math.max(min, Math.min(max, Math.round(startHeight + (moveEvent.clientY - startY))));
-          box.style.height = next + "px";
-          state.cartConfig.itemsBoxHeight = next;
-          // The box only scrolls once its content is actually taller than
-          // the new height (see cart-drawer.js syncItemsBoxScroll()).
-          window.WebBuilderCartRuntime?.syncItemsBoxScroll?.(box);
-        }
-        function onResizeUp() {
-          resizeHandle.removeEventListener("pointermove", onResizeMove);
-          resizeHandle.removeEventListener("pointerup", onResizeUp);
-          resizeHandle.removeEventListener("pointercancel", onResizeUp);
-          try { resizeHandle.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-          window.WebBuilderHistory?.commit();
-          notify("cart", "config", state.cartConfig);
-        }
-        resizeHandle.addEventListener("pointermove", onResizeMove);
-        resizeHandle.addEventListener("pointerup", onResizeUp);
-        resizeHandle.addEventListener("pointercancel", onResizeUp);
         return;
       }
 
