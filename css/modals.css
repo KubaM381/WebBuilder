@@ -52,11 +52,7 @@
 .cart-discount input { width: 100%; padding: 7px 9px; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 6px; font-size: 0.85rem; }
 .cart-discount button { width: 100%; padding: 7px; border: none; border-radius: 6px; background: var(--primary); color: #fff; cursor: pointer; font-weight: 600; }
 .cart-discount-msg.ok { color: var(--success); font-size: 0.8rem; margin-top: 6px; }
-/* min-height keeps the block a stable size regardless of which rows
-   (Zwischensumme/Rabatt/Versand/Gratis-Produkt) are currently shown, so
-   toggling any of them never shifts the checkout button below it. Sized
-   for the maximum case (all rows + the final total row). */
-.cart-totals { margin-top: 12px; padding-top: 12px; position: relative; min-height: 168px; }
+.cart-totals { margin-top: 12px; padding-top: 12px; position: relative; }
 .cart-total-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
 .cart-total-final { font-weight: 700; font-size: 1rem; margin-top: 8px; }
 .cart-checkout-button { margin-top: 18px; }
@@ -64,10 +60,6 @@
 .cart-divider { padding: 4px 0; }
 .cart-divider-line { display: block; width: 100%; height: 0; border-top: 1px solid var(--border-color); }
 .cart-items-box { position: relative; height: 320px; overflow-y: auto; overflow-x: hidden; }
-.cart-items-resize-handle { position: absolute; left: 0; right: 0; bottom: -6px; height: 12px; cursor: ns-resize; z-index: 5; display: flex; align-items: center; justify-content: center; }
-.cart-items-resize-handle::after { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--border-muted); }
-.cart-items-resize-handle:hover::after { background: var(--primary); }
-.cart-items-box-divider { border-top: 1px solid var(--border-color); margin: 6px 0 14px; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.25s ease; }
 .modal-overlay.active { opacity: 1; visibility: visible; }
 .modal-container { background: var(--bg-panel); width: 90%; max-width: 520px; border-radius: 12px; box-shadow: var(--shadow-lg); overflow: hidden; transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
