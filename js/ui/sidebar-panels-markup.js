@@ -3,14 +3,16 @@
 // Produkte) aus web.html ausgelagert, um die HTML-Datei kürzer zu halten.
 // Baut nur Strings und injiziert sie per innerHTML — bindet keine Events
 // (das bleibt in canvas.js/editor/background.js/header-footer-inspector.js/
-// cart-sidebar.js/products.js, exakt wie vorher).
+// cart-sidebar.js/products.js/canvas/sections-render.js, exakt wie
+// vorher).
 //
 // Ladereihenfolge: MUSS vor js/layout/header-footer-inspector.js laden —
 // dessen bind() läuft synchron auf DOMContentLoaded (nicht per setTimeout)
 // und braucht die Kopf-/Fußzeilen-Sidebar-Felder sofort. Alle anderen
 // Consumer (canvas.js, editor/background.js, editor/inspector.js,
-// shop/products.js, shop/cart-sidebar.js) greifen erst per
-// setTimeout(fn, 0) zu und sind unabhängig von der Ladereihenfolge sicher.
+// shop/products.js, shop/cart-sidebar.js, canvas/sections-render.js)
+// greifen erst per setTimeout(fn, 0) zu und sind unabhängig von der
+// Ladereihenfolge sicher.
 (() => {
   function panelElements() {
     return `
@@ -59,6 +61,12 @@
         </div>
         <button type="button" id="btn-add-custom-icon" class="btn btn-secondary" style="width:100%;">+ Icon hinzufügen</button>
         <div id="custom-icon-palette" class="palette-grid" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="section-title">Sections (Flow-Layout, Beta)</div>
+      <div class="sidebar-subsection">
+        <p class="help-text" style="margin-bottom:8px;">Sections sind ein neues, paralleles Layout-Modell (Section → Zeile → Karte) mit automatischem Umbruch statt freier x/y-Positionierung. Bestehende, frei platzierte Elemente sind davon nicht betroffen. Auswählen zum Bearbeiten direkt auf der Fläche klicken.</p>
+        <button type="button" id="btn-add-section" class="btn btn-secondary" style="width:100%;">+ Section hinzufügen</button>
       </div>
 
       <div class="section-title">Hintergrund der Seite</div>
