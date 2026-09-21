@@ -1,35 +1,20 @@
 // js/canvas/alignment.js
-// WebBuilder shared drag/click interaction + alignment guides.
-// Extracted from canvas.js so both canvas/canvas.js (canvas elements) and
-// layout/header-footer.js (bar items) can share exactly the same drag
-// controller and Canva-style center/edge snapping without either file
-// depending on the other. Must load before both.
+// Gemeinsamer Drag/Click-Controller (Pointer Events) + Canva-artige
+// Ausrichtungslinien. Genutzt von canvas/canvas.js (Canvas-Elemente) und
+// layout/header-footer-render.js (Bar-Items), damit keins von beiden
+// eigene Drag-/Snapping-Logik dupliziert. Muss vor beiden laden.
 //
-// shop/cart-editor.js also uses the snapping primitives below
-// (collectSnapTargets/snapPosition/guide-layer helpers), but NOT
-// attachInteraction() itself — the cart editor positions parts/components
-// via a CSS transform offset from their natural flow position, on an
-// unscaled stage (outside #canvas-column, so never affected by
-// state.zoomLevel), whereas attachInteraction() assumes absolute left/top
-// positioning inside a zoom-scaled container. Forcing that model onto the
-// cart editor would have meant restructuring its layout system; instead
-// the snapping building blocks are exported here with an explicit,
-// overridable zoom parameter so a caller with a different coordinate
-// space (like cart-editor.js, always zoom=1) can reuse them safely
-// without inheriting canvas.js's zoom assumption.
+// shop/cart-editor-drag.js nutzt nur die Snapping-Primitiven unten
+// (collectSnapTargets/snapPosition/Guide-Layer-Helfer), nicht
+// attachInteraction() selbst — der Warenkorb-Editor positioniert Teile
+// über einen CSS-Transform-Offset auf einer unskalierten Bühne und ruft
+// diese Funktionen deshalb mit explizitem zoomOverride: 1 auf, statt
+// state.zoomLevel zu erben.
 //
-// Phase 1 "Drag & Drop 2.0" (canvas/drop-indicator.js): attachInteraction()
-// additionally calls that module's begin()/update()/end() at the exact
-// same three points where it already creates/updates/removes the guide
-// lines below. Every call is optional-chained
-// (window.WebBuilderDropIndicator?.foo?.()) — if that file isn't loaded,
-// dragging behaves exactly as before (guide lines only, no animated drop
-// box, no settle bounce). collectSnapTargets()/snapPosition() gained an
-// additional, purely additive xKind/yKind ("container" | "sibling" | null)
-// so the drop indicator can tell "snapped to the page/bar edge" apart
-// from "snapped next to another element" — existing callers that only
-// read the original fields (xTargets/yTargets, x/y/guideX/guideY) are
-// unaffected.
+// canvas/drop-indicator.js klinkt sich an denselben drei Stellen in
+// attachInteraction() ein, an denen bereits die Guide-Linien erzeugt/
+// aktualisiert/entfernt werden — immer per optional-chaining. Ohne diese
+// Datei verhält sich Dragging exakt wie vorher (nur Linien, keine Box).
 (() => {
   const state = window.WebBuilderState;
   if (!state) {
@@ -44,21 +29,14 @@
     return { x: (clientX - rect.left) / zoom, y: (clientY - rect.top) / zoom };
   }
 
-  // Shared click+drag controller (Pointer Events), used by canvas elements
-  // and header/footer bar items. Movement below DRAG_THRESHOLD counts as
-  // a click (opts.onClick); above it, a drag (opts.onDragStart/onDragEnd,
-  // wrapped in a history transaction) and sets state.dragLock so
-  // re-renders don't replace the dragged DOM node mid-move.
-  // opts.getBounds() can restrict movement (minX/minY/maxX/maxY).
+  // Bewegung unter diesem Wert zählt als Klick (opts.onClick); darüber als
+  // Drag (opts.onDragStart/onDragEnd, in eine History-Transaktion
+  // eingebettet).
   const DRAG_THRESHOLD = 4;
 
-  // ------------------------------------------------------------------
-  // Alignment guides (Canva-style center/edge snapping while dragging).
-  // Created at drag start and removed at drag end — never part of the
-  // persisted DOM, matching the same "temporary while dragging"
-  // convention as state.dragLock (see js/README.md "Event conventions").
-  // ------------------------------------------------------------------
-  const GUIDE_SNAP_PX = 6; // on-screen pixels; converted to local (unscaled) units via zoom below
+  // Guides werden bei Drag-Start erzeugt und bei Drag-Ende entfernt — nie
+  // Teil des gespeicherten DOM (gleiche Konvention wie state.dragLock).
+  const GUIDE_SNAP_PX = 6; // Bildschirm-Pixel; unten via Zoom in lokale Einheiten umgerechnet
 
   function createGuideLayer(containerEl) {
     const layer = document.createElement("div");
@@ -85,32 +63,20 @@
     else guides.hLine.style.display = "none";
   }
 
-  // Collects candidate snap lines — the container's own edges and center
-  // plus sibling edges/centers — as local (unscaled) coordinates, i.e.
-  // the same coordinate space toLocalCoords() produces and item.x/item.y
-  // already live in. siblingSelector scopes this to direct children of
-  // the same container (".placed-element" for the canvas, ".bar-item" for
-  // a header/footer bar, "[data-cart-part]"/"[data-cart-component]" for
-  // the cart editor — see shop/cart-editor.js).
+  // Sammelt Snap-Kandidaten (Container-Kanten/-Mitte + Geschwister-Kanten/
+  // -Mitten) als lokale (unskalierte) Koordinaten — derselbe Raum, den
+  // toLocalCoords() liefert und in dem item.x/item.y bereits leben.
+  // siblingSelector begrenzt auf direkte Kinder desselben Containers.
   //
-  // The container's left/right (0/width) and top/bottom (0/height) edges
-  // are explicit targets, not just its center: without them an element
-  // only appeared to snap to an edge when a sibling happened to sit flush
-  // against it, which made the left edge feel "magnetic" (the first item
-  // in flow order usually sits there) and the right edge feel dead.
+  // zoomOverride: MUSS explizit 1 sein für einen Container, der nicht von
+  // state.zoomLevel betroffen ist (z. B. die Warenkorb-Editor-Bühne) —
+  // ohne Angabe fällt es auf state.zoomLevel zurück, was nur für
+  // Canvas-Elemente/Bar-Items korrekt ist.
   //
-  // zoomOverride: callers whose container isn't affected by
-  // state.zoomLevel (e.g. the cart editor stage, which sits outside the
-  // zoom-scaled #canvas-column) MUST pass 1 here explicitly — omitting it
-  // falls back to state.zoomLevel, which is only correct for canvas
-  // elements and header/footer bar items.
-  //
-  // xTargetKinds/yTargetKinds (added for the Phase 1 drop indicator, see
-  // canvas/drop-indicator.js): parallel arrays tagging every entry in
-  // xTargets/yTargets as "container" (the first three: 0 / center /
-  // width) or "sibling" (everything pushed inside the forEach below).
-  // Purely additive — a caller that destructures only { xTargets,
-  // yTargets } keeps working unchanged.
+  // xTargetKinds/yTargetKinds markieren jedes Ziel als "container" (die
+  // ersten drei: 0/Mitte/Größe) oder "sibling" — für die visuelle
+  // Unterscheidung in drop-indicator.js. Ein Aufrufer, der nur
+  // { xTargets, yTargets } destructured, bleibt unverändert funktionsfähig.
   function collectSnapTargets(containerEl, excludeEl, siblingSelector, zoomOverride) {
     const zoom = zoomOverride != null ? zoomOverride : (Number(state.zoomLevel) || 1);
     const containerRect = containerEl.getBoundingClientRect();
@@ -135,19 +101,12 @@
     return { xTargets, yTargets, xTargetKinds, yTargetKinds };
   }
 
-  // Snaps a proposed top-left (x, y) of an item sized (w, h) against the
-  // collected targets. Checks the item's left/center/right edge against
-  // every x-target (and top/center/bottom against every y-target),
-  // keeping only the closest match per axis within the zoom-adjusted
-  // threshold. Returns the (possibly adjusted) position plus which local
-  // coordinate matched on each axis, so the caller can place guide lines.
-  //
-  // xKind/yKind (added for the Phase 1 drop indicator): the "kind"
-  // (targets.xTargetKinds/yTargetKinds entry) of whichever target each
-  // axis actually snapped to, or null if that axis didn't snap / the
-  // caller didn't supply kind arrays. Existing callers built their own
-  // { xTargets, yTargets } without kind arrays keep working — they just
-  // get xKind/yKind: null, which they were already ignoring.
+  // Snappt eine vorgeschlagene Top-Left-Position (x, y) eines (w, h)
+  // großen Elements gegen die gesammelten Ziele; behält pro Achse nur den
+  // nächstgelegenen Treffer innerhalb des zoomabhängigen Schwellwerts.
+  // Liefert die (ggf. angepasste) Position, die getroffene lokale
+  // Koordinate pro Achse (für Guide-Linien) und die Art des getroffenen
+  // Ziels pro Achse (für drop-indicator.js).
   function snapPosition(x, y, w, h, targets, zoom) {
     const threshold = GUIDE_SNAP_PX / (zoom || 1);
     const ownX = [x, x + w / 2, x + w];
@@ -215,9 +174,6 @@
           if (snapEnabled) {
             elBox = domEl.getBoundingClientRect();
             guides = createGuideLayer(containerEl);
-            // Phase 1 "Drag & Drop 2.0" (optional module, see
-            // canvas/drop-indicator.js) — purely additive on top of the
-            // guide lines above, never required for dragging to work.
             window.WebBuilderDropIndicator?.begin?.(containerEl);
           }
         }
@@ -254,14 +210,10 @@
         if (dragging) {
           state.dragLock = false;
           if (recordHistory) window.WebBuilderHistory?.commit();
-          // Removes the drop box and gives the element a short
-          // spring-bounce settle animation (Phase 1) instead of a hard
-          // cut to its final position — no-op if the module isn't loaded.
           window.WebBuilderDropIndicator?.end?.(domEl);
           opts.onDragEnd?.();
         }
-        // A plain click and the end of a drag both trigger onClick, same
-        // as the native "click" event used to on mouseup.
+        // Klick und Drag-Ende lösen beide onClick aus — wie zuvor "click".
         opts.onClick?.(upEvent, dragging);
       }
 
@@ -274,12 +226,6 @@
   window.WebBuilderAlignment = {
     attachInteraction,
     toLocalCoords,
-    // Exported so shop/cart-editor.js can reuse the same snapping
-    // math/guide rendering from its own bespoke (transform-offset-based,
-    // unscaled) pointer handling instead of duplicating it. Not used by
-    // canvas/canvas.js or layout/header-footer.js directly — they go
-    // through attachInteraction() above, which already calls these
-    // internally.
     collectSnapTargets,
     snapPosition,
     createGuideLayer,
