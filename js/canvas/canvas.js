@@ -14,10 +14,15 @@
 // Phase 1 "Drag & Drop 2.0" (canvas/drop-indicator.js): bindPaletteDragAndDrop()
 // additionally drives that module's container highlight + animated drop
 // box while a NEW element is being dragged in from the sidebar palette
-// (native HTML5 drag & drop — attachInteraction()/alignment.js is not
-// involved here, since there is no existing element yet to attach a
-// pointer-drag controller to). Every call is optional-chained, so this
-// keeps working unchanged if drop-indicator.js isn't loaded.
+// (native HTML5 drag & drop — attachInteraction() itself is not used
+// here, since there is no existing DOM element yet to attach a
+// pointer-drag controller to; its snapping primitives
+// (collectSnapTargets/snapPosition/guide-layer helpers) are reused
+// directly instead, same pattern as shop/cart-editor-drag.js, so a
+// dragged-in element snaps and shows guide lines exactly like an
+// already-placed one being moved). Every drop-indicator call is
+// optional-chained, so this keeps working (guides-only, no box/bounce)
+// if drop-indicator.js isn't loaded.
 (() => {
   const state = window.WebBuilderState;
   const elementsService = window.WebBuilderElements;
@@ -44,6 +49,20 @@
   // only once (dataset guard) and must keep referencing the same flag
   // that later dragend listeners on newly added palette items also use.
   let paletteDragActive = false;
+  // Palette drag-in state, module-scoped for the same reason as
+  // paletteDragActive above: the listeners in bindPaletteDragAndDrop()
+  // are bound once, but a drag can start/stop many times over the
+  // module's lifetime.
+  let paletteGuides = null;     // alignment.js guide layer, active only while a palette drag-in is in progress
+  let paletteDropPoint = null;  // last computed (possibly snapped) drop position, consumed by "drop"
+
+  function endPaletteDrag(containerEl) {
+    paletteDragActive = false;
+    paletteDropPoint = null;
+    window.WebBuilderDropIndicator?.setContainerActive?.(containerEl, false);
+    window.WebBuilderDropIndicator?.end?.(null);
+    if (paletteGuides) { window.WebBuilderAlignment?.removeGuideLayer?.(paletteGuides); paletteGuides = null; }
+  }
 
   const getCanvas = () => document.getElementById("canvas");
   const getCanvasColumn = () => document.getElementById("canvas-column");
@@ -262,15 +281,11 @@
         state.draggedShape = item.dataset.shape || null;
         if (event.dataTransfer) event.dataTransfer.setData("text/plain", state.draggedType || "");
       });
-      // Cleans up the Phase 1 drop indicator/container highlight if the
-      // drag ends without a "drop" on the canvas (dropped outside it,
+      // Cleans up the Phase 1 drop indicator/guides/container highlight if
+      // the drag ends without a "drop" on the canvas (dropped outside it,
       // cancelled with Esc, ...) — "dragend" always fires on the source
       // element, unlike "drop".
-      item.addEventListener("dragend", () => {
-        paletteDragActive = false;
-        window.WebBuilderDropIndicator?.setContainerActive?.(getCanvas(), false);
-        window.WebBuilderDropIndicator?.end?.(null);
-      });
+      item.addEventListener("dragend", () => endPaletteDrag(getCanvas()));
     });
 
     const canvasEl = getCanvas();
@@ -281,21 +296,29 @@
       event.preventDefault();
       if (state.isPreviewMode || !state.draggedType) return;
       const indicator = window.WebBuilderDropIndicator;
+      const alignment = window.WebBuilderAlignment;
       if (!paletteDragActive) {
         paletteDragActive = true;
         indicator?.setContainerActive?.(canvasEl, true);
         indicator?.begin?.(canvasEl);
+        paletteGuides = alignment.createGuideLayer(canvasEl);
       }
-      const point = window.WebBuilderAlignment.toLocalCoords(canvasEl, event.clientX, event.clientY);
+      const zoom = Number(state.zoomLevel) || 1;
+      const point = alignment.toLocalCoords(canvasEl, event.clientX, event.clientY);
       const size = previewSizeForDraggedType(state.draggedType);
-      indicator?.update?.({
-        containerEl: canvasEl,
-        x: Math.max(0, point.x - 40),
-        y: Math.max(0, point.y - 20),
-        width: size.w,
-        height: size.h,
-        xKind: "container"
-      });
+      let x = Math.max(0, point.x - 40);
+      let y = Math.max(0, point.y - 20);
+      // Snap the incoming element's preview against the same targets
+      // (container edges/center, sibling edges/center) a placed element
+      // would snap to via attachInteraction() — a brand-new element gets
+      // the same magnetic snapping as one being repositioned, instead of
+      // a raw mouse-follow box that never actually locks in.
+      const targets = alignment.collectSnapTargets(canvasEl, null, ".placed-element", zoom);
+      const snapped = alignment.snapPosition(x, y, size.w, size.h, targets, zoom);
+      x = snapped.x; y = snapped.y;
+      alignment.updateGuideVisibility(paletteGuides, snapped.guideX, snapped.guideY);
+      paletteDropPoint = { x, y };
+      indicator?.update?.({ containerEl: canvasEl, x, y, width: size.w, height: size.h, xKind: snapped.xKind, yKind: snapped.yKind });
     });
 
     canvasEl.addEventListener("dragleave", event => {
@@ -303,24 +326,28 @@
       // treat it as "actually left the canvas" when the related target
       // (where the pointer is going) is outside the canvas entirely.
       if (event.target === canvasEl || !canvasEl.contains(event.relatedTarget)) {
-        paletteDragActive = false;
-        window.WebBuilderDropIndicator?.setContainerActive?.(canvasEl, false);
-        window.WebBuilderDropIndicator?.end?.(null);
+        endPaletteDrag(canvasEl);
       }
     });
 
     canvasEl.addEventListener("drop", event => {
       event.preventDefault();
-      paletteDragActive = false;
-      window.WebBuilderDropIndicator?.setContainerActive?.(canvasEl, false);
-      window.WebBuilderDropIndicator?.end?.(null);
+      const dropPoint = paletteDropPoint;
+      endPaletteDrag(canvasEl);
       if (state.isPreviewMode || !state.draggedType) return;
-      const point = window.WebBuilderAlignment.toLocalCoords(canvasEl, event.clientX, event.clientY);
+      // Use the same (possibly snapped) position the preview box was
+      // last shown at — instead of recomputing a raw, un-snapped
+      // position from the cursor — so the placed element lands exactly
+      // where the indicator promised.
+      const point = dropPoint || (() => {
+        const p = window.WebBuilderAlignment.toLocalCoords(canvasEl, event.clientX, event.clientY);
+        return { x: Math.max(0, p.x - 40), y: Math.max(0, p.y - 20) };
+      })();
       const created = elementsService.addNew(
         state.draggedType,
         state.draggedIcon,
-        Math.max(0, point.x - 40),
-        Math.max(0, point.y - 20),
+        point.x,
+        point.y,
         state.draggedShape
       );
       if (created) {
