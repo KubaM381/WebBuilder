@@ -14,6 +14,9 @@ document.write('<script src="js/ui/sidebar-panels-markup.js"><\/script>');
 document.write('<script src="js/shop/cart-editor-markup.js"><\/script>');
 document.write('<script src="js/canvas/elements.js"><\/script>');
 document.write('<script src="js/canvas/icon-registry.js"><\/script>');
+// Phase 2 flow-layout data layer (Section -> Row -> Card, state.sections).
+// Only needs core/state.js loaded first; no renderer attached yet.
+document.write('<script src="js/canvas/sections-data.js"><\/script>');
 // Must load before the cart-*.js files below — they read
 // window.WebBuilderProducts.
 document.write('<script src="js/shop/products.js"><\/script>');
@@ -78,5 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.WebBuilderCartRuntime?.render?.();
   window.WebBuilderProductsRuntime?.render?.();
   window.WebBuilderCartConfigRuntime?.render?.();
+  // No renderer subscribes to "sections" yet (Phase 2, next step) — this
+  // keeps a freshly loaded snapshot's sections normalized regardless.
+  window.WebBuilderSections?.normalizeState?.();
   window.WebBuilderPreview?.bindToggle?.();
 });
