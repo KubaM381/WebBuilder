@@ -10,6 +10,14 @@
 // layout/header-footer-render.js for bar items, so neither file
 // duplicates that logic. Must load after canvas/alignment.js and
 // canvas/elements.js (see js/README.md "Load order").
+//
+// Phase 1 "Drag & Drop 2.0" (canvas/drop-indicator.js): bindPaletteDragAndDrop()
+// additionally drives that module's container highlight + animated drop
+// box while a NEW element is being dragged in from the sidebar palette
+// (native HTML5 drag & drop — attachInteraction()/alignment.js is not
+// involved here, since there is no existing element yet to attach a
+// pointer-drag controller to). Every call is optional-chained, so this
+// keeps working unchanged if drop-indicator.js isn't loaded.
 (() => {
   const state = window.WebBuilderState;
   const elementsService = window.WebBuilderElements;
@@ -27,6 +35,15 @@
   let callbacks = { onAction: null };
   let renderQueued = false;
   let rendering = false;
+  // Whether the drop indicator's container highlight/box is currently
+  // "on" for an in-progress palette drag. Kept at module scope (not
+  // local to bindPaletteDragAndDrop) because that function can run again
+  // later (e.g. after new custom icons are added to the palette) and a
+  // function-local variable would then split into two out-of-sync
+  // closures — the canvas's dragover/dragleave/drop listeners are bound
+  // only once (dataset guard) and must keep referencing the same flag
+  // that later dragend listeners on newly added palette items also use.
+  let paletteDragActive = false;
 
   const getCanvas = () => document.getElementById("canvas");
   const getCanvasColumn = () => document.getElementById("canvas-column");
@@ -219,6 +236,22 @@
     return actions.execute(item);
   }
 
+  // Rough default box size per palette item type, used only so the Phase
+  // 1 drop indicator (canvas/drop-indicator.js) can preview roughly
+  // where/how big a new element will land while it's being dragged in.
+  // elementsService.create() remains the single source of truth for the
+  // element actually created on drop — this never has to be kept in
+  // exact sync with it.
+  function previewSizeForDraggedType(type) {
+    if (type === "icon") return { w: 36, h: 36 };
+    if (type === "headline") return { w: 240, h: 40 };
+    if (type === "button") return { w: 140, h: 40 };
+    if (type === "box") return { w: 140, h: 90 };
+    if (type === "image") return { w: 200, h: 130 };
+    if (type === "shape") return { w: 100, h: 65 };
+    return { w: 160, h: 24 };
+  }
+
   function bindPaletteDragAndDrop() {
     document.querySelectorAll(".draggable-item").forEach(item => {
       if (item.dataset.webBuilderDragBound === "true") return;
@@ -229,16 +262,58 @@
         state.draggedShape = item.dataset.shape || null;
         if (event.dataTransfer) event.dataTransfer.setData("text/plain", state.draggedType || "");
       });
+      // Cleans up the Phase 1 drop indicator/container highlight if the
+      // drag ends without a "drop" on the canvas (dropped outside it,
+      // cancelled with Esc, ...) — "dragend" always fires on the source
+      // element, unlike "drop".
+      item.addEventListener("dragend", () => {
+        paletteDragActive = false;
+        window.WebBuilderDropIndicator?.setContainerActive?.(getCanvas(), false);
+        window.WebBuilderDropIndicator?.end?.(null);
+      });
     });
 
     const canvasEl = getCanvas();
     if (!canvasEl || canvasEl.dataset.webBuilderDropBound === "true") return;
     canvasEl.dataset.webBuilderDropBound = "true";
 
-    canvasEl.addEventListener("dragover", event => event.preventDefault());
+    canvasEl.addEventListener("dragover", event => {
+      event.preventDefault();
+      if (state.isPreviewMode || !state.draggedType) return;
+      const indicator = window.WebBuilderDropIndicator;
+      if (!paletteDragActive) {
+        paletteDragActive = true;
+        indicator?.setContainerActive?.(canvasEl, true);
+        indicator?.begin?.(canvasEl);
+      }
+      const point = window.WebBuilderAlignment.toLocalCoords(canvasEl, event.clientX, event.clientY);
+      const size = previewSizeForDraggedType(state.draggedType);
+      indicator?.update?.({
+        containerEl: canvasEl,
+        x: Math.max(0, point.x - 40),
+        y: Math.max(0, point.y - 20),
+        width: size.w,
+        height: size.h,
+        xKind: "container"
+      });
+    });
+
+    canvasEl.addEventListener("dragleave", event => {
+      // dragleave fires for every child boundary crossing too — only
+      // treat it as "actually left the canvas" when the related target
+      // (where the pointer is going) is outside the canvas entirely.
+      if (event.target === canvasEl || !canvasEl.contains(event.relatedTarget)) {
+        paletteDragActive = false;
+        window.WebBuilderDropIndicator?.setContainerActive?.(canvasEl, false);
+        window.WebBuilderDropIndicator?.end?.(null);
+      }
+    });
 
     canvasEl.addEventListener("drop", event => {
       event.preventDefault();
+      paletteDragActive = false;
+      window.WebBuilderDropIndicator?.setContainerActive?.(canvasEl, false);
+      window.WebBuilderDropIndicator?.end?.(null);
       if (state.isPreviewMode || !state.draggedType) return;
       const point = window.WebBuilderAlignment.toLocalCoords(canvasEl, event.clientX, event.clientY);
       const created = elementsService.addNew(
@@ -251,6 +326,13 @@
       if (created) {
         if (window.WebBuilderInspector && typeof window.WebBuilderInspector.select === "function") window.WebBuilderInspector.select(created.id);
         else elementsService.setSelected(created.id);
+        // Spring-bounce settle for the newly placed element (Phase 1) —
+        // deferred two frames so the render pass triggered by addNew()'s
+        // "elements" notify has actually mounted the new DOM node first.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          const domEl = canvasEl.querySelector(`[data-id="${CSS.escape(created.id)}"]`);
+          if (domEl) window.WebBuilderDropIndicator?.applyBounce?.(domEl);
+        }));
       }
       state.draggedType = null;
       state.draggedIcon = null;
