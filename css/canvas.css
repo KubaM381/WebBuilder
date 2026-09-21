@@ -89,3 +89,33 @@
   .drop-indicator-box { transition: none; }
   .drop-settle-bounce { animation: none; }
 }
+
+/* ------------------------------------------------------------------
+   Phase 2 "Flow-Layout" — Section -> Row -> Card (see
+   js/canvas/sections-data.js / js/canvas/sections-render.js). Lives as
+   its own persistent container inside #canvas (#canvas-sections-flow),
+   left untouched by the freeform renderer (canvas/canvas.js only ever
+   manages .placed-element). Given display:none in JS whenever
+   state.sections is empty, so a purely freeform project's canvas is
+   visually unaffected. Colors/sizes/gap that come from section/row data
+   are inlined by sections-render.js (same convention as cart-item-html.js);
+   these rules only cover structure, hover and selection states.
+   ------------------------------------------------------------------ */
+.canvas-sections-flow { position: relative; width: 100%; }
+.wb-section { position: relative; box-sizing: border-box; width: 100%; padding: 16px; border: 2px dashed transparent; transition: border-color 0.15s ease; }
+.wb-section:hover { border-color: rgba(79, 70, 229, 0.35); }
+.wb-section.wb-section-selected { border-color: var(--selection-color); }
+.wb-section-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.wb-section-rows { display: flex; flex-direction: column; gap: 16px; }
+.wb-row { position: relative; box-sizing: border-box; padding: 10px; border: 2px dashed transparent; border-radius: 6px; transition: border-color 0.15s ease; }
+.wb-row:hover { border-color: rgba(236, 72, 153, 0.4); }
+.wb-row.wb-row-selected { border-color: var(--guide-color); }
+.wb-row-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.wb-card { position: relative; box-sizing: border-box; min-height: 60px; padding: 12px; background: var(--bg-panel); border: 2px dashed var(--border-muted); border-radius: 6px; cursor: pointer; }
+.wb-card:hover { border-color: var(--primary); }
+.wb-card.wb-card-selected { border-color: var(--selection-color); border-style: solid; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); }
+.wb-card-controls { position: absolute; top: 4px; right: 4px; display: flex; gap: 4px; }
+.wb-card-text { font-size: 0.9rem; color: var(--text-main); margin: 0; }
+.wb-card-el { margin: 0 0 8px; }
+.wb-card-el:last-child { margin-bottom: 0; }
+.wb-card-el-image { max-width: 100%; height: auto; display: block; }
