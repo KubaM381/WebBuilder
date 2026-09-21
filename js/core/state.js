@@ -1,10 +1,17 @@
 // js/core/state.js
-// WebBuilder shared state registry.
-// Canonical source of truth for the modular architecture.
+// WebBuilder shared state registry — canonical source of truth for the
+// modular architecture.
 
 window.WebBuilderState = window.WebBuilderState || {
+  // Snapshot schema version. Missing/1 = pre-Section snapshots (freeform
+  // elements only); 2 = adds `sections` below. Old snapshots load
+  // unchanged — storage.js's createSnapshot() defaults sections to [].
+  schemaVersion: 2,
   elements: [],
   selectedElementId: null,
+  // Phase 2 flow-layout tree (Section -> Row -> Card), fully independent
+  // of the freeform `elements` above — see canvas/sections-data.js.
+  sections: [],
   isPreviewMode: false,
   draggedType: null,
   draggedIcon: null,
