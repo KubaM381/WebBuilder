@@ -14,7 +14,7 @@ plus the `body.preview-mode` overrides.
 | `toolbar.css` | Top toolbar + all `.btn*` button variants (reused project-wide). |
 | `sidebar.css` | Left sidebar: tabs, palette grid, form rows (`.item-row`), product cards, item-row text/width helpers. |
 | `inspector.css` | Right-hand properties panel, text-format toolbar. |
-| `canvas.css` | Canvas area, zoom controls, header/footer bars (`.builder-bar`), bar-item interaction. |
+| `canvas.css` | Canvas area, zoom controls, header/footer bars (`.builder-bar`), bar-item interaction, and (Phase 1 "Drag & Drop 2.0") the animated drop-target indicator box, palette-drag container highlight, and drop settle-bounce animation (see `js/canvas/drop-indicator.js`). |
 | `elements.css` | Element palette (`.draggable-item`) and placed canvas elements (`.placed-element`). |
 | `modals.css` | Toasts, drawer (cart), generic modal, and reusable modal-body layout helpers (`.modal-stack`, `.modal-row`, `.pick-list`, ...) used by `js/Supabase/supabase-ui.js` and the cart focus editor. |
 | `responsive.css` | Small-screen adjustments (≤1024px). |
