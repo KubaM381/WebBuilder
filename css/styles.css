@@ -42,6 +42,15 @@ body.preview-mode .zoom-controls { display: none !important; }
 body.preview-mode .bar-resize-handle { display: none !important; }
 body.preview-mode .bar-item { cursor: default; border-color: transparent !important; box-shadow: none !important; }
 body.preview-mode .canvas-extend-wrap { display: none !important; }
+/* Phase 2 flow-layout editing affordances (add/delete/move buttons,
+   dashed selection outlines) never make sense in preview — cards don't
+   run click actions yet either, see canvas/sections-render.js. */
+body.preview-mode .wb-section-controls,
+body.preview-mode .wb-row-controls,
+body.preview-mode .wb-card-controls { display: none !important; }
+body.preview-mode .wb-section,
+body.preview-mode .wb-row,
+body.preview-mode .wb-card { border-color: transparent !important; cursor: default; }
 
 /* Cart focus editor mode (siehe js/shop/cart-editor.js enterFocusMode()/
    exitFocusMode()) — hides normal canvas content so only the cart demo
@@ -72,3 +81,6 @@ body.cart-focus-active #no-selection { display: none !important; }
    css/modals.css's .cart-focus-card comment) even with an unusual custom
    "Artikel-Darstellung" width configured. */
 body.cart-focus-active .canvas-container { overflow-x: hidden; }
+/* Section/Row/Card editing is a canvas-level affordance too — same
+   reasoning as the freeform placed elements above. */
+body.cart-focus-active .canvas-sections-flow { display: none !important; }
