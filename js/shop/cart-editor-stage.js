@@ -199,6 +199,10 @@
     document.body.classList.add("cart-focus-active");
     window.WebBuilderInspector?.select?.(null);
     window.WebBuilderHeaderFooterRuntime?.clearSelection?.();
+    // Phase 2 flow-layout selection (Section/Row/Card) — see
+    // canvas/sections-render.js; entering the cart editor has no
+    // notify() call to react to, so this one line is added explicitly.
+    window.WebBuilderSectionsRuntime?.clearSelection?.();
     document.getElementById("cart-inspector-form")?.classList.remove("hidden");
     renderFocusStage();
     window.WebBuilderCartFocus?.renderPartPanel?.();
