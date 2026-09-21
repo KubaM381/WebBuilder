@@ -17,6 +17,19 @@
 // overridable zoom parameter so a caller with a different coordinate
 // space (like cart-editor.js, always zoom=1) can reuse them safely
 // without inheriting canvas.js's zoom assumption.
+//
+// Phase 1 "Drag & Drop 2.0" (canvas/drop-indicator.js): attachInteraction()
+// additionally calls that module's begin()/update()/end() at the exact
+// same three points where it already creates/updates/removes the guide
+// lines below. Every call is optional-chained
+// (window.WebBuilderDropIndicator?.foo?.()) — if that file isn't loaded,
+// dragging behaves exactly as before (guide lines only, no animated drop
+// box, no settle bounce). collectSnapTargets()/snapPosition() gained an
+// additional, purely additive xKind/yKind ("container" | "sibling" | null)
+// so the drop indicator can tell "snapped to the page/bar edge" apart
+// from "snapped next to another element" — existing callers that only
+// read the original fields (xTargets/yTargets, x/y/guideX/guideY) are
+// unaffected.
 (() => {
   const state = window.WebBuilderState;
   if (!state) {
@@ -91,6 +104,13 @@
   // zoom-scaled #canvas-column) MUST pass 1 here explicitly — omitting it
   // falls back to state.zoomLevel, which is only correct for canvas
   // elements and header/footer bar items.
+  //
+  // xTargetKinds/yTargetKinds (added for the Phase 1 drop indicator, see
+  // canvas/drop-indicator.js): parallel arrays tagging every entry in
+  // xTargets/yTargets as "container" (the first three: 0 / center /
+  // width) or "sibling" (everything pushed inside the forEach below).
+  // Purely additive — a caller that destructures only { xTargets,
+  // yTargets } keeps working unchanged.
   function collectSnapTargets(containerEl, excludeEl, siblingSelector, zoomOverride) {
     const zoom = zoomOverride != null ? zoomOverride : (Number(state.zoomLevel) || 1);
     const containerRect = containerEl.getBoundingClientRect();
@@ -98,6 +118,8 @@
     const containerHeight = containerRect.height / zoom;
     const xTargets = [0, containerWidth / 2, containerWidth];
     const yTargets = [0, containerHeight / 2, containerHeight];
+    const xTargetKinds = ["container", "container", "container"];
+    const yTargetKinds = ["container", "container", "container"];
     containerEl.querySelectorAll(`:scope > ${siblingSelector}`).forEach(el => {
       if (el === excludeEl) return;
       const r = el.getBoundingClientRect();
@@ -107,8 +129,10 @@
       const bottom = (r.bottom - containerRect.top) / zoom;
       xTargets.push(left, right, (left + right) / 2);
       yTargets.push(top, bottom, (top + bottom) / 2);
+      xTargetKinds.push("sibling", "sibling", "sibling");
+      yTargetKinds.push("sibling", "sibling", "sibling");
     });
-    return { xTargets, yTargets };
+    return { xTargets, yTargets, xTargetKinds, yTargetKinds };
   }
 
   // Snaps a proposed top-left (x, y) of an item sized (w, h) against the
@@ -117,29 +141,38 @@
   // keeping only the closest match per axis within the zoom-adjusted
   // threshold. Returns the (possibly adjusted) position plus which local
   // coordinate matched on each axis, so the caller can place guide lines.
+  //
+  // xKind/yKind (added for the Phase 1 drop indicator): the "kind"
+  // (targets.xTargetKinds/yTargetKinds entry) of whichever target each
+  // axis actually snapped to, or null if that axis didn't snap / the
+  // caller didn't supply kind arrays. Existing callers built their own
+  // { xTargets, yTargets } without kind arrays keep working — they just
+  // get xKind/yKind: null, which they were already ignoring.
   function snapPosition(x, y, w, h, targets, zoom) {
     const threshold = GUIDE_SNAP_PX / (zoom || 1);
     const ownX = [x, x + w / 2, x + w];
     const ownY = [y, y + h / 2, y + h];
-    let bestX = null, bestXDiff = threshold;
-    targets.xTargets.forEach(t => {
+    let bestX = null, bestXDiff = threshold, bestXIndex = -1;
+    targets.xTargets.forEach((t, i) => {
       ownX.forEach(p => {
         const diff = Math.abs(p - t);
-        if (diff < bestXDiff) { bestXDiff = diff; bestX = { line: t, delta: t - p }; }
+        if (diff < bestXDiff) { bestXDiff = diff; bestX = { line: t, delta: t - p }; bestXIndex = i; }
       });
     });
-    let bestY = null, bestYDiff = threshold;
-    targets.yTargets.forEach(t => {
+    let bestY = null, bestYDiff = threshold, bestYIndex = -1;
+    targets.yTargets.forEach((t, i) => {
       ownY.forEach(p => {
         const diff = Math.abs(p - t);
-        if (diff < bestYDiff) { bestYDiff = diff; bestY = { line: t, delta: t - p }; }
+        if (diff < bestYDiff) { bestYDiff = diff; bestY = { line: t, delta: t - p }; bestYIndex = i; }
       });
     });
     return {
       x: bestX ? x + bestX.delta : x,
       y: bestY ? y + bestY.delta : y,
       guideX: bestX ? bestX.line : null,
-      guideY: bestY ? bestY.line : null
+      guideY: bestY ? bestY.line : null,
+      xKind: bestX && targets.xTargetKinds ? targets.xTargetKinds[bestXIndex] : null,
+      yKind: bestY && targets.yTargetKinds ? targets.yTargetKinds[bestYIndex] : null
     };
   }
 
@@ -182,6 +215,10 @@
           if (snapEnabled) {
             elBox = domEl.getBoundingClientRect();
             guides = createGuideLayer(containerEl);
+            // Phase 1 "Drag & Drop 2.0" (optional module, see
+            // canvas/drop-indicator.js) — purely additive on top of the
+            // guide lines above, never required for dragging to work.
+            window.WebBuilderDropIndicator?.begin?.(containerEl);
           }
         }
         const point = toLocalCoords(containerEl, moveEvent.clientX, moveEvent.clientY);
@@ -196,6 +233,10 @@
           nextX = snapped.x;
           nextY = snapped.y;
           updateGuideVisibility(guides, snapped.guideX, snapped.guideY);
+          window.WebBuilderDropIndicator?.update?.({
+            containerEl, x: nextX, y: nextY, width: w, height: h,
+            xKind: snapped.xKind, yKind: snapped.yKind
+          });
         }
 
         item.x = Math.min(maxX, Math.max(minX, nextX));
@@ -213,6 +254,10 @@
         if (dragging) {
           state.dragLock = false;
           if (recordHistory) window.WebBuilderHistory?.commit();
+          // Removes the drop box and gives the element a short
+          // spring-bounce settle animation (Phase 1) instead of a hard
+          // cut to its final position — no-op if the module isn't loaded.
+          window.WebBuilderDropIndicator?.end?.(domEl);
           opts.onDragEnd?.();
         }
         // A plain click and the end of a drag both trigger onClick, same
