@@ -15,7 +15,8 @@ document.write('<script src="js/shop/cart-editor-markup.js"><\/script>');
 document.write('<script src="js/canvas/elements.js"><\/script>');
 document.write('<script src="js/canvas/icon-registry.js"><\/script>');
 // Phase 2 flow-layout data layer (Section -> Row -> Card, state.sections).
-// Only needs core/state.js loaded first; no renderer attached yet.
+// Only needs core/state.js loaded first; rendered by
+// canvas/sections-render.js below (loaded after canvas/canvas.js).
 document.write('<script src="js/canvas/sections-data.js"><\/script>');
 // Must load before the cart-*.js files below — they read
 // window.WebBuilderProducts.
@@ -48,6 +49,12 @@ document.write('<script src="js/canvas/alignment.js"><\/script>');
 // hard parse-time dependency in either direction.
 document.write('<script src="js/canvas/drop-indicator.js"><\/script>');
 document.write('<script src="js/canvas/canvas.js"><\/script>');
+// Phase 2 flow-layout renderer — reads window.WebBuilderCanvas (for
+// computeBackgroundCss) and window.WebBuilderIconRegistry only at
+// runtime, so this only needs to load after sections-data.js above, not
+// strictly after canvas.js; kept here for logical grouping ("canvas"
+// files together).
+document.write('<script src="js/canvas/sections-render.js"><\/script>');
 // Calls window.WebBuilderCanvas.setBackground() at runtime.
 document.write('<script src="js/editor/background.js"><\/script>');
 // Injects the #prop-*/#bar-prop-*/cart-comp-*-shape markup that
@@ -56,6 +63,9 @@ document.write('<script src="js/editor/background.js"><\/script>');
 document.write('<script src="js/ui/shared-markup.js"><\/script>');
 document.write('<script src="js/editor/inspector.js"><\/script>');
 document.write('<script src="js/editor/inspector-special.js"><\/script>');
+// Phase 2 flow-layout right-hand panel (#section-inspector-form) — reads
+// window.WebBuilderSections/WebBuilderSectionsRuntime only at runtime.
+document.write('<script src="js/editor/sections-inspector.js"><\/script>');
 document.write('<script src="js/toolbar.js"><\/script>');
 document.write('<script src="js/layout/header-footer-data.js"><\/script>');
 document.write('<script src="js/layout/header-footer-render.js"><\/script>');
@@ -81,8 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
   window.WebBuilderCartRuntime?.render?.();
   window.WebBuilderProductsRuntime?.render?.();
   window.WebBuilderCartConfigRuntime?.render?.();
-  // No renderer subscribes to "sections" yet (Phase 2, next step) — this
-  // keeps a freshly loaded snapshot's sections normalized regardless.
+  // canvas/sections-render.js subscribes to the "sections" domain itself
+  // and self-inits on its own DOMContentLoaded+setTimeout — this explicit
+  // call, like the ones above, just makes a freshly loaded snapshot
+  // visible immediately instead of waiting for that deferred tick.
   window.WebBuilderSections?.normalizeState?.();
+  window.WebBuilderSectionsRuntime?.render?.();
   window.WebBuilderPreview?.bindToggle?.();
 });
