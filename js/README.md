@@ -1,45 +1,14 @@
-# js/shop/ — Products + cart
-
-## Products
+# js/canvas/ — Canvas rendering, elements, icons, drag/alignment, sections
 
 | File | Purpose | API |
 |---|---|---|
-| `products.js` | Product CRUD + normalization + the products tab UI (`#product-list`). Must load before every cart file below — they reference products only via `window.WebBuilderProducts`. | `window.WebBuilderProducts`, `window.WebBuilderProductsRuntime` |
+| `elements.js` | Canvas-element data only: CRUD (`add`/`update`/`remove`/`duplicate`), selection. `normalizeState()` migrates legacy click-action field names. Must load before `canvas.js` and `editor/inspector.js` — both read `window.WebBuilderElements` at parse time. | `window.WebBuilderElements` |
+| `icon-registry.js` | Icon registry — pure data, no DOM. Used by icon canvas elements, header/footer icons, and the "custom icons" upload UI. No load-order requirement of its own. | `window.WebBuilderIconRegistry` |
+| `sections-data.js` | Phase 2 flow-layout data layer: the normalized Section → Row → Card tree (`state.sections`), fully independent of the freeform `elements` above — old projects keep working unchanged with `sections: []`. CRUD (`addSection`/`addRow`/`addCard`/`updateSection`/...), `normalizeState()`. No renderer yet — see the project's Phase 2 instructions for the planned flow container inside `#canvas`. Only needs `core/state.js` loaded first. | `window.WebBuilderSections` |
+| `alignment.js` | Shared click+drag controller (Pointer Events, `state.dragLock`) plus Canva-style center/edge alignment-guide snapping. Used by `canvas.js` for canvas elements and `layout/header-footer-render.js` for bar items. `collectSnapTargets()`/`snapPosition()` also tag each snap match as `"container"` or `"sibling"` (`xKind`/`yKind`) for `drop-indicator.js`; `attachInteraction()` calls that module's `begin()`/`update()`/`end()` optionally, degrading gracefully to guide-lines-only if it isn't loaded. Must load before `canvas.js` and `drop-indicator.js`. The cart focus editor (`shop/cart-editor-drag.js`) reuses only its exported snapping primitives, not `attachInteraction()` itself. | `window.WebBuilderAlignment` |
+| `drop-indicator.js` | Phase 1 "Drag & Drop 2.0": an animated, color-coded drop-target box (free / snapped-to-sibling / snapped-to-container), a canvas/bar container highlight for palette drag-ins, and a one-off spring-bounce settle animation on drop. Purely additive — every caller reaches it through optional chaining (`window.WebBuilderDropIndicator?.foo?.()`), so removing this file just turns Drag & Drop back into guide-lines-only. Also exports a `flipReflow()` helper prepared for Phase 2's flow layout — unused for now, since the freeform canvas (explicit x/y per element, no flow relationship between siblings) has nothing that legitimately needs to "make room" for a dragged element; will be wired up once `sections-data.js` gets a renderer with real flow children. No load-order requirement of its own; conventionally loaded right after `alignment.js`. | `window.WebBuilderDropIndicator` |
+| `canvas.js` | Viewport, zoom, rendering of placed elements, palette drag & drop (including the Phase 1 container highlight/drop box for newly dragged-in elements), "custom icons" palette UI. Must load after `alignment.js` and `elements.js`. | `window.WebBuilderCanvas` |
 
-## Cart data (four files, one shared object)
-
-Load order matters: `cart-items.js` → `cart-recommendations.js` →
-`cart-milestones.js` → `cart-config.js` (last — it calls
-`normalizeState()` once every other file has attached its part). All four
-contribute to `window.WebBuilderCart`.
-
-| File | Purpose |
-|---|---|
-| `cart-items.js` | Item CRUD, price/quantity mutation, totals. |
-| `cart-recommendations.js` | Recommendation rule objects + `pickRecommendation()` (which one to show for a given cart state). |
-| `cart-milestones.js` | Progress-bar milestones and freely placeable dividers. |
-| `cart-config.js` | `getConfig`/`setConfig`, currency, discount code, and the orchestrating `normalizeState()`. |
-
-## Cart HTML, drawer, sidebar
-
-| File | Purpose | API |
-|---|---|---|
-| `cart-html.js` | Pure HTML building only — no DOM access, no event binding. Owns the shared positioning primitives (`wrapLayoutPart`/`wrapComponent`) and the cart-body assembly (title, dividers, progress, items, recommendation, discount, totals, checkout) used identically by the real drawer and the cart editor stage. | `window.WebBuilderCartHtml`, plus `buildCartHtml`/`buildCartParts` on `window.WebBuilderCartRuntime` |
-| `cart-item-html.js` | Single cart-item and recommend-card rendering (`buildCartItemHTML`, `buildItemsHtml`, `buildRecommendCardContentHtml`), split out of `cart-html.js`. No parse-time load-order requirement relative to `cart-html.js` — both reach each other only through `window.WebBuilderCartHtml` at runtime. | contributes to `window.WebBuilderCartHtml` |
-| `cart-drawer.js` | The real slide-in drawer: rendering, open/close, all its click/change interactions. `refresh()` re-renders both the drawer and — if open — the cart editor stage. | contributes to `window.WebBuilderCartRuntime` |
-| `cart-sidebar.js` | Left sidebar cart config UI (`#panel-cart`): discount/recommend/progress toggles, recommendation list editor, milestone list editor. | `window.WebBuilderCartConfigRuntime` |
-
-## Cart focus editor ("Warenkorb-Editor")
-
-Read `docs/CART_EDITOR_TASKS.md` before changing any of these files. No
-parse-time load-order requirement between the five below — each reaches
-the others only through `window.WebBuilderCartFocus` at runtime, which
-all five contribute to.
-
-| File | Purpose |
-|---|---|
-| `cart-editor-markup.js` | Injects the static `#cart-inspector-form` markup. Must load before `ui/shared-markup.js` (which fills the shape `<select>`s this file creates empty). |
-| `cart-editor-stage.js` | Enter/exit focus mode, the on-canvas stage DOM, part/component selection state, and the shared layout data model (get/set/reset a part's or component's pixel offset). |
-| `cart-editor-drag.js` | All pointer-drag interaction on the stage (article resize, component drag, part drag). Reuses `canvas/alignment.js`'s snapping primitives directly instead of `attachInteraction()`, since the stage positions things via a CSS transform on an unscaled surface. |
-| `cart-editor-panel.js` | Renders the right-hand `#cart-inspector-form` fields for whichever part/component is selected. Read-only — turning input into state changes is `cart-editor-bindings.js`'s job. |
-| `cart-editor-bindings.js` | Every field event listener for `#cart-inspector-form` plus the open/close-editor buttons. |
+The background editor (solid/gradient/image form) lives in
+`editor/background.js`, not here — it calls this folder's `canvas.js`
+`setBackground()`/`computeBackgroundCss()` at runtime.
