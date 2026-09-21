@@ -33,6 +33,10 @@
     state.selectedBarItemRef = { target, id };
     if (window.WebBuilderInspector?.select) window.WebBuilderInspector.select(null);
     else if (window.WebBuilderElements) window.WebBuilderElements.setSelected(null);
+    // Phase 2 flow-layout selection (Section/Row/Card) is a fourth,
+    // mutually exclusive right-hand panel that has no equivalent
+    // notify() call to react to — see canvas/sections-render.js.
+    window.WebBuilderSectionsRuntime?.clearSelection?.();
     window.WebBuilderHeaderFooterRuntime?.render?.();
   }
 
