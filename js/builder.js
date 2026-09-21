@@ -38,6 +38,12 @@ document.write('<script src="js/shop/cart-editor-bindings.js"><\/script>');
 // Must load before canvas/canvas.js and layout/header-footer-render.js —
 // both use window.WebBuilderAlignment for drag/click + snapping.
 document.write('<script src="js/canvas/alignment.js"><\/script>');
+// Phase 1 "Drag & Drop 2.0" — optional module, hooked into by
+// alignment.js's attachInteraction() and by canvas.js's palette drag &
+// drop, both purely via optional chaining. Loaded here (after
+// alignment.js, before canvas.js) to match that logical grouping; no
+// hard parse-time dependency in either direction.
+document.write('<script src="js/canvas/drop-indicator.js"><\/script>');
 document.write('<script src="js/canvas/canvas.js"><\/script>');
 // Calls window.WebBuilderCanvas.setBackground() at runtime.
 document.write('<script src="js/editor/background.js"><\/script>');
