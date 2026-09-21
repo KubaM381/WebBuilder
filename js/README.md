@@ -6,8 +6,8 @@ This file is only a map. For "what does file X do" and "what must load before/af
 Folders
 Folder	Domain	README
 core/	Shared state, utils, storage/history — everything else depends on this	core/README.md
-canvas/	Canvas rendering, canvas-element CRUD, icon registry, shared drag/alignment	canvas/README.md
-editor/	Right-hand properties panel for canvas elements + the background editor	editor/README.md
+canvas/	Canvas rendering, canvas-element CRUD, icon registry, shared drag/alignment, Phase 2 flow-layout data + renderer	canvas/README.md
+editor/	Right-hand properties panel for canvas elements + the background editor + the Phase 2 flow-layout panel	editor/README.md
 layout/	Real page header/footer: data, canvas rendering, inspector panel	layout/README.md
 shop/	Products + cart, incl. the cart focus editor	shop/README.md
 ui/	Cross-domain UI helpers: toast, modal, shared markup, sidebar tabs	ui/README.md
@@ -29,10 +29,10 @@ Folder-level chain (see each folder's README for the order of files within it):
 
 core/ → ui/toast.js → core/storage.js
 → ui/sidebar-panels-markup.js → shop/cart-editor-markup.js
-→ canvas/elements.js → canvas/icon-registry.js
+→ canvas/elements.js → canvas/icon-registry.js → canvas/sections-data.js
 → shop/products.js → shop/ (cart data → html/item-html/drawer/sidebar → cart editor)
-→ canvas/alignment.js → canvas/canvas.js → editor/background.js
-→ ui/shared-markup.js → editor/inspector.js → editor/inspector-special.js
+→ canvas/alignment.js → canvas/canvas.js → canvas/sections-render.js → editor/background.js
+→ ui/shared-markup.js → editor/inspector.js → editor/inspector-special.js → editor/sections-inspector.js
 → toolbar.js
 → layout/ (header-footer-data → -render → -inspector)
 → export.js → ui/modals.js → preview.js → ui/tabs.js
