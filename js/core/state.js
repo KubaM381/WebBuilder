@@ -12,6 +12,12 @@ window.WebBuilderState = window.WebBuilderState || {
   // Phase 2 flow-layout tree (Section -> Row -> Card), fully independent
   // of the freeform `elements` above — see canvas/sections-data.js.
   sections: [],
+  // Selection state for that tree, owned by canvas/sections-render.js —
+  // runtime-only, not persisted (same convention as selectedElementId /
+  // selectedBarItemRef). Shape: { type: "section"|"row"|"card",
+  // sectionId, rowId, cardId } — rowId/cardId are only present once that
+  // level is actually selected.
+  selectedSectionRef: null,
   isPreviewMode: false,
   draggedType: null,
   draggedIcon: null,
