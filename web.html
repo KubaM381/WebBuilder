@@ -145,6 +145,47 @@
 
       <!-- Warenkorb-Editor-Panel — Markup wird von js/shop/cart-editor-markup.js injiziert -->
       <div id="cart-inspector-form" class="inspector-form hidden"></div>
+
+      <!-- Phase 2 Flow-Layout: Section/Row/Card — Markup gefüllt von
+           js/editor/sections-inspector.js -->
+      <div id="section-inspector-form" class="inspector-form hidden">
+        <p class="help-text" style="margin-bottom:12px;">🧱 <span id="section-part-label">Section</span> (Flow-Layout)</p>
+
+        <div class="form-group hidden" id="section-group-bgcolor">
+          <label for="section-prop-bgcolor">Hintergrundfarbe</label>
+          <input type="color" id="section-prop-bgcolor" value="#ffffff">
+        </div>
+        <div class="form-group hidden" id="section-group-minheight">
+          <label for="section-prop-minheight">Mindesthöhe (px)</label>
+          <input type="number" id="section-prop-minheight" min="80" step="10" value="200">
+        </div>
+
+        <div class="form-group hidden" id="section-group-columns">
+          <label for="section-prop-columns">Spalten</label>
+          <input type="number" id="section-prop-columns" min="1" max="6" step="1" value="1">
+        </div>
+        <div class="form-group hidden" id="section-group-align">
+          <label for="section-prop-align">Ausrichtung</label>
+          <select id="section-prop-align">
+            <option value="start">Links</option>
+            <option value="center">Zentriert</option>
+            <option value="space-between">Verteilt (space-between)</option>
+          </select>
+        </div>
+        <div class="form-group hidden" id="section-group-gap">
+          <label for="section-prop-gap">Abstand (px)</label>
+          <input type="number" id="section-prop-gap" min="0" step="1" value="16">
+        </div>
+
+        <div class="form-group hidden" id="section-group-text">
+          <label for="section-prop-text">Text</label>
+          <textarea id="section-prop-text" rows="3"></textarea>
+        </div>
+
+        <div class="form-actions" style="margin-top:20px;">
+          <button id="btn-delete-section-part" class="btn btn-danger-outline" style="width:100%;">Löschen</button>
+        </div>
+      </div>
     </aside>
   </div>
 
